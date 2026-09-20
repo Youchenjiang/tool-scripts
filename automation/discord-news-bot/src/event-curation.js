@@ -69,4 +69,33 @@ function participationReason(event) {
   return '適合想進一步了解活動主題的成員。';
 }
 
-module.exports = { DAY, completeness, eventScore, futureDeadline, isCompetition, isTaiwanEvent, participationReason };
+function curateWeeklyEntries(entries, now = new Date(), limit = 8) {
+  const ranked = [...entries].sort((left, right) => eventScore(right.event, now) - eventScore(left.event, now)
+    || timestamp(left.event.startsAt || left.event.start) - timestamp(right.event.startsAt || right.event.start));
+  const selected = [];
+  const selectedKeys = new Set();
+  let competitionCount = 0;
+  function add(entry) {
+    if (!entry || selectedKeys.has(entry.key) || selected.length >= limit) return false;
+    if (isCompetition(entry.event) && competitionCount >= 3) return false;
+    selected.push(entry); selectedKeys.add(entry.key);
+    if (isCompetition(entry.event)) competitionCount += 1;
+    return true;
+  }
+
+  ranked.filter(({ event }) => futureDeadline(event, now) - now.getTime() <= 7 * DAY).slice(0, 3).forEach(add);
+  add(ranked.find(({ event }) => !isCompetition(event)));
+  add(ranked.find(({ event }) => event.directions?.some((value) => ['blue', 'purple'].includes(value))));
+  ranked.forEach(add);
+
+  const remaining = ranked.filter(({ key }) => !selectedKeys.has(key));
+  return {
+    selected,
+    competitionOverflow: remaining.filter(({ event }) => isCompetition(event)),
+    otherOverflow: remaining.filter(({ event }) => !isCompetition(event)),
+  };
+}
+
+module.exports = {
+  DAY, completeness, curateWeeklyEntries, eventScore, futureDeadline, isCompetition, isTaiwanEvent, participationReason,
+};

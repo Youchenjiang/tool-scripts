@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { completeness, eventScore, isTaiwanEvent, participationReason } = require('../src/event-curation');
+const { completeness, curateWeeklyEntries, eventScore, isTaiwanEvent, participationReason } = require('../src/event-curation');
 
 const now = new Date('2026-09-20T00:00:00Z');
 function event(overrides = {}) {
@@ -32,4 +32,30 @@ test('participation reason only restates confirmed level and topic metadata', ()
     '適合已有基礎，想練習 Web、Pwn 的成員。');
   assert.equal(participationReason(event({ kind: 'competition', directions: ['unspecified'] })),
     '適合想透過競賽檢驗目前技術能力的成員。');
+});
+
+test('weekly curation keeps category diversity and groups excess competitions', () => {
+  const entries = [
+    ...Array.from({ length: 7 }, (_, index) => ({
+      key: `ctf-${index}`,
+      event: event({ title: `CTF ${index}`, kind: 'ctf', startsAt: `2026-09-${21 + index}T00:00:00Z` }),
+    })),
+    { key: 'blue', event: event({ title: 'Blue workshop', kind: 'workshop', directions: ['blue'] }) },
+    { key: 'community', event: event({ title: 'Community meetup', kind: 'community' }) },
+  ];
+  const result = curateWeeklyEntries(entries, now, 8);
+  assert.ok(result.selected.some(({ key }) => key === 'blue'));
+  assert.ok(result.selected.some(({ key }) => key === 'community'));
+  assert.equal(result.selected.filter(({ event: item }) => item.kind === 'ctf').length, 3);
+  assert.equal(result.competitionOverflow.length, 4);
+});
+
+test('weekly curation prioritizes near registration deadlines', () => {
+  const entries = [
+    { key: 'later', event: event({ startsAt: '2026-09-21T00:00:00Z' }) },
+    { key: 'deadline', event: event({
+      startsAt: '2026-10-10T00:00:00Z', deadlines: [{ at: '2026-09-21T00:00:00Z', kind: 'registration' }],
+    }) },
+  ];
+  assert.equal(curateWeeklyEntries(entries, now, 1).selected[0].key, 'deadline');
 });
