@@ -47,6 +47,11 @@ test('event announcement states unknown fields without inventing details', () =>
   assert.doesNotMatch(message.content, /🧩/u);
 });
 
+test('event announcement presents an unclassified CTF as general instead of blank direction', () => {
+  const message = createEventMessage(sampleEvent({ directions: ['unspecified'], topics: [] }));
+  assert.match(message.content, /⚪ 綜合 · CTF/u);
+});
+
 test('event publisher prioritizes nearest deadline and persists every alias', async () => {
   const sentMessages = [];
   let savedState = { sentIds: [], lastCheckedAt: null };

@@ -36,8 +36,9 @@ function localHour(date, timeZone) { return Number(dateParts(date, timeZone, tru
 function markdownLinkTitle(value) { return String(value || '').replace(/[\[\]]/gu, '').trim().slice(0, 200); }
 function eventAliases(event) { return [...new Set([event.id, ...(event.aliases || [])].filter(Boolean))]; }
 
-function directionLabel(directions) {
+function directionLabel(directions, kind) {
   const values = (directions?.length ? directions : ['unspecified']).filter((value, index, all) => all.indexOf(value) === index);
+  if (kind === 'ctf' && values.every((value) => value === 'unspecified')) return DIRECTION_LABELS.general;
   return values.map((value) => DIRECTION_LABELS[value] || DIRECTION_LABELS.unspecified).join('＋');
 }
 
@@ -97,12 +98,19 @@ function audienceLine(audience) {
   return values.length ? `👤 ${values.join('、')}` : '';
 }
 
+function eventDecisionLine(event) {
+  const decision = `${directionLabel(event.directions, event.kind)} · ${KIND_LABELS[event.kind] || KIND_LABELS.event}`;
+  return `${decision}｜${LEVEL_LABELS[event.level] || LEVEL_LABELS.unspecified}｜${participationLabel(event)}`;
+}
+
+function eventTimingLine(event, timeZone, current) {
+  return [scheduleLine(event, timeZone), deadlineLine(event, timeZone, current)].filter(Boolean).join('；');
+}
+
 function createEventMessage(event, timeZone = 'Asia/Taipei', current = new Date()) {
-  const decision = `${directionLabel(event.directions)} · ${KIND_LABELS[event.kind] || KIND_LABELS.event}`;
-  const details = `${LEVEL_LABELS[event.level] || LEVEL_LABELS.unspecified}｜${participationLabel(event)}`;
   return {
     content: [
-      `[${markdownLinkTitle(event.title)}](${event.officialUrl || event.url})`, `${decision}｜${details}`,
+      `[${markdownLinkTitle(event.title)}](${event.officialUrl || event.url})`, eventDecisionLine(event),
       topicLine(event.topics), scheduleLine(event, timeZone), deadlineLine(event, timeZone, current),
       locationLine(event), audienceLine(event.audience),
     ].filter(Boolean).join('\n'),
@@ -164,4 +172,6 @@ function createEventPublisher({ channel, config, stateStore, fetchEventsImpl = f
   return { run, getStatus: () => ({ running, latestResult, stateStore: stateStore.kind }) };
 }
 
-module.exports = { createEventMessage, createEventPublisher, formatCompactDate, formatCompactDateTime };
+module.exports = {
+  createEventMessage, createEventPublisher, eventDecisionLine, eventTimingLine, formatCompactDate, formatCompactDateTime,
+};

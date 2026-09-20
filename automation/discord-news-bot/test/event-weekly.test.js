@@ -23,12 +23,14 @@ test('same-week additions edit the digest; unchanged weeks do not publish', asyn
   assert.deepEqual(calls, ['send', 'edit']);
 });
 
-test('large weekly digests keep the complete list in an attachment', () => {
+test('large weekly digests publish curated entries and group excess competitions', () => {
   const state = { events: Object.fromEntries(Array.from({ length: 50 }, (_, i) => [String(i), { event: { ...event, id: `id${i}`, title: `CTF ${i}` } }])) };
   const result = weeklyData(state, config, new Date('2026-09-21T02:00:00Z'));
   assert.equal(result.count, 50);
   assert.ok(result.payload.content.length <= 2000);
-  assert.match(result.payload.files[0].attachment.toString(), /CTF 49/);
+  assert.match(result.payload.content, /其他 CTF 行程/);
+  assert.match(result.payload.content, /公開整理 3 場/);
+  assert.deepEqual(result.payload.files, []);
 });
 
 test('stale entries and distant activities are excluded, but upcoming deadlines qualify', () => {

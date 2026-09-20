@@ -1,6 +1,8 @@
-const { ActionRowBuilder, AttachmentBuilder } = require('discord.js');
-const { currentEvents, compactEvent, fingerprint, button } = require('./event-board');
+const { ActionRowBuilder } = require('discord.js');
+const { currentEvents, fingerprint, button } = require('./event-board');
+const { curateWeeklyEntries, futureDeadline, participationReason, DAY } = require('./event-curation');
 const { eventStartTime } = require('./event-model');
+const { eventDecisionLine, eventTimingLine } = require('./event-publisher');
 
 function weekKey(now, timeZone) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en', {
@@ -18,21 +20,45 @@ function weeklyData(state, config, now) {
       || event.deadlines.some(({ at }) => at.getTime() >= now.getTime() && at.getTime() <= limit)));
   const signature = fingerprint({ entries: entries.map(({ key, event }) => ({ key, event })), partial: Boolean(state.sourceErrors?.length) });
   const week = weekKey(now, config.eventTimeZone);
-  let content = `**資安活動週報｜${week}**\n未來四週活動及報名期限\n`;
+  const curated = curateWeeklyEntries(entries, now, 8);
+  let content = `**本週資安活動｜${week}**\n未來四週內值得留意的活動與報名期限\n`;
   if (state.sourceErrors?.length) content += '部分來源暫時無法更新；本期僅列已確認活動。\n';
-  const complete = [];
-  let shown = 0;
-  for (const { event } of entries) {
-    const text = compactEvent(event, config.eventTimeZone, now);
-    complete.push(text);
-    if (content.length + text.length <= 1700) { content += `\n${text}\n`; shown += 1; }
+
+  function summary(event) {
+    return [
+      `[${String(event.title || '').replace(/[\[\]]/gu, '').slice(0, 180)}](${event.officialUrl || event.url})`,
+      eventDecisionLine(event).replace(/｜程度未標示/gu, '').replace(/｜人數未公開/gu, ''),
+      eventTimingLine(event, config.eventTimeZone, now), participationReason(event),
+    ].filter(Boolean).join('\n');
   }
-  content += `\n共 ${entries.length} 場${shown < entries.length ? `，完整清單見附件及活動總表` : ''}。`;
+
+  const urgent = curated.selected.filter(({ event }) => futureDeadline(event, now) - now.getTime() <= 7 * DAY);
+  const upcoming = curated.selected.filter((entry) => !urgent.includes(entry));
+  const visible = [];
+  const omitted = [];
+  for (const [heading, group] of [['即將截止', urgent], ['近期活動', upcoming]]) {
+    if (!group.length) continue;
+    let sectionStarted = false;
+    for (const entry of group) {
+      const text = summary(entry.event);
+      const addition = `${sectionStarted ? '\n' : `\n**${heading}**\n`}${text}\n`;
+      if (content.length + addition.length <= 1600) {
+        content += addition; sectionStarted = true; visible.push(entry);
+      } else omitted.push(entry);
+    }
+  }
+  const competitionOverflow = [...curated.competitionOverflow, ...omitted.filter(({ event }) => ['ctf', 'competition'].includes(event.kind))];
+  const otherOverflow = [...curated.otherOverflow, ...omitted.filter(({ event }) => !['ctf', 'competition'].includes(event.kind))];
+  if (competitionOverflow.length) {
+    const names = competitionOverflow.slice(0, 3).map(({ event }) => event.title).join('、');
+    content += `\n**其他 CTF 行程**\n${names}${competitionOverflow.length > 3 ? `等 ${competitionOverflow.length} 場` : ''}，完整時間與參賽資訊請從活動總表查看。\n`;
+  }
+  const hidden = competitionOverflow.length + otherOverflow.length;
+  content += `\n本期收錄 ${entries.length} 場，公開整理 ${visible.length} 場${hidden ? `，其餘 ${hidden} 場保留在活動總表` : ''}。`;
   const payload = {
     content, allowedMentions: { parse: [] }, attachments: [],
     components: [new ActionRowBuilder().addComponents(button('events:view:all:0', '完整活動總表'))],
-    files: shown < entries.length
-      ? [new AttachmentBuilder(Buffer.from(complete.join('\n\n'), 'utf8'), { name: `activities-${week}.md` })] : [],
+    files: [],
   };
   return { week, signature, payload, count: entries.length };
 }
