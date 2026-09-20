@@ -15,6 +15,12 @@ function compactEvent(event, timeZone, now) {
     .replace(/｜程度未標示/gu, '')
     .replace(/｜人數未公開/gu, '');
 }
+function boardRow(event, timeZone, now) {
+  const lines = createEventMessage(event, timeZone, now).content.split('\n');
+  const decision = (lines[1] || '').replace(/｜程度未標示/gu, '').replace(/｜人數未公開/gu, '');
+  const timing = lines.filter((line) => line.startsWith('📅') || line.startsWith('⏳')).join(' · ');
+  return [lines[0], decision, timing].filter(Boolean).join('\n');
+}
 function currentEvents(document, now) {
   return Object.entries(document.events || {}).flatMap(([key, record]) => {
     const event = normalizeEventRecord(record.event);
@@ -28,10 +34,10 @@ function boardMessage(document, { timeZone = 'Asia/Taipei', now = new Date(), fi
   const pages = [[]];
   let length = 0;
   for (const entry of entries) {
-    const text = `${compactEvent(entry.event, timeZone, now)}${entry.stale ? '\n來源暫時未確認' : ''}`;
+    const text = `${boardRow(entry.event, timeZone, now)}${entry.stale ? '\n來源暫時未確認' : ''}`;
     // Oversized source text is still available through the official link/detail button.
     entry.text = text.length > 1400 ? `${entry.event.title.slice(0, 150)}\n詳情請選擇下方活動。` : text;
-    if (pages.at(-1).length && (length + entry.text.length > 1600 || pages.at(-1).length >= 4)) {
+    if (pages.at(-1).length && (length + entry.text.length > 1750 || pages.at(-1).length >= 10)) {
       pages.push([]); length = 0;
     }
     pages.at(-1).push(entry); length += entry.text.length + 2;
@@ -58,4 +64,4 @@ function boardMessage(document, { timeZone = 'Asia/Taipei', now = new Date(), fi
   };
 }
 
-module.exports = { keyFor, fingerprint, currentEvents, compactEvent, boardMessage, button };
+module.exports = { keyFor, fingerprint, currentEvents, compactEvent, boardMessage, boardRow, button };
