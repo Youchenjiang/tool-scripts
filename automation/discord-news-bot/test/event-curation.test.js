@@ -5,7 +5,7 @@ const { completeness, curateWeeklyEntries, eventScore, isTaiwanEvent, participat
 const now = new Date('2026-09-20T00:00:00Z');
 function event(overrides = {}) {
   return {
-    title: 'Security event', kind: 'conference', startsAt: '2026-09-25T00:00:00Z', deadlines: [],
+    title: 'Security event', sourceId: 'test', kind: 'conference', startsAt: '2026-09-25T00:00:00Z', deadlines: [],
     directions: ['general'], topics: [], level: 'unspecified', participation: 'unspecified',
     attendance: 'unknown', location: '', description: '', timeZone: '', ...overrides,
   };
@@ -58,4 +58,19 @@ test('weekly curation prioritizes near registration deadlines', () => {
     }) },
   ];
   assert.equal(curateWeeklyEntries(entries, now, 1).selected[0].key, 'deadline');
+});
+
+test('weekly curation prevents one source or activity kind from dominating the digest', () => {
+  const entries = [
+    ...Array.from({ length: 5 }, (_, index) => ({
+      key: `owasp-${index}`,
+      event: event({ title: `OWASP Conference ${index}`, sourceId: 'owasp', startsAt: `2026-09-${21 + index}T00:00:00Z` }),
+    })),
+    { key: 'training', event: event({ title: 'Training', sourceId: 'local', kind: 'training' }) },
+    { key: 'workshop', event: event({ title: 'Workshop', sourceId: 'community', kind: 'workshop' }) },
+  ];
+  const result = curateWeeklyEntries(entries, now, 8);
+  assert.equal(result.selected.filter(({ event: item }) => item.sourceId === 'owasp').length, 2);
+  assert.ok(result.selected.some(({ key }) => key === 'training'));
+  assert.ok(result.selected.some(({ key }) => key === 'workshop'));
 });

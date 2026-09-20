@@ -75,11 +75,19 @@ function curateWeeklyEntries(entries, now = new Date(), limit = 8) {
   const selected = [];
   const selectedKeys = new Set();
   let competitionCount = 0;
+  const sourceCounts = new Map();
+  const kindCounts = new Map();
+  const sourceGroup = (event) => String(event.sourceId || event.source || 'unknown').split(':')[0];
   function add(entry) {
     if (!entry || selectedKeys.has(entry.key) || selected.length >= limit) return false;
     if (isCompetition(entry.event) && competitionCount >= 3) return false;
+    const source = sourceGroup(entry.event);
+    if (!isCompetition(entry.event) && (sourceCounts.get(source) || 0) >= 2) return false;
+    if (!isCompetition(entry.event) && (kindCounts.get(entry.event.kind) || 0) >= 2) return false;
     selected.push(entry); selectedKeys.add(entry.key);
     if (isCompetition(entry.event)) competitionCount += 1;
+    sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
+    kindCounts.set(entry.event.kind, (kindCounts.get(entry.event.kind) || 0) + 1);
     return true;
   }
 
