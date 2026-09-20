@@ -1,4 +1,4 @@
-const { ActionRowBuilder, PermissionFlagsBits } = require('discord.js');
+const { ActionRowBuilder, MessageFlags, PermissionFlagsBits } = require('discord.js');
 const { normalizeEventRecord, eventEndTime } = require('./event-model');
 const { compactEvent, button } = require('./event-board');
 
@@ -31,7 +31,7 @@ function detailMessage(state, key, userId, config, now) {
   const status = item ? '已訂閱：報名截止及開賽前 24 小時私訊提醒。' : '訂閱後，報名截止及開賽前 24 小時會收到私訊。';
   return {
     content: `${compactEvent(event, config.eventTimeZone, now)}\n\n${status}${failed ? '\n先前私訊未確認送達；請檢查私訊權限。' : ''}`.slice(0, 2000),
-    allowedMentions: { parse: [] },
+    allowedMentions: { parse: [] }, flags: MessageFlags.SuppressEmbeds,
     components: [new ActionRowBuilder().addComponents(
       button(`events:${item ? 'unsub' : 'sub'}:${key}`, item ? '取消訂閱' : '訂閱私訊提醒'),
       button('events:view:mine:0', '我的訂閱'),
@@ -69,7 +69,7 @@ async function deliverReminders({ state, config, now, save, send }) {
       try {
         await send(item.userId, {
           content: `**${notice.label}**\n${compactEvent(event, config.eventTimeZone, now)}`.slice(0, 2000),
-          allowedMentions: { parse: [] },
+          allowedMentions: { parse: [] }, flags: MessageFlags.SuppressEmbeds,
           components: [new ActionRowBuilder().addComponents(button(`events:unsub:${item.eventKey}`, '取消此活動提醒'))],
         });
         item.notices[id].status = 'sent'; sent += 1;

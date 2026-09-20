@@ -1,4 +1,4 @@
-const { ActionRowBuilder } = require('discord.js');
+const { ActionRowBuilder, MessageFlags } = require('discord.js');
 const { currentEvents, fingerprint, button } = require('./event-board');
 const { curateWeeklyEntries, futureDeadline, participationReason, DAY } = require('./event-curation');
 const { eventStartTime } = require('./event-model');
@@ -65,7 +65,7 @@ function weeklyData(state, config, now) {
   const hidden = competitionOverflow.length + otherOverflow.length;
   content += `\n本期收錄 ${entries.length} 場，公開整理 ${visible.length} 場${hidden ? `，其餘 ${hidden} 場保留在活動總表` : ''}。`;
   const payload = {
-    content, allowedMentions: { parse: [] }, attachments: [],
+    content, allowedMentions: { parse: [] }, attachments: [], flags: MessageFlags.SuppressEmbeds,
     components: [new ActionRowBuilder().addComponents(button('events:view:all:0', '完整活動總表'))],
     files: [],
   };

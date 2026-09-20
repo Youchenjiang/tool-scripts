@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { MessageFlags } = require('discord.js');
 const { boardMessage, boardRow } = require('../src/event-board');
 
 function event(index, overrides = {}) {
@@ -29,6 +30,7 @@ test('activity board paginates up to ten compact rows per page', () => {
   const last = boardMessage(document, { timeZone: 'Asia/Taipei', now: new Date('2026-09-20T00:00:00Z'), page: 2 });
   assert.match(first.content, /第 1\/3 頁/u);
   assert.equal(first.components.at(-1).components[0].options.length, 10);
+  assert.equal(first.flags, MessageFlags.SuppressEmbeds);
   assert.match(last.content, /第 3\/3 頁/u);
   assert.equal(last.components.at(-1).components[0].options.length, 1);
 });

@@ -1,5 +1,5 @@
 const { createHash } = require('node:crypto');
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, StringSelectMenuBuilder } = require('discord.js');
 const { normalizeEventRecord, eventEndTime, eventStartTime } = require('./event-model');
 const { createEventMessage } = require('./event-publisher');
 
@@ -60,7 +60,7 @@ function boardMessage(document, { timeZone = 'Asia/Taipei', now = new Date(), fi
   const date = document.lastCheckedAt ? new Intl.DateTimeFormat('sv-SE', { timeZone, dateStyle: 'short' }).format(new Date(document.lastCheckedAt)) : '尚未更新';
   return {
     content: `**資安活動總表**\n更新：${date}｜${entries.length} 場｜第 ${index + 1}/${pages.length} 頁\n\n${selected.map(({ text }) => text).join('\n\n') || '目前沒有符合條件的活動。'}`,
-    components, allowedMentions: { parse: [] },
+    components, allowedMentions: { parse: [] }, flags: MessageFlags.SuppressEmbeds,
   };
 }
 

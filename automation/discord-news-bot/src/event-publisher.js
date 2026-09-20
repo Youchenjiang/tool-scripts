@@ -1,3 +1,4 @@
+const { MessageFlags } = require('discord.js');
 const { fetchSecurityEvents } = require('./event-feed');
 
 const DIRECTION_LABELS = { red: '🔴 紅隊', blue: '🔵 藍隊', purple: '🟣 紫隊', general: '⚪ 綜合', unspecified: '⚫ 方向未標示' };
@@ -114,7 +115,7 @@ function createEventMessage(event, timeZone = 'Asia/Taipei', current = new Date(
       topicLine(event.topics), scheduleLine(event, timeZone), deadlineLine(event, timeZone, current),
       locationLine(event), audienceLine(event.audience),
     ].filter(Boolean).join('\n'),
-    allowedMentions: { parse: [] },
+    allowedMentions: { parse: [] }, flags: MessageFlags.SuppressEmbeds,
   };
 }
 

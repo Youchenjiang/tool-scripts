@@ -29,7 +29,7 @@ function createEventService({ channel, config, stateStore, fetchEventsImpl = fet
     }
     if (message) await message.edit(payload);
     else {
-      message = await channel.send({ ...payload, flags: MessageFlags.SuppressNotifications });
+      message = await channel.send({ ...payload, flags: payload.flags | MessageFlags.SuppressNotifications });
       state.boardId = message.id;
       await save(state);
     }

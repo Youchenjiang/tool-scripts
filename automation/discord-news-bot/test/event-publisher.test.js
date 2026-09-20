@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { MessageFlags } = require('discord.js');
 const { createEventMessage, createEventPublisher } = require('../src/event-publisher');
 
 function sampleEvent(overrides = {}) {
@@ -21,6 +22,7 @@ test('event announcement exposes the fields needed for a quick reading decision'
     '📅 2026/09/18 12:00～09/22 17:00', '🌐 線上',
   ].join('\n'));
   assert.deepEqual(message.allowedMentions, { parse: [] });
+  assert.equal(message.flags, MessageFlags.SuppressEmbeds);
 });
 
 test('event announcement handles overflow, deadline, hybrid location and eligibility', () => {
