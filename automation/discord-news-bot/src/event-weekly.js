@@ -13,6 +13,15 @@ function weekKey(now, timeZone) {
   return day.toISOString().slice(0, 10);
 }
 
+function weekDayIndex(now, timeZone) {
+  const week = new Date(`${weekKey(now, timeZone)}T00:00:00Z`);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(now).map(({ type, value }) => [type, value]));
+  const localDate = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)));
+  return Math.floor((localDate - week) / 86400000);
+}
+
 function weeklyData(state, config, now) {
   const limit = now.getTime() + 28 * 86400000;
   const entries = currentEvents(state, now).filter(({ event, stale }) => !stale
@@ -69,6 +78,7 @@ async function publishWeekly({ state, channel, config, now, save }) {
   const previous = state.weekly;
   if (previous?.signature === next.signature) return 0;
   if (!next.count && previous?.week !== next.week) return 0;
+  if (previous?.week !== next.week && weekDayIndex(now, config.eventTimeZone) > 1) return 0;
   let message;
   if (previous?.week === next.week && previous.messageId) {
     try { message = await channel.messages.fetch(previous.messageId); }
@@ -81,4 +91,4 @@ async function publishWeekly({ state, channel, config, now, save }) {
   return previous?.week === next.week ? 0 : 1;
 }
 
-module.exports = { weekKey, weeklyData, publishWeekly };
+module.exports = { weekDayIndex, weekKey, weeklyData, publishWeekly };

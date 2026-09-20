@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { publishWeekly, weeklyData, weekKey } = require('../src/event-weekly');
+const { publishWeekly, weeklyData, weekDayIndex, weekKey } = require('../src/event-weekly');
 const config = { eventTimeZone: 'Asia/Taipei' };
 const event = { id: 'one', sourceId: 'ctftime', title: 'Example CTF', url: 'https://example.org',
   startsAt: '2026-10-01T00:00:00Z', endsAt: '2026-10-02T00:00:00Z', kind: 'ctf' };
@@ -8,6 +8,8 @@ const event = { id: 'one', sourceId: 'ctftime', title: 'Example CTF', url: 'http
 test('weekly digest uses Monday in the configured timezone', () => {
   assert.equal(weekKey(new Date('2026-09-20T16:01:00Z'), 'Asia/Taipei'), '2026-09-21');
   assert.equal(weekKey(new Date('2026-09-20T15:59:00Z'), 'Asia/Taipei'), '2026-09-14');
+  assert.equal(weekDayIndex(new Date('2026-09-21T02:00:00Z'), 'Asia/Taipei'), 0);
+  assert.equal(weekDayIndex(new Date('2026-09-23T02:00:00Z'), 'Asia/Taipei'), 2);
 });
 
 test('same-week additions edit the digest; unchanged weeks do not publish', async () => {
@@ -47,4 +49,16 @@ test('a partial source outage still permits confirmed events in the weekly diges
   assert.equal(result.count, 1);
   assert.match(result.payload.content, /部分來源暫時無法更新/);
   assert.match(result.payload.content, /Example CTF/);
+});
+
+test('a new digest is not backfilled after Tuesday but an existing digest can still be edited', async () => {
+  const state = { events: { one: { event } } }; const calls = [];
+  const message = { id: '123', edit: async () => calls.push('edit') };
+  const channel = { send: async () => { calls.push('send'); return message; }, messages: { fetch: async () => message } };
+  const save = async () => {};
+  assert.equal(await publishWeekly({ state, channel, config, now: new Date('2026-09-23T02:00:00Z'), save }), 0);
+  assert.deepEqual(calls, []);
+  state.weekly = { week: '2026-09-21', messageId: '123', signature: 'old' };
+  assert.equal(await publishWeekly({ state, channel, config, now: new Date('2026-09-23T02:00:00Z'), save }), 0);
+  assert.deepEqual(calls, ['edit']);
 });
