@@ -1,0 +1,163 @@
+# ==============================================================================
+# 🗂️ DefectDojo Security Report Reimport
+#
+# 【功能說明】
+# 將其他 GitHub Actions 工作產生的掃描報告 Artifact 送至 DefectDojo。
+# 使用 /api/v2/reimport-scan/，讓週期性 CI 掃描可以沿用既有 Test、
+# 比對新舊 Findings，並由 DefectDojo 處理去重與狀態變化。
+#
+# 【使用方式】
+# 1. 由其他 workflow 以 workflow_call 呼叫此檔案。
+# 2. 傳入 artifact_name、report_path 與 DefectDojo scan_type。
+# 3. 設定 Repository Variable: DEFECTDOJO_URL。
+# 4. 設定 Repository Secret: DEFECTDOJO_API_TOKEN。
+# 5. 也可用 workflow_dispatch 指定既有 Actions run ID 做手動重送。
+# ==============================================================================
+
+name: DefectDojo Report Upload
+
+on:
+  workflow_call:
+    inputs:
+      artifact_name:
+        description: GitHub Actions artifact containing the scanner report
+        required: true
+        type: string
+      report_path:
+        description: Relative report path inside the downloaded artifact
+        required: true
+        type: string
+      scan_type:
+        description: DefectDojo parser name, for example ZAP Scan or SARIF
+        required: true
+        type: string
+      test_title:
+        description: Stable DefectDojo test title used for reimport matching
+        required: false
+        default: CI Security Scan
+        type: string
+      product_type_name:
+        description: DefectDojo product type created when context is absent
+        required: false
+        default: GitHub
+        type: string
+      engagement_name:
+        description: DefectDojo engagement used for CI security scans
+        required: false
+        default: CI/CD
+        type: string
+    secrets:
+      DEFECTDOJO_API_TOKEN:
+        required: false
+
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Actions run ID containing the report artifact
+        required: true
+        type: string
+      artifact_name:
+        description: GitHub Actions artifact containing the scanner report
+        required: true
+        type: string
+      report_path:
+        description: Relative report path inside the downloaded artifact
+        required: true
+        type: string
+      scan_type:
+        description: DefectDojo parser name, for example ZAP Scan or SARIF
+        required: true
+        type: string
+      test_title:
+        description: Stable DefectDojo test title used for reimport matching
+        required: false
+        default: CI Security Scan
+        type: string
+      product_type_name:
+        description: DefectDojo product type created when context is absent
+        required: false
+        default: GitHub
+        type: string
+      engagement_name:
+        description: DefectDojo engagement used for CI security scans
+        required: false
+        default: CI/CD
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  reimport:
+    name: Reimport report into DefectDojo
+    runs-on: ubuntu-latest
+    env:
+      DEFECTDOJO_URL: ${{ vars.DEFECTDOJO_URL }}
+      DEFECTDOJO_API_TOKEN: ${{ secrets.DEFECTDOJO_API_TOKEN }}
+      DD_ARTIFACT_NAME: ${{ inputs.artifact_name }}
+      DD_REPORT_PATH: ${{ inputs.report_path }}
+      DD_SCAN_TYPE: ${{ inputs.scan_type }}
+      DD_TEST_TITLE: ${{ inputs.test_title }}
+      DD_PRODUCT_TYPE_NAME: ${{ inputs.product_type_name }}
+      DD_ENGAGEMENT_NAME: ${{ inputs.engagement_name }}
+
+    steps:
+      - name: Check DefectDojo integration settings
+        id: config
+        shell: bash
+        run: |
+          if [[ -n "${DEFECTDOJO_URL:-}" && -n "${DEFECTDOJO_API_TOKEN:-}" ]]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::DefectDojo upload skipped. Configure DEFECTDOJO_URL and DEFECTDOJO_API_TOKEN to enable it."
+          fi
+
+      - name: Download report artifact from current run
+        if: ${{ steps.config.outputs.enabled == 'true' && github.event_name != 'workflow_dispatch' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: defectdojo-input
+
+      - name: Download report artifact from selected run
+        if: ${{ steps.config.outputs.enabled == 'true' && github.event_name == 'workflow_dispatch' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: defectdojo-input
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Reimport report into DefectDojo
+        if: ${{ steps.config.outputs.enabled == 'true' && github.event_name != 'pull_request' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          report_file="defectdojo-input/${DD_REPORT_PATH}"
+          if [[ ! -f "${report_file}" ]]; then
+            echo "::error::DefectDojo report file not found: ${report_file}"
+            exit 1
+          fi
+
+          api_url="${DEFECTDOJO_URL%/}/api/v2/reimport-scan/"
+          product_name="${GITHUB_REPOSITORY#*/}"
+
+          curl --fail-with-body --silent --show-error --retry 3 \
+            --request POST "${api_url}" \
+            --header "Authorization: Token ${DEFECTDOJO_API_TOKEN}" \
+            --form "file=@${report_file}" \
+            --form "scan_type=${DD_SCAN_TYPE}" \
+            --form "test_title=${DD_TEST_TITLE}" \
+            --form "product_type_name=${DD_PRODUCT_TYPE_NAME}" \
+            --form "product_name=${product_name}" \
+            --form "engagement_name=${DD_ENGAGEMENT_NAME}" \
+            --form "auto_create_context=true" \
+            --form "active=true" \
+            --form "verified=false" \
+            --form "close_old_findings=true" \
+            --form "minimum_severity=Info" \
+            --form "branch_tag=${GITHUB_REF_NAME}" \
+            --form "commit_hash=${GITHUB_SHA}"
