@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { durationText, publishWeekly, weeklyData, weekDayIndex, weekKey } = require('../src/event-weekly');
+const { publishWeekly, weeklyData, weekDayIndex, weekKey } = require('../src/event-weekly');
 const { currentEvents, fingerprint } = require('../src/event-board');
 const config = { eventTimeZone: 'Asia/Taipei' };
 const event = { id: 'one', sourceId: 'ctftime', title: 'Example CTF', url: 'https://example.org',
@@ -103,15 +103,12 @@ test('the schedule shows confirmed facts and silently omits unknown fields', () 
     attendance: 'online', teamSizeMax: 4, participation: 'team', level: 'foundational', topics: ['web', 'pwn'] } } } };
   const rich = payloadText(weeklyData(state, config, new Date('2026-09-21T02:00:00Z')).payload);
   assert.match(rich, /09\/25 12:00–09\/26 16:30/u);
-  assert.match(rich, /28 小時 30 分鐘・線上・每隊最多 4 人・需具基礎・題型 Web／Pwn/u);
+  assert.match(rich, /線上・每隊最多 4 人・需具基礎・題型 Web／Pwn/u);
+  assert.doesNotMatch(rich, /28 小時 30 分鐘/u);
 
   const sparse = payloadText(weeklyData({ events: { one: { event } } }, config, new Date('2026-09-21T02:00:00Z')).payload);
   assert.doesNotMatch(sparse, /未公開|尚未公布|未確認|人數未標示|程度未標示|題型資訊/u);
   assert.equal(weeklyData(state, config, new Date('2026-09-21T02:00:00Z')).payload.flags, 0);
-});
-
-test('long-running competitions express duration in days', () => {
-  assert.equal(durationText({ startsAt: '2026-09-27T14:00:00Z', endsAt: '2026-12-06T14:00:00Z' }), '70 天');
 });
 
 test('a new digest is not backfilled after Tuesday but an existing digest can still be edited', async () => {

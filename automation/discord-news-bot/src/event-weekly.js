@@ -3,7 +3,7 @@ const { currentEvents, fingerprint, button } = require('./event-board');
 const { eventStartTime } = require('./event-model');
 
 const DAY = 86400000;
-const WEEKLY_FORMAT_VERSION = 4;
+const WEEKLY_FORMAT_VERSION = 5;
 const EMBED_TEXT_BUDGET = 5800;
 const EMBED_DESCRIPTION_LIMIT = 3800;
 const TOPIC_LABELS = {
@@ -59,22 +59,6 @@ function scheduleText(event, timeZone) {
   return `${startText}–${sameDay ? `${finishParts.hour}:${finishParts.minute}` : shortDateTime(finish, timeZone)}`;
 }
 
-function durationText(event) {
-  const start = new Date(event.startsAt || event.start || '').getTime();
-  const finish = new Date(event.endsAt || event.finish || '').getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(finish) || finish <= start || event.allDay) return '';
-  const minutes = Math.round((finish - start) / 60000);
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  if (!hours) return `${remainder} 分鐘`;
-  if (hours >= 72) {
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-    return `${days} 天${remainingHours ? ` ${remainingHours} 小時` : ''}${remainder ? ` ${remainder} 分鐘` : ''}`;
-  }
-  return `${hours} 小時${remainder ? ` ${remainder} 分鐘` : ''}`;
-}
-
 function attendanceText(event) {
   if (event.attendance === 'online') return '線上';
   if (event.attendance === 'onsite') return event.location ? `實體・${event.location}` : '實體';
@@ -121,7 +105,7 @@ function entryText(event, config, group, deadline) {
     ? `${DEADLINE_LABELS[deadline.kind]} ${shortDateTime(deadline.at, config.eventTimeZone)}`
     : schedule;
   const facts = [
-    group === '即將截止' && schedule ? `賽程 ${schedule}` : '', durationText(event), attendanceText(event),
+    group === '即將截止' && schedule ? `賽程 ${schedule}` : '', attendanceText(event),
     teamText(event), levelText(event), topicText(event),
   ].filter(Boolean);
   return `**${lead ? `${lead}｜` : ''}${title}**${facts.length ? `\n${facts.join('・')}` : ''}`;
@@ -226,4 +210,4 @@ async function publishWeekly({ state, channel, config, now, save }) {
   return previous?.week === next.week ? 0 : 1;
 }
 
-module.exports = { durationText, scheduleText, teamText, weekDayIndex, weekKey, weeklyData, publishWeekly };
+module.exports = { scheduleText, teamText, weekDayIndex, weekKey, weeklyData, publishWeekly };
