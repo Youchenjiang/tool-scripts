@@ -87,7 +87,7 @@ function createEventService({ channel, config, stateStore, fetchEventsImpl = fet
     await exclusive(async () => {
       const state = await load();
       const [, action, filter, page] = interaction.customId.split(':');
-      if (action === 'view') {
+      if (action === 'view' || action === 'page') {
         const visible = filter === 'mine' ? { ...state, events: Object.fromEntries(Object.entries(state.events)
           .filter(([key]) => state.subscriptions?.[`${interaction.user.id}:${key}`])) } : state;
         await interaction.editReply(boardMessage(visible, { timeZone: config.eventTimeZone, now: now(), filter, page: Number(page) }));

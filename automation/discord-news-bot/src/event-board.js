@@ -50,8 +50,8 @@ function boardMessage(document, { timeZone = 'Asia/Taipei', now = new Date(), fi
     button('events:view:mine:0', '我的訂閱'),
   )];
   if (pages.length > 1) components.push(new ActionRowBuilder().addComponents(
-    button(`events:view:${filter}:${index - 1}`, '上一頁', index === 0),
-    button(`events:view:${filter}:${index + 1}`, '下一頁', index === pages.length - 1),
+    button(`events:page:${filter}:${index - 1}`, '上一頁', index === 0),
+    button(`events:page:${filter}:${index + 1}`, '下一頁', index === pages.length - 1),
   ));
   if (selected.length) components.push(new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder().setCustomId('events:select').setPlaceholder('查看活動／訂閱提醒')

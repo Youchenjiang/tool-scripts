@@ -27,10 +27,14 @@ test('activity board paginates up to ten compact rows per page', () => {
     events: Object.fromEntries(Array.from({ length: 21 }, (_, index) => [String(index), { event: event(index) }])),
   };
   const first = boardMessage(document, { timeZone: 'Asia/Taipei', now: new Date('2026-09-20T00:00:00Z') });
+  const second = boardMessage(document, { timeZone: 'Asia/Taipei', now: new Date('2026-09-20T00:00:00Z'), page: 1 });
   const last = boardMessage(document, { timeZone: 'Asia/Taipei', now: new Date('2026-09-20T00:00:00Z'), page: 2 });
   assert.match(first.content, /第 1\/3 頁/u);
   assert.equal(first.components.at(-1).components[0].options.length, 10);
   assert.equal(first.flags, MessageFlags.SuppressEmbeds);
   assert.match(last.content, /第 3\/3 頁/u);
   assert.equal(last.components.at(-1).components[0].options.length, 1);
+  const ids = second.components.flatMap((row) => row.components.map((component) => component.data.custom_id));
+  assert.equal(new Set(ids).size, ids.length);
+  assert.match(second.components[1].components[0].data.custom_id, /^events:page:/u);
 });

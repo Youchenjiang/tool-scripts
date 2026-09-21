@@ -71,6 +71,9 @@ test('view buttons reply privately and never edit the public board', async () =>
     deferReply: async (options) => { deferred = options; }, editReply: async (body) => { response = body; } });
   assert.equal(deferred.flags, 64);
   assert.match(response.content, /Example CTF/);
+  await service.handle({ customId: 'events:page:ctf:1', channelId: '10', guildId: '30',
+    deferReply: async () => {}, editReply: async (body) => { response = body; } });
+  assert.match(response.content, /Example CTF/);
   assert.equal(h.calls.filter(([type]) => type === 'edit').length, 0);
 });
 
