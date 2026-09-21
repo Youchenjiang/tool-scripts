@@ -102,7 +102,7 @@ Practical script tools categorized by function:
 - **GitHub Star Lists Sync Utility** ([automation/sync-github-stars/](automation/sync-github-stars/)) - Synchronize starred repositories into custom categorized GitHub Star Lists based on Markdown headings. → [Details](automation/sync-github-stars/README.md)
 - **URL Health Checker** ([automation/url-health-checker/](automation/url-health-checker/)) - High-performance concurrent URL availability and HTTP status verification in Python & PowerShell. → [Details](automation/url-health-checker/README.md)
 - **Bannerlord Mod Localization Checker** ([automation/bannerlord-mod-checker/](automation/bannerlord-mod-checker/)) - Inspect localization status across all Mount & Blade II game modules. → [Details](automation/bannerlord-mod-checker/README.md)
-- **Project Scaffolding System** ([automation/project-scaffold/](automation/project-scaffold/)) - Automated engineering standards, git hooks, CI/CD workflows, and agent rules initializer. → [Details](automation/project-scaffold/README.md)
+- **Project Scaffolding System** ([automation/project-scaffold/](automation/project-scaffold/)) - Automated engineering standards, git hooks, and three-stage security CI covering PR gates, post-merge validation, SBOM, DefectDojo, Dependency-Track, Greenbone, Faraday, and Wazuh. → [Details](automation/project-scaffold/README.md) · [Security CI](automation/project-scaffold/SECURITY-CI.md)
 
 ### 📊 Data & Verification
 - **Homework Submission Analyzer** ([data/homework-submission-analyzer/](data/homework-submission-analyzer/)) - A Node.js utility for eeclass assignments that automatically parses PDF certificates, matches names, and generates a CSV report. → [Details](data/homework-submission-analyzer/README.md)

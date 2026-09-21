@@ -3,7 +3,7 @@
 本工具為新專案或既有專案提供**一鍵自動化裝配**：
 - **Agent Rules**（授權三階網關、除錯防暴力、MEMORY 協議、Conventional Commits、平台防禦）
 - **Git 規範與 Hook**（`.gitignore`、`.gitmessage.txt`、`.editorconfig`、`commit-msg` 驗證鉤子）
-- **GitHub Actions CI/CD**（`policy.yml` 看門狗、TruffleHog、CodeQL、OWASP ZAP、CycloneDX SBOM、Dependency-Track、DefectDojo、PR-Agent）
+- **GitHub Actions CI/CD**（PR Gate、CycloneDX SBOM、Dependency-Track、DefectDojo、Greenbone/OpenVAS、Faraday、Wazuh、PR-Agent）
 - **協作模板**（`pull_request_template.md`、`dependabot.yml`、`SECURITY.md`）
 
 ---
@@ -50,9 +50,27 @@ Agent 會自動讀取配置並就地生成完整的規範體系。
 
 ---
 
-## 🛡️ 安全測試與 CI Workflows 說明
+## 🛡️ 安全 CI 架構：PR Gate → Post-Merge → Runtime
 
-各專案生成的 GitHub Actions 均具備高容錯與分級防禦設計：
+安全流程依生命週期分成三層。完整設計、平台設定與導入順序請見 [Security CI Architecture](SECURITY-CI.md)。
+
+| 階段 | 自動執行內容 | 定位 |
+| :--- | :--- | :--- |
+| **PR Gate** | Policy、TruffleHog、CodeQL、SBOM；research preset 另有 PR-Agent | 合併前找出程式碼、Secret、規範與供應鏈問題 |
+| **Post-Merge Security** | Dependency-Track、Staging readiness、ZAP、OpenVAS、DefectDojo、Faraday | main/master 更新後驗證正式 SBOM 與部署環境 |
+| **Runtime Monitoring** | Wazuh 24/7；CI 驗證 Agent health | 確認部署後端點監控持續在線 |
+
+PR 階段的 Enforcement 不是全部相同：
+
+| Workflow | Enforcement |
+| :--- | :--- |
+| `policy.yml` | **Hard Gate** |
+| `trufflehog.yml` | **Security Gate** |
+| `codeql.yml` | **Soft Security Signal**（目前分析步驟 `continue-on-error`） |
+| `sbom.yml` | **Artifact-only on PR**；Dependency-Track 只在非 PR 上傳 |
+| `pr_agent.yml` | **Optional Soft Review** |
+
+### Workflow 詳細參考
 
 ### 1. `policy.yml` (PR & Commit 政策看門狗)
 * **觸發時機**：每次開 PR 或更新 PR。
