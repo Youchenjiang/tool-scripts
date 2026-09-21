@@ -1,9 +1,9 @@
 const { MessageFlags } = require('discord.js');
 const { fetchSecurityEvents } = require('./event-feed');
 
-const DIRECTION_LABELS = { red: '🔴 紅隊', blue: '🔵 藍隊', purple: '🟣 紫隊', general: '⚪ 綜合', unspecified: '⚫ 方向未標示' };
+const DIRECTION_LABELS = { red: '🔴 紅隊', blue: '🔵 藍隊', purple: '🟣 紫隊', general: '⚪ 綜合', unspecified: '⚪ 綜合' };
 const KIND_LABELS = { ctf: 'CTF', competition: '競賽', training: '培訓', workshop: '工作坊', conference: '研討會', community: '社群小聚', cfp: '徵稿', event: '活動' };
-const LEVEL_LABELS = { beginner: '入門', foundational: '具基礎', advanced: '進階', unspecified: '程度未標示' };
+const LEVEL_LABELS = { beginner: '入門', foundational: '具基礎', advanced: '進階' };
 const TOPIC_LABELS = {
   web: 'Web', pwn: 'Pwn', reverse: 'Reverse', crypto: 'Crypto', forensics: 'Forensics', malware: 'Malware',
   'threat-intelligence': 'Threat Intelligence', 'threat-hunting': 'Threat Hunting', 'detection-engineering': 'Detection Engineering',
@@ -51,13 +51,13 @@ function participationLabel(event) {
   if (range) return `${range[1]}～${range[2]} 人`;
   const maximum = String(event.teamSize || '').match(/^(\d+)人$/u);
   if (maximum) return `最多 ${maximum[1]} 人`;
-  if (event.participation === 'team') return '隊伍制，人數未公開';
+  if (event.participation === 'team') return '隊伍制';
   if (event.participation === 'individual') {
     if (event.kind === 'competition' || event.kind === 'ctf') return '個人參賽';
     if (event.kind === 'training') return '個人申請';
     return '個人報名';
   }
-  return '人數未公開';
+  return '';
 }
 
 function topicLine(topics) {
@@ -81,7 +81,7 @@ function scheduleLine(event, timeZone) {
 }
 
 function deadlineLine(event, timeZone, current) {
-  const deadline = (event.deadlines || []).find(({ at }) => new Date(at) >= current);
+  const deadline = (event.deadlines || []).find(({ at, kind }) => DEADLINE_LABELS[kind] && kind !== 'unknown' && new Date(at) >= current);
   if (!deadline) return '';
   return `⏳ ${DEADLINE_LABELS[deadline.kind] || DEADLINE_LABELS.unknown} ${formatDisplayDate(new Date(deadline.at), timeZone, true)}`;
 }
@@ -117,7 +117,8 @@ function audienceLine(audience) {
 
 function eventDecisionLine(event) {
   const decision = `${directionLabel(event.directions, event.kind)} · ${KIND_LABELS[event.kind] || KIND_LABELS.event}`;
-  return `${decision}｜${LEVEL_LABELS[event.level] || LEVEL_LABELS.unspecified}｜${participationLabel(event)}`;
+  const facts = [LEVEL_LABELS[event.level], participationLabel(event)].filter(Boolean);
+  return `${decision}${facts.length ? `｜${facts.join('｜')}` : ''}`;
 }
 
 function eventTimingLine(event, timeZone, current) {

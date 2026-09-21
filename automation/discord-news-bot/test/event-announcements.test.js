@@ -37,6 +37,7 @@ test('later non-CTF activities are batched and persisted by every alias', async 
   assert.deepEqual(result, { initialized: false, discovered: 1, published: 1 });
   assert.match(sent[0].content, /Activity next/u);
   assert.doesNotMatch(sent[0].content, /Activity ctf/u);
+  assert.doesNotMatch(sent[0].content, /適合想/u);
   assert.equal(sent[0].flags, MessageFlags.SuppressEmbeds);
   assert.deepEqual(state.activityDelivery.sentIds, ['old', 'next', 'organizer:next']);
 });

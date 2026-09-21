@@ -39,12 +39,13 @@ test('event announcement handles overflow, deadline, hybrid location and eligibi
   assert.match(message.content, /👤 限高中職學生/u);
 });
 
-test('event announcement states unknown fields without inventing details', () => {
+test('event announcement silently omits unknown fields', () => {
   const message = createEventMessage(sampleEvent({
     startsAt: null, endsAt: null, dateText: 'Sep 2026 – Aug 2027', directions: ['unspecified'], kind: 'event',
     level: 'unspecified', participation: 'unspecified', teamSizeMax: null, topics: [], attendance: 'unknown',
   }));
-  assert.match(message.content, /⚫ 方向未標示 · 活動｜程度未標示｜人數未公開/u);
+  assert.match(message.content, /⚪ 綜合 · 活動/u);
+  assert.doesNotMatch(message.content, /未標示|未公開/u);
   assert.match(message.content, /📅 Sep 2026 – Aug 2027（詳細時間請見官網）/u);
   assert.doesNotMatch(message.content, /🧩/u);
 });

@@ -1,7 +1,6 @@
 const { MessageFlags } = require('discord.js');
 const { currentEvents } = require('./event-board');
 const { createEventMessage } = require('./event-publisher');
-const { participationReason } = require('./event-curation');
 
 const MAX_CONTENT_LENGTH = 1900;
 const MAX_SENT_IDS = 5000;
@@ -11,10 +10,7 @@ function aliasesFor(event) {
 }
 
 function activityText(event, config, now) {
-  return [
-    createEventMessage(event, config.eventTimeZone, now).content,
-    participationReason(event),
-  ].filter(Boolean).join('\n');
+  return createEventMessage(event, config.eventTimeZone, now).content;
 }
 
 function activityBatches(entries, config, now) {
