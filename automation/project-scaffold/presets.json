@@ -20,7 +20,10 @@
         "trufflehog.yml",
         "codeql.yml",
         "sbom.yml",
-        "defectdojo-upload.yml"
+        "defectdojo-upload.yml",
+        "faraday-upload.yml",
+        "wazuh-health.yml",
+        "post-merge-security.yml"
       ],
       "githubFiles": [
         "pull_request_template.md",
@@ -48,7 +51,10 @@
         "codeql.yml",
         "zap-scan.yml",
         "sbom.yml",
-        "defectdojo-upload.yml"
+        "defectdojo-upload.yml",
+        "faraday-upload.yml",
+        "wazuh-health.yml",
+        "post-merge-security.yml"
       ],
       "githubFiles": [
         "pull_request_template.md",
@@ -76,7 +82,10 @@
         "codeql.yml",
         "pr_agent.yml",
         "sbom.yml",
-        "defectdojo-upload.yml"
+        "defectdojo-upload.yml",
+        "faraday-upload.yml",
+        "wazuh-health.yml",
+        "post-merge-security.yml"
       ],
       "githubFiles": [
         "pull_request_template.md",
