@@ -2,6 +2,19 @@ const { decodeHtml } = require('../news-feed');
 
 function asArray(value) { return Array.isArray(value) ? value : value ? [value] : []; }
 
+function uniqueText(values, limit = 8_000) {
+  const seen = new Set();
+  const parts = [];
+  for (const value of values) {
+    const text = decodeHtml(value).replace(/\s+/gu, ' ').trim();
+    const key = text.toLowerCase();
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    parts.push(text);
+  }
+  return parts.join('\n').slice(0, limit);
+}
+
 function jsonLdEvent(html) {
   for (const match of String(html || '').matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/giu)) {
     try {
@@ -31,6 +44,31 @@ function structuredPlace(value) {
   };
 }
 
+function structuredClassification(value) {
+  if (!value) return [];
+  const nested = [
+    ...asArray(value.subEvent), ...asArray(value.subjectOf), ...asArray(value.workFeatured),
+  ];
+  return [
+    value.name, value.description, value.keywords,
+    ...nested.flatMap((item) => (typeof item === 'object'
+      ? [item?.name, item?.headline, item?.description, item?.keywords]
+      : [item])),
+  ];
+}
+
+function pageClassification(html, structured) {
+  const values = [...structuredClassification(structured)];
+  const markup = String(html || '').replace(/<(?:script|style)[^>]*>[\s\S]*?<\/(?:script|style)>/giu, ' ');
+  for (const match of markup.matchAll(/<meta[^>]+(?:name|property)=["'](?:description|keywords|og:description)["'][^>]+content=["']([^"']+)["'][^>]*>/giu)) {
+    values.push(match[1]);
+  }
+  for (const match of markup.matchAll(/<(?:h[1-4]|li)[^>]*>([\s\S]*?)<\/(?:h[1-4]|li)>/giu)) {
+    values.push(match[1]);
+  }
+  return uniqueText(values);
+}
+
 function sourceSpecificPlace(url, text) {
   const host = new URL(url).hostname.toLowerCase();
   if (host === 'appsecdays.pt') return {
@@ -56,12 +94,13 @@ function sourceSpecificPlace(url, text) {
 
 function parseOwaspEventPage(html, url, title = '') {
   const text = decodeHtml(html).replace(/\s+/gu, ' ').trim();
-  const structured = structuredPlace(jsonLdEvent(html));
+  const structuredEvent = jsonLdEvent(html);
+  const structured = structuredPlace(structuredEvent);
   const specific = sourceSpecificPlace(url, text);
   const virtual = /\bvirtual conference\b|free virtual conference|click the link here.*Track 1/iu.test(`${title}\n${text}`);
   const result = specific || structured;
   if (virtual && result.attendance === 'unknown') result.attendance = 'online';
-  return result;
+  return { ...result, classificationText: pageClassification(html, structuredEvent) };
 }
 
 module.exports = { parseOwaspEventPage };

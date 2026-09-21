@@ -1,5 +1,7 @@
 const TOPIC_RULES = [
+  ['appsec', /\bappsec\b|application security|software security|secure software|secure coding|anwendungssicherheit|應用程式安全|應用安全|安全開發/iu],
   ['web', /\bweb(?:\s+(?:security|hacking|exploitation))?\b|網頁安全|網站安全/iu],
+  ['api', /\bapi security\b|\bapi abuse\b|API 安全/iu],
   ['pwn', /\bpwn(?:able)?\b|binary exploitation|二進位漏洞|二進制漏洞/iu],
   ['reverse', /reverse engineering|\breversing\b|\breverse\b|逆向工程|逆向分析/iu],
   ['crypto', /\bcryptography\b|\bcrypto\b|密碼學/iu],
@@ -14,6 +16,7 @@ const TOPIC_RULES = [
   ['mobile', /android security|ios security|mobile security|行動安全|移動安全/iu],
   ['web3', /\bweb3\b|blockchain security|區塊鏈安全/iu],
   ['ai-security', /ai security|llm security|agentic security|人工智慧安全|生成式 ai 安全/iu],
+  ['devsecops', /\bdevsecops\b|software supply chain|\bsbom\b|供應鏈安全/iu],
 ];
 
 const RED_RULES = [
@@ -31,6 +34,7 @@ const BLUE_RULES = [
   /threat hunting|威脅獵捕/iu,
   /detection engineering|偵測工程/iu,
   /\bdfir\b|數位鑑識/iu,
+  /資安防護|防禦實戰/iu,
 ];
 
 const PURPLE_EXPLICIT = /\bpurple team(?:ing)?\b|紫隊/iu;
@@ -68,12 +72,8 @@ function classifyDirections(event, text) {
   const values = [];
   if (red) values.push('red');
   if (blue) values.push('blue');
+  if (values.length > 1) return { values: ['general'], evidence: [red, blue].join('; ') };
   if (values.length > 0) return { values, evidence: [red, blue].filter(Boolean).join('; ') };
-
-  if (['conference', 'community'].includes(event.kind)
-      || /conference|summit|meetup|community event|研討會|高峰會|社群(?:活動|小聚)/iu.test(text)) {
-    return { values: ['general'], evidence: event.kind || firstEvidence(text, [/conference|summit|meetup|研討會|高峰會/iu]) };
-  }
   return { values: ['unspecified'], evidence: '' };
 }
 
@@ -85,7 +85,7 @@ function classifyLevel(text) {
   if (beginner) return { value: 'beginner', evidence: beginner };
 
   const advanced = firstEvidence(text, [
-    /advanced|expert|professional experience|qualification round|selection exam/iu,
+    /\badvanced(?:-level)?\b|\bexpert-level\b|professional experience|qualification round|selection exam/iu,
     /高階|進階|實戰經驗|資格賽|選拔|甄選/iu,
   ]);
   if (advanced) return { value: 'advanced', evidence: advanced };
@@ -111,7 +111,7 @@ function classifyParticipation(event, text) {
 
 function classifyEvent(event) {
   if (!event) return event;
-  const text = [event.title, event.description, event.dateText, event.kind]
+  const text = [event.title, event.description, event.classificationText, event.dateText]
     .filter(Boolean).join('\n');
   const topicMatches = orderedTopics(text);
   const directions = classifyDirections(event, text);

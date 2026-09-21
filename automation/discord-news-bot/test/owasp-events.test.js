@@ -9,6 +9,18 @@ test('OWASP page enrichment classifies virtual conferences without a fake venue'
   assert.equal(result.venue, '');
 });
 
+test('OWASP page enrichment extracts bounded official classification evidence', () => {
+  const html = `
+    <meta name="description" content="Application security conference">
+    <script type="application/ld+json">{"@type":"Event","name":"AppSec Day","description":"Secure software engineering"}</script>
+    <h2>Agenda</h2><ul><li>AI Security for cloud applications</li><li>API security testing</li></ul>`;
+  const result = parseOwaspEventPage(html, 'https://owasp.example/events/appsec-day');
+  assert.match(result.classificationText, /Application security conference/iu);
+  assert.match(result.classificationText, /Secure software engineering/iu);
+  assert.match(result.classificationText, /AI Security for cloud applications/iu);
+  assert.match(result.classificationText, /API security testing/iu);
+});
+
 test('OWASP page enrichment keeps detailed addresses out of concise place fields', () => {
   const fixtures = [
     ['https://appsecdays.pt/', 'Conference Location Fundação António Cupertino de Miranda Avenida da Boavista, 4245, 4100-140 Porto, Portugal',

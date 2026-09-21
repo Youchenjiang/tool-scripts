@@ -135,4 +135,5 @@ test('OWASP source parses the official events data file', async () => {
   assert.equal(events[0].kind, 'conference');
   assert.equal(events[0].startDate, '2026-09-22');
   assert.equal(events[0].attendance, 'online');
+  assert.equal(events[0].description, 'A virtual community event.');
 });

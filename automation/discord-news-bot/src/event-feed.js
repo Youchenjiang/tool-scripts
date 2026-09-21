@@ -139,6 +139,7 @@ function normalizeOwaspEvent(event) {
     startDate,
     allDay: true,
     dateText: event.dateText || startDate,
+    description: event.description || '',
     teamSize: '',
     location: '',
     source: 'OWASP',
