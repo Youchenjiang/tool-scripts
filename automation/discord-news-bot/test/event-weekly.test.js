@@ -107,6 +107,7 @@ test('the schedule shows confirmed facts and silently omits unknown fields', () 
 
   const sparse = payloadText(weeklyData({ events: { one: { event } } }, config, new Date('2026-09-21T02:00:00Z')).payload);
   assert.doesNotMatch(sparse, /未公開|尚未公布|未確認|人數未標示|程度未標示|題型資訊/u);
+  assert.equal(weeklyData(state, config, new Date('2026-09-21T02:00:00Z')).payload.flags, 0);
 });
 
 test('a new digest is not backfilled after Tuesday but an existing digest can still be edited', async () => {

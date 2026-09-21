@@ -3,7 +3,7 @@ const { currentEvents, fingerprint, button } = require('./event-board');
 const { eventStartTime } = require('./event-model');
 
 const DAY = 86400000;
-const WEEKLY_FORMAT_VERSION = 2;
+const WEEKLY_FORMAT_VERSION = 3;
 const EMBED_TEXT_BUDGET = 5800;
 const EMBED_DESCRIPTION_LIMIT = 3800;
 const TOPIC_LABELS = {
@@ -195,7 +195,7 @@ function weeklyData(state, config, now) {
   if (state.sourceErrors?.length) content += '\n部分來源暫時無法更新；本期僅列已確認賽事。';
   if (omitted) content += `\n另有 ${omitted} 場超出 Discord 顯示容量，請從活動總表查看。`;
   const payload = {
-    content, embeds, allowedMentions: { parse: [] }, attachments: [],
+    content, embeds, flags: 0, allowedMentions: { parse: [] }, attachments: [],
     components: [new ActionRowBuilder().addComponents(button('events:view:all:0', '完整活動總表'))],
     files: [],
   };
