@@ -3,7 +3,7 @@
 本工具為新專案或既有專案提供**一鍵自動化裝配**：
 - **Agent Rules**（授權三階網關、除錯防暴力、MEMORY 協議、Conventional Commits、平台防禦）
 - **Git 規範與 Hook**（`.gitignore`、`.gitmessage.txt`、`.editorconfig`、`commit-msg` 驗證鉤子）
-- **GitHub Actions CI/CD**（`policy.yml` 看門狗、TruffleHog 金鑰掃描、CodeQL SAST、OWASP ZAP DAST、PR-Agent）
+- **GitHub Actions CI/CD**（`policy.yml` 看門狗、TruffleHog、CodeQL、OWASP ZAP、CycloneDX SBOM、Dependency-Track、DefectDojo、PR-Agent）
 - **協作模板**（`pull_request_template.md`、`dependabot.yml`、`SECURITY.md`）
 
 ---
@@ -43,9 +43,9 @@ Agent 會自動讀取配置並就地生成完整的規範體系。
 
 | Preset | 適用技術棧 | 包含 Agent 規則 | 包含 GitHub Workflows |
 | :--- | :--- | :--- | :--- |
-| **`desktop`** | Windows / C# / .NET / WinUI | Core + Memory + Git + .NET Hygiene + Store Release | `policy.yml`, `trufflehog.yml`, `codeql.yml` |
-| **`web`** | React / Ionic / Vite / Node | Core + Memory + Git + Web Guidelines | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, **`zap-scan.yml`** |
-| **`research`** | AI 論文 / 資安挖掘 / 實驗 | Core + Memory + Git | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, `pr_agent.yml` |
+| **`desktop`** | Windows / C# / .NET / WinUI | Core + Memory + Git + .NET Hygiene + Store Release | `policy.yml`, `trufflehog.yml`, `codeql.yml`, `sbom.yml`, `defectdojo-upload.yml` |
+| **`web`** | React / Ionic / Vite / Node | Core + Memory + Git + Web Guidelines | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, **`zap-scan.yml`**, `sbom.yml`, `defectdojo-upload.yml` |
+| **`research`** | AI 論文 / 資安挖掘 / 實驗 | Core + Memory + Git | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, `pr_agent.yml`, `sbom.yml`, `defectdojo-upload.yml` |
 | **`minimal`** | 快速小工具 / 單檔腳本 | Core + Memory + Git | `policy.yml` |
 
 ---
@@ -77,10 +77,47 @@ Agent 會自動讀取配置並就地生成完整的規範體系。
 * **為什麼不自動跑？**：動態黑箱掃描必須有正在運行的 Web 伺服器端點（如 Staging/Dev 伺服器），因此設計為按需輸入 URL 執行，避免在 PR 自動跑時因伺服器未啟動而無謂報錯。
 * **輸出結果**：掃描完成後，若發現安全風險會自動在 Repository 建立 GitHub Issue 安全警示報告。
 
-### 5. `pr_agent.yml` (AI 自動代碼審查)
+### 5. `sbom.yml` (CycloneDX SBOM + Dependency-Track)
+* **SBOM 產生**：Push、PR 或手動執行時使用 Syft 產生 `sbom.cdx.json`，並保存 30 天 Actions Artifact。
+* **Dependency-Track**：非 PR 執行時，若已設定 `DTRACK_URL` 與 `DTRACK_API_KEY`，自動上傳至 `/api/v1/bom`。
+* **專案對應**：可設定 `DTRACK_PROJECT_UUID` 指向既有專案；未設定時，以 Repository 名稱與分支版本呼叫 Dependency-Track auto-create。
+
+### 6. `defectdojo-upload.yml` (DefectDojo 報告聚合)
+* **定位**：這是一個 reusable workflow，不負責掃描；它下載其他 scanner job 產生的 Artifact，再呼叫 DefectDojo `/api/v2/reimport-scan/`。
+* **必要輸入**：`artifact_name`、Artifact 內的 `report_path`、以及 DefectDojo 支援的 `scan_type`（例如 `ZAP Scan`、`SARIF`）。
+* **手動重送**：支援 `workflow_dispatch` 指定既有 Actions `source_run_id`，方便測試或補送失敗報告。
+* **安全預設**：未設定 `DEFECTDOJO_URL` / `DEFECTDOJO_API_TOKEN` 時只顯示 Notice 並跳過；PR 不會上傳外部平台。
+
+### 7. `pr_agent.yml` (AI 自動代碼審查)
 * **觸發時機**：PR 建立或留言互動。
 * **配置需求**：需在 Repo Secrets 設置 `OPENAI_KEY` 或 `SILICONFLOW_API_KEY`。
 * **韌性防護**：若未配置 Secret 會輸出 GitHub Notice 並優雅跳過；設有 `continue-on-error: true`，第三方 AI API 服務超時或停機時**絕不阻擋**正常代碼合併。
+
+### 外部安全平台設定
+
+| 類型 | 名稱 | 用途 |
+| :--- | :--- | :--- |
+| Repository Variable | `DTRACK_URL` | Dependency-Track base URL |
+| Repository Secret | `DTRACK_API_KEY` | Dependency-Track API key；既有專案需 BOM upload 權限，auto-create 另需 project creation upload 權限 |
+| Repository Variable | `DTRACK_PROJECT_UUID` | 可選；直接指定既有 Dependency-Track project |
+| Repository Variable | `DTRACK_PROJECT_NAME` | 可選；auto-create 時覆寫 Repository 名稱 |
+| Repository Variable | `DTRACK_PROJECT_VERSION` | 可選；auto-create 時覆寫分支版本 |
+| Repository Variable | `DEFECTDOJO_URL` | DefectDojo base URL |
+| Repository Secret | `DEFECTDOJO_API_TOKEN` | DefectDojo API v2 Token |
+
+DefectDojo connector 由 scanner workflow 以 job 方式呼叫，例如：
+
+```yaml
+jobs:
+  upload-defectdojo:
+    needs: scan
+    uses: ./.github/workflows/defectdojo-upload.yml
+    with:
+      artifact_name: zap-report
+      report_path: report_json.json
+      scan_type: ZAP Scan
+    secrets: inherit
+```
 
 ---
 
