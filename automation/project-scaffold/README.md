@@ -43,9 +43,9 @@ Agent 會自動讀取配置並就地生成完整的規範體系。
 
 | Preset | 適用技術棧 | 包含 Agent 規則 | 包含 GitHub Workflows |
 | :--- | :--- | :--- | :--- |
-| **`desktop`** | Windows / C# / .NET / WinUI | Core + Memory + Git + .NET Hygiene + Store Release | `policy.yml`, `trufflehog.yml`, `codeql.yml`, `sbom.yml`, `defectdojo-upload.yml` |
-| **`web`** | React / Ionic / Vite / Node | Core + Memory + Git + Web Guidelines | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, **`zap-scan.yml`**, `sbom.yml`, `defectdojo-upload.yml` |
-| **`research`** | AI 論文 / 資安挖掘 / 實驗 | Core + Memory + Git | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, `pr_agent.yml`, `sbom.yml`, `defectdojo-upload.yml` |
+| **`desktop`** | Windows / C# / .NET / WinUI | Core + Memory + Git + .NET Hygiene + Store Release | `policy.yml`, `trufflehog.yml`, `codeql.yml`, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
+| **`web`** | React / Ionic / Vite / Node | Core + Memory + Git + Web Guidelines | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, **`zap-scan.yml`**, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
+| **`research`** | AI 論文 / 資安挖掘 / 實驗 | Core + Memory + Git | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, `pr_agent.yml`, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
 | **`minimal`** | 快速小工具 / 單檔腳本 | Core + Memory + Git | `policy.yml` |
 
 ---
@@ -88,7 +88,24 @@ Agent 會自動讀取配置並就地生成完整的規範體系。
 * **手動重送**：支援 `workflow_dispatch` 指定既有 Actions `source_run_id`，方便測試或補送失敗報告。
 * **安全預設**：未設定 `DEFECTDOJO_URL` / `DEFECTDOJO_API_TOKEN` 時只顯示 Notice 並跳過；PR 不會上傳外部平台。
 
-### 7. `pr_agent.yml` (AI 自動代碼審查)
+### 7. `faraday-upload.yml` (Faraday 滲透測試協作)
+* **定位**：Reusable connector，將 ZAP、OpenVAS 等 scanner 產生的 Artifact 匯入 Faraday workspace。
+* **API**：使用 `Authorization: Token` 呼叫 `/_api/v3/ws/<workspace>/upload_report`。
+* **安全預設**：未設定 Faraday URL、workspace 或 API Token 時自動跳過，不影響 CI。
+
+### 8. `wazuh-health.yml` (Wazuh Runtime 健康檢查)
+* **定位**：Wazuh 維持 24/7 Runtime / Endpoint 監控；CI 僅在部署後確認指定 Agent 仍為 `active`。
+* **流程**：向 Wazuh Server API 取得 JWT，再查詢 `GET /agents`。
+* **自簽憑證**：僅在必要時設定 `WAZUH_TLS_INSECURE=true`。
+
+### 9. `post-merge-security.yml` (Merge 後安全驗證)
+* **觸發時機**：程式 Push / Merge 進 `main` 或 `master`，也可手動執行。
+* **Staging Gate**：若有 `STAGING_URL`，最多等待 5 分鐘確認部署端點可連線，再開始動態掃描。
+* **Web DAST**：對 Staging 執行 ZAP Baseline，報告同時可送 DefectDojo 與 Faraday。
+* **Infrastructure Scan**：若 Greenbone 設定完整，透過 GMP over SSH 啟動既有 OpenVAS task、等待完成並保存 XML，之後同時送 DefectDojo 與 Faraday。
+* **Runtime Check**：最後呼叫 Wazuh health workflow，確認部署環境 Agent 仍在線。
+
+### 10. `pr_agent.yml` (AI 自動代碼審查)
 * **觸發時機**：PR 建立或留言互動。
 * **配置需求**：需在 Repo Secrets 設置 `OPENAI_KEY` 或 `SILICONFLOW_API_KEY`。
 * **韌性防護**：若未配置 Secret 會輸出 GitHub Notice 並優雅跳過；設有 `continue-on-error: true`，第三方 AI API 服務超時或停機時**絕不阻擋**正常代碼合併。
@@ -104,6 +121,36 @@ Agent 會自動讀取配置並就地生成完整的規範體系。
 | Repository Variable | `DTRACK_PROJECT_VERSION` | 可選；auto-create 時覆寫分支版本 |
 | Repository Variable | `DEFECTDOJO_URL` | DefectDojo base URL |
 | Repository Secret | `DEFECTDOJO_API_TOKEN` | DefectDojo API v2 Token |
+| Repository Variable | `STAGING_URL` | Merge 後 ZAP / deployment readiness 的 Staging URL |
+| Repository Variable | `OPENVAS_HOST` | Greenbone / GVM 主機名稱或 IP |
+| Repository Variable | `OPENVAS_TASK_ID` | 已建立好的 Greenbone scan task UUID |
+| Repository Variable | `OPENVAS_SSH_PORT` | 可選；Greenbone SSH port，預設 22 |
+| Repository Variable | `OPENVAS_SSH_USERNAME` | 可選；Greenbone SSH 使用者，預設 `gmp` |
+| Repository Secret | `OPENVAS_GMP_USERNAME` | Greenbone Management Protocol 使用者 |
+| Repository Secret | `OPENVAS_GMP_PASSWORD` | Greenbone Management Protocol 密碼 |
+| Repository Secret | `OPENVAS_SSH_PASSWORD` | Greenbone SSH transport 密碼 |
+| Repository Variable | `FARADAY_URL` | Faraday server base URL |
+| Repository Variable | `FARADAY_WORKSPACE` | Faraday workspace 名稱 |
+| Repository Secret | `FARADAY_API_TOKEN` | Faraday API Token |
+| Repository Variable | `WAZUH_URL` | Wazuh server API URL，例如 `https://wazuh.example:55000` |
+| Repository Variable | `WAZUH_AGENT_NAME` | Merge 後要確認狀態的 Wazuh agent 名稱 |
+| Repository Variable | `WAZUH_TLS_INSECURE` | 可選；自簽 TLS 環境才設為 `true` |
+| Repository Secret | `WAZUH_API_USER` | Wazuh server API 使用者 |
+| Repository Secret | `WAZUH_API_PASSWORD` | Wazuh server API 密碼 |
+
+Merge 後的預設安全資料流為：
+
+```text
+Merge to main/master
+  -> Staging readiness
+  -> ZAP -----------+-> DefectDojo
+                    +-> Faraday
+  -> OpenVAS -------+-> DefectDojo
+                    +-> Faraday
+  -> Wazuh agent health check
+
+SBOM -> Dependency-Track
+```
 
 DefectDojo connector 由 scanner workflow 以 job 方式呼叫，例如：
 
