@@ -25,13 +25,14 @@ function weekDayIndex(now, timeZone) {
 function weeklyData(state, config, now) {
   const limit = now.getTime() + 28 * 86400000;
   const entries = currentEvents(state, now).filter(({ event, stale }) => !stale
+    && event.kind === 'ctf'
     && (eventStartTime(event) <= limit
       || event.deadlines.some(({ at }) => at.getTime() >= now.getTime() && at.getTime() <= limit)));
   const signature = fingerprint({ entries: entries.map(({ key, event }) => ({ key, event })), partial: Boolean(state.sourceErrors?.length) });
   const week = weekKey(now, config.eventTimeZone);
   const curated = curateWeeklyEntries(entries, now, 8);
-  let content = `**本週資安活動｜${week}**\n未來四週內值得留意的活動與報名期限\n`;
-  if (state.sourceErrors?.length) content += '部分來源暫時無法更新；本期僅列已確認活動。\n';
+  let content = `**本週 CTF 賽事｜${week}**\n未來四週內值得留意的賽事與報名期限\n`;
+  if (state.sourceErrors?.length) content += '部分來源暫時無法更新；本期僅列已確認賽事。\n';
 
   function summary(event) {
     return [
@@ -63,7 +64,7 @@ function weeklyData(state, config, now) {
     content += `\n**其他 CTF 行程**\n${names}${competitionOverflow.length > 3 ? `等 ${competitionOverflow.length} 場` : ''}，完整時間與參賽資訊請從活動總表查看。\n`;
   }
   const hidden = competitionOverflow.length + otherOverflow.length;
-  content += `\n本期收錄 ${entries.length} 場，公開整理 ${visible.length} 場${hidden ? `，其餘 ${hidden} 場保留在活動總表` : ''}。`;
+  content += `\n本期收錄 ${entries.length} 場 CTF，公開整理 ${visible.length} 場${hidden ? `，其餘 ${hidden} 場保留在活動總表` : ''}。`;
   const payload = {
     content, allowedMentions: { parse: [] }, attachments: [], flags: MessageFlags.SuppressEmbeds,
     components: [new ActionRowBuilder().addComponents(button('events:view:all:0', '完整活動總表'))],

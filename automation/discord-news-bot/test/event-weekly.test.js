@@ -51,6 +51,19 @@ test('a partial source outage still permits confirmed events in the weekly diges
   assert.match(result.payload.content, /Example CTF/);
 });
 
+test('the weekly digest excludes non-CTF activities', () => {
+  const state = { events: {
+    ctf: { event },
+    workshop: { event: { ...event, id: 'workshop', title: 'Blue Team Workshop', kind: 'workshop' } },
+    competition: { event: { ...event, id: 'competition', title: 'Security Competition', kind: 'competition' } },
+  } };
+  const result = weeklyData(state, config, new Date('2026-09-21T02:00:00Z'));
+  assert.equal(result.count, 1);
+  assert.match(result.payload.content, /本週 CTF 賽事/u);
+  assert.match(result.payload.content, /Example CTF/u);
+  assert.doesNotMatch(result.payload.content, /Blue Team Workshop|Security Competition/u);
+});
+
 test('a new digest is not backfilled after Tuesday but an existing digest can still be edited', async () => {
   const state = { events: { one: { event } } }; const calls = [];
   const message = { id: '123', edit: async () => calls.push('edit') };
