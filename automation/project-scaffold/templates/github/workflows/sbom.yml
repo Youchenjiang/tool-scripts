@@ -1,0 +1,51 @@
+# ==============================================================================
+# 📦 CycloneDX Software Bill of Materials (SBOM)
+#
+# 【功能說明】
+# 使用 Anchore Syft 掃描專案相依元件並產生 CycloneDX JSON SBOM。
+# SBOM 會保留為 GitHub Actions Artifact，供稽核、Dependency-Track、
+# DefectDojo 或其他供應鏈安全工具後續使用。
+#
+# 【觸發方式】
+# 1. 推送至 main / master。
+# 2. 對 main / master 發起或更新 Pull Request。
+# 3. 支援 workflow_dispatch 手動執行。
+# ==============================================================================
+
+name: CycloneDX SBOM
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-sbom:
+    name: Generate CycloneDX SBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate CycloneDX JSON SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx-json
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
