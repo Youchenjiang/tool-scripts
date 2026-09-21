@@ -18,7 +18,9 @@
       "githubWorkflows": [
         "policy.yml",
         "trufflehog.yml",
-        "codeql.yml"
+        "codeql.yml",
+        "sbom.yml",
+        "defectdojo-upload.yml"
       ],
       "githubFiles": [
         "pull_request_template.md",
@@ -44,7 +46,9 @@
         "policy.yml",
         "trufflehog.yml",
         "codeql.yml",
-        "zap-scan.yml"
+        "zap-scan.yml",
+        "sbom.yml",
+        "defectdojo-upload.yml"
       ],
       "githubFiles": [
         "pull_request_template.md",
@@ -70,7 +74,9 @@
         "policy.yml",
         "trufflehog.yml",
         "codeql.yml",
-        "pr_agent.yml"
+        "pr_agent.yml",
+        "sbom.yml",
+        "defectdojo-upload.yml"
       ],
       "githubFiles": [
         "pull_request_template.md",
