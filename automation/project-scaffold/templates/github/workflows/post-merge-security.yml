@@ -103,6 +103,8 @@ jobs:
 
   openvas:
     name: Greenbone OpenVAS scan
+    needs: staging-readiness
+    if: ${{ needs.staging-readiness.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
