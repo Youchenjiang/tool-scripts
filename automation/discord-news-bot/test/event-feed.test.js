@@ -116,9 +116,9 @@ test('CTFtime source requests a bounded window and normalizes official event lin
 test('OWASP source parses the official events data file', async () => {
   const events = await fetchOwaspEvents({
     url: 'https://example.test/events.yml',
-    fetchImpl: async () => ({
+    fetchImpl: async (url) => ({
       ok: true,
-      text: async () => `
+      text: async () => String(url).endsWith('events.yml') ? `
 - category: AppSec Days
   events:
   - name: OWASP 25th Anniversary Virtual Conference
@@ -126,7 +126,7 @@ test('OWASP source parses the official events data file', async () => {
     dates: September 22, 2026
     url: https://owasp.example/event
     optional-text: A virtual community event.
-`,
+` : '<p>A free virtual conference. Click the link here to access Track 1.</p>',
     }),
   });
 
@@ -134,4 +134,5 @@ test('OWASP source parses the official events data file', async () => {
   assert.equal(events[0].title, 'OWASP 25th Anniversary Virtual Conference');
   assert.equal(events[0].kind, 'conference');
   assert.equal(events[0].startDate, '2026-09-22');
+  assert.equal(events[0].attendance, 'online');
 });

@@ -78,6 +78,7 @@ function loadConfig() {
       || 'https://ctftime.org/api/v1/events/',
     owaspEventsUrl: process.env.OWASP_EVENTS_URL?.trim()
       || 'https://raw.githubusercontent.com/OWASP/owasp.github.io/main/_data/events.yml',
+    maxOwaspEventsPerRun: readPositiveInteger('MAX_OWASP_EVENTS_PER_RUN', 20),
     taiwanDeadlinesEnabled: readBoolean('TAIWAN_DEADLINES_ENABLED', true),
     taiwanDeadlinesUrl: process.env.TAIWAN_DEADLINES_URL?.trim()
       || 'https://raw.githubusercontent.com/stwater20/taiwan-security-deadlines/main/_data/conferences.yml',

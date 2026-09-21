@@ -5,6 +5,7 @@ const { deduplicateEvents, eventEndTime, eventStartTime, normalizeEventRecord } 
 const { fetchTaiwanDeadlineEvents } = require('./event-sources/taiwan-deadlines');
 const { fetchKktixEvents } = require('./event-sources/kktix');
 const { fetchIcalEvents } = require('./event-sources/ical');
+const { parseOwaspEventPage } = require('./event-sources/owasp-pages');
 const { loadEventSourceRegistry } = require('./event-source-registry');
 
 function cleanScalar(value) {
@@ -147,9 +148,18 @@ function normalizeOwaspEvent(event) {
   });
 }
 
-async function fetchOwaspEvents({ url, fetchImpl = fetch }) {
+async function fetchOwaspEvents({ url, fetchImpl = fetch, start, finish, maxDetails = 20 }) {
   const body = await fetchText(url, fetchImpl);
-  return parseOwaspEventsYaml(body).map(normalizeOwaspEvent).filter(Boolean);
+  const events = parseOwaspEventsYaml(body).map(normalizeOwaspEvent).filter(Boolean);
+  const candidates = events.filter((event) => (!start || event.endsAt >= start) && (!finish || event.startsAt <= finish));
+  const selected = new Set(candidates.slice(0, maxDetails));
+  return Promise.all(events.map(async (event) => {
+    if (!selected.has(event) || !event.url.startsWith('https://')) return event;
+    try {
+      const html = await fetchText(event.url, fetchImpl);
+      return normalizeEventRecord({ ...event, ...parseOwaspEventPage(html, event.url, event.title) });
+    } catch { return event; }
+  }));
 }
 
 async function fetchSecurityEvents(config, { fetchImpl = fetch, now = new Date() } = {}) {
@@ -157,7 +167,7 @@ async function fetchSecurityEvents(config, { fetchImpl = fetch, now = new Date()
   const finish = new Date(now.getTime() + (config.eventLookaheadDays * 24 * 60 * 60_000));
   const requests = [
     fetchCtfTimeEvents({ baseUrl: config.ctfTimeEventsUrl, start, finish, fetchImpl }),
-    fetchOwaspEvents({ url: config.owaspEventsUrl, fetchImpl }),
+    fetchOwaspEvents({ url: config.owaspEventsUrl, fetchImpl, start, finish, maxDetails: config.maxOwaspEventsPerRun }),
   ];
   if (config.taiwanDeadlinesEnabled) {
     requests.push(fetchTaiwanDeadlineEvents({
