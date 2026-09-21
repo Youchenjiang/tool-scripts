@@ -74,7 +74,7 @@ async function main() {
         setInterval(() => {
           void runEventPublisher('schedule').catch(() => {});
         }, config.eventPollIntervalMs).unref();
-        console.log(`[Bot] Security events: daily at ${String(config.eventScanHour).padStart(2, '0')}:00 ${config.eventTimeZone}`);
+        console.log(`[Bot] Security events: polling every ${config.eventPollIntervalMs / 60_000} minute(s)`);
       }
       if (config.pushOnStart) await runPublisher('startup').catch(() => {});
       setInterval(() => {
@@ -206,7 +206,7 @@ async function main() {
           `上次檢查：${latest.at}`,
           latest.skipped
             ? `狀態：${latest.reason}`
-            : `讀取 ${latest.checked} 場／新發現 ${latest.discovered} 場／新週報 ${latest.published} 則`,
+            : `讀取 ${latest.checked} 場／資料庫新增 ${latest.discovered} 場／活動公告 ${latest.activityPublished ?? 0} 則（${latest.activityDiscovered ?? 0} 場）／新 CTF 週報 ${latest.published} 則`,
           latest.boardId ? `活動總表：https://discord.com/channels/${interaction.guildId}/${config.eventChannelId}/${latest.boardId}` : null,
           latest.reminders ? `本輪私訊：送出 ${latest.reminders.sent} 則／失敗 ${latest.reminders.failed} 則` : null,
           latest.sourceErrors?.length ? `來源錯誤：${latest.sourceErrors.join('；')}` : null,
@@ -230,7 +230,7 @@ async function main() {
         const result = await runEventPublisher('command', { force: true });
         await interaction.editReply(
           result.skipped ? result.reason
-            : `總表已更新：讀取 ${result.checked} 場，新發現 ${result.discovered} 場，新週報 ${result.published} 則。`,
+            : `總表已更新：讀取 ${result.checked} 場，資料庫新增 ${result.discovered} 場，活動公告 ${result.activityPublished ?? 0} 則（${result.activityDiscovered ?? 0} 場），新 CTF 週報 ${result.published} 則。`,
         );
       } catch (error) {
         await interaction.editReply(`活動檢查失敗：${error.message}`);
