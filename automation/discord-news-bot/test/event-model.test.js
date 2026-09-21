@@ -29,6 +29,17 @@ test('event model canonicalizes URLs and rejects incomplete records', () => {
   assert.equal(normalizeEventRecord({ id: 'bad', title: 'Missing URL', source: 'test' }), null);
 });
 
+test('event model keeps structured place fields independently', () => {
+  const normalized = normalizeEventRecord(event({
+    attendance: 'onsite', venue: 'Conference Hall', city: 'Porto', country: 'Portugal',
+    address: 'Avenida da Boavista 4245', location: 'Conference Hall / Avenida da Boavista 4245',
+  }));
+  assert.equal(normalized.venue, 'Conference Hall');
+  assert.equal(normalized.city, 'Porto');
+  assert.equal(normalized.country, 'Portugal');
+  assert.equal(normalized.address, 'Avenida da Boavista 4245');
+});
+
 test('event model preserves aliases and normalized legacy date fields', () => {
   const normalized = normalizeEventRecord(event());
   assert.equal(normalized.officialUrl, 'https://example.com/events/holmes');
