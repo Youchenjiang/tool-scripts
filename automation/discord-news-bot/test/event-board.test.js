@@ -38,3 +38,26 @@ test('activity board paginates up to ten compact rows per page', () => {
   assert.equal(new Set(ids).size, ids.length);
   assert.match(second.components[1].components[0].data.custom_id, /^events:page:/u);
 });
+
+test('activity and CTF boards never mix their records', () => {
+  const document = { lastCheckedAt: '2026-09-20T00:00:00Z', events: {
+    activity: { event: event(0, { title: 'Blue Team Workshop' }) },
+    competition: { event: event(1, { title: 'Security Contest', kind: 'competition' }) },
+    ctf: { event: event(2, { title: 'Example CTF', kind: 'ctf' }) },
+  } };
+  const options = { timeZone: 'Asia/Taipei', now: new Date('2026-09-20T00:00:00Z') };
+  const activities = boardMessage(document, options);
+  assert.match(activities.content, /Blue Team Workshop/u);
+  assert.match(activities.content, /Security Contest/u);
+  assert.doesNotMatch(activities.content, /Example CTF/u);
+  assert.match(activities.components[0].components[1].data.custom_id, /events:view:competition:0/u);
+
+  const competitions = boardMessage(document, { ...options, filter: 'competition' });
+  assert.match(competitions.content, /Security Contest/u);
+  assert.doesNotMatch(competitions.content, /Blue Team Workshop|Example CTF/u);
+
+  const ctfs = boardMessage(document, { ...options, filter: 'ctf' });
+  assert.match(ctfs.content, /完整 CTF 賽程/u);
+  assert.match(ctfs.content, /Example CTF/u);
+  assert.doesNotMatch(ctfs.content, /Blue Team Workshop|Security Contest/u);
+});

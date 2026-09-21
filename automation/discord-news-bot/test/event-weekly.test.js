@@ -82,6 +82,8 @@ test('the weekly digest excludes non-CTF activities', () => {
   assert.match(result.payload.content, /本週 CTF 賽程/u);
   assert.match(text, /Example CTF/u);
   assert.doesNotMatch(text, /Blue Team Workshop|Security Competition/u);
+  assert.equal(result.payload.components[0].components[0].data.custom_id, 'events:view:ctf:0');
+  assert.equal(result.payload.components[0].components[0].data.label, '完整 CTF 賽程');
 });
 
 test('the schedule groups starts and known deadlines by calendar week', () => {

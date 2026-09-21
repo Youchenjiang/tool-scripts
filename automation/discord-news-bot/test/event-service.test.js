@@ -51,7 +51,7 @@ test('permission failures never create a second board; deleted boards can be rec
 });
 
 test('pagination stays within Discord limits without discarding activities', () => {
-  const entries = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`key${i}`, { event: { ...event, id: `ctf:${i}` } }]));
+  const entries = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`key${i}`, { event: { ...event, id: `workshop:${i}`, kind: 'workshop' } }]));
   const state = { events: entries, lastCheckedAt: current.toISOString() };
   const seen = new Set();
   for (let page = 0; page < 5; page += 1) {
@@ -61,7 +61,7 @@ test('pagination stays within Discord limits without discarding activities', () 
     for (const option of select.options) seen.add(option.value);
   }
   assert.equal(seen.size, 20);
-  assert.match(boardMessage(state, { now: current, filter: 'community' }).content, /沒有符合/);
+  assert.match(boardMessage(state, { now: current, filter: 'competition' }).content, /沒有符合/);
 });
 
 test('view buttons reply privately and never edit the public board', async () => {
