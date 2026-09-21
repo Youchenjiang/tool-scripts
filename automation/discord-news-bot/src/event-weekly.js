@@ -3,7 +3,7 @@ const { currentEvents, fingerprint, button } = require('./event-board');
 const { eventStartTime } = require('./event-model');
 
 const DAY = 86400000;
-const WEEKLY_FORMAT_VERSION = 3;
+const WEEKLY_FORMAT_VERSION = 4;
 const EMBED_TEXT_BUDGET = 5800;
 const EMBED_DESCRIPTION_LIMIT = 3800;
 const TOPIC_LABELS = {
@@ -67,6 +67,11 @@ function durationText(event) {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   if (!hours) return `${remainder} 分鐘`;
+  if (hours >= 72) {
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    return `${days} 天${remainingHours ? ` ${remainingHours} 小時` : ''}${remainder ? ` ${remainder} 分鐘` : ''}`;
+  }
   return `${hours} 小時${remainder ? ` ${remainder} 分鐘` : ''}`;
 }
 
