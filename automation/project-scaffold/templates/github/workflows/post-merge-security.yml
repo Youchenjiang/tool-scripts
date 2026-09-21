@@ -90,3 +90,128 @@ jobs:
       test_title: Post-Merge ZAP Scan
       engagement_name: Post-Merge Security
     secrets: inherit
+
+  openvas:
+    name: Greenbone OpenVAS scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      OPENVAS_HOST: ${{ vars.OPENVAS_HOST }}
+      OPENVAS_TASK_ID: ${{ vars.OPENVAS_TASK_ID }}
+      OPENVAS_SSH_PORT: ${{ vars.OPENVAS_SSH_PORT }}
+      OPENVAS_SSH_USERNAME: ${{ vars.OPENVAS_SSH_USERNAME }}
+      OPENVAS_GMP_USERNAME: ${{ secrets.OPENVAS_GMP_USERNAME }}
+      OPENVAS_GMP_PASSWORD: ${{ secrets.OPENVAS_GMP_PASSWORD }}
+      OPENVAS_SSH_PASSWORD: ${{ secrets.OPENVAS_SSH_PASSWORD }}
+
+    steps:
+      - name: Check Greenbone integration settings
+        id: config
+        shell: bash
+        run: |
+          if [[ -n "${OPENVAS_HOST:-}" &&
+                -n "${OPENVAS_TASK_ID:-}" &&
+                -n "${OPENVAS_GMP_USERNAME:-}" &&
+                -n "${OPENVAS_GMP_PASSWORD:-}" &&
+                -n "${OPENVAS_SSH_PASSWORD:-}" ]]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Greenbone scan skipped. Configure OPENVAS_HOST, OPENVAS_TASK_ID and the required credentials to enable it."
+          fi
+
+      - name: Install Greenbone gvm-tools
+        if: ${{ steps.config.outputs.enabled == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pipx install gvm-tools
+
+      - name: Start Greenbone task and wait for completion
+        if: ${{ steps.config.outputs.enabled == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh_port="${OPENVAS_SSH_PORT:-22}"
+          ssh_user="${OPENVAS_SSH_USERNAME:-gmp}"
+
+          gvm=(
+            gvm-cli
+            --timeout 120
+            --gmp-username "${OPENVAS_GMP_USERNAME}"
+            --gmp-password "${OPENVAS_GMP_PASSWORD}"
+            ssh
+            --hostname "${OPENVAS_HOST}"
+            --port "${ssh_port}"
+            --ssh-username "${ssh_user}"
+            --ssh-password "${OPENVAS_SSH_PASSWORD}"
+            --auto-accept-host
+          )
+
+          start_response="$("${gvm[@]}" --xml "<start_task task_id=\"${OPENVAS_TASK_ID}\"/>")"
+          report_id="$(
+            printf '%s' "${start_response}" |
+              python -c 'import sys, xml.etree.ElementTree as ET; root=ET.fromstring(sys.stdin.read()); print(root.findtext("report_id") or "")'
+          )"
+
+          if [[ -z "${report_id}" ]]; then
+            echo "::error::Greenbone did not return a report ID."
+            exit 1
+          fi
+
+          echo "Greenbone report ID: ${report_id}"
+
+          completed=false
+          for attempt in {1..120}; do
+            task_response="$("${gvm[@]}" --xml "<get_tasks task_id=\"${OPENVAS_TASK_ID}\"/>")"
+            task_status="$(
+              printf '%s' "${task_response}" |
+                python -c 'import sys, xml.etree.ElementTree as ET; root=ET.fromstring(sys.stdin.read()); print(root.findtext(".//task/status") or "")'
+            )"
+
+            echo "Greenbone task status: ${task_status:-unknown} (poll ${attempt}/120)"
+
+            case "${task_status}" in
+              Done)
+                completed=true
+                break
+                ;;
+              Stopped|Interrupted|"Internal Error")
+                echo "::error::Greenbone task ended with status: ${task_status}"
+                exit 1
+                ;;
+            esac
+
+            sleep 30
+          done
+
+          if [[ "${completed}" != "true" ]]; then
+            echo "::error::Greenbone task did not finish within 60 minutes."
+            exit 1
+          fi
+
+          "${gvm[@]}" --raw --xml "<get_reports report_id=\"${report_id}\" details=\"1\" ignore_pagination=\"1\"/>" |
+            python -c 'import sys, xml.etree.ElementTree as ET; root=ET.fromstring(sys.stdin.read()); report=root.find(".//report"); assert report is not None, "report element missing"; sys.stdout.write(ET.tostring(report, encoding="unicode"))' > openvas-report.xml
+
+      - name: Upload Greenbone report artifact
+        if: ${{ steps.config.outputs.enabled == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: openvas-post-merge
+          path: openvas-report.xml
+          if-no-files-found: error
+          retention-days: 30
+
+  defectdojo-openvas:
+    name: Send OpenVAS report to DefectDojo
+    needs: openvas
+    if: ${{ needs.openvas.result == 'success' }}
+    uses: ./.github/workflows/defectdojo-upload.yml
+    with:
+      artifact_name: openvas-post-merge
+      report_path: openvas-report.xml
+      scan_type: OpenVAS Parser v2
+      test_title: Post-Merge OpenVAS Scan
+      engagement_name: Post-Merge Security
+    secrets: inherit
