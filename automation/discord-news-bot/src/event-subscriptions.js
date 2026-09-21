@@ -1,6 +1,7 @@
 const { ActionRowBuilder, MessageFlags, PermissionFlagsBits } = require('discord.js');
 const { normalizeEventRecord, eventEndTime } = require('./event-model');
 const { compactEvent, button } = require('./event-board');
+const { fullAddressLine } = require('./event-publisher');
 
 const subscriptionId = (userId, eventKey) => `${userId}:${eventKey}`;
 function subscribe(state, userId, eventKey, now) {
@@ -30,7 +31,7 @@ function detailMessage(state, key, userId, config, now) {
   const failed = Object.values(item?.notices || {}).some((notice) => notice.status === 'failed' || notice.status === 'sending');
   const status = item ? '已訂閱：報名截止及開賽前 24 小時私訊提醒。' : '訂閱後，報名截止及開賽前 24 小時會收到私訊。';
   return {
-    content: `${compactEvent(event, config.eventTimeZone, now)}\n\n${status}${failed ? '\n先前私訊未確認送達；請檢查私訊權限。' : ''}`.slice(0, 2000),
+    content: `${compactEvent(event, config.eventTimeZone, now)}${fullAddressLine(event) ? `\n${fullAddressLine(event)}` : ''}\n\n${status}${failed ? '\n先前私訊未確認送達；請檢查私訊權限。' : ''}`.slice(0, 2000),
     allowedMentions: { parse: [] }, flags: MessageFlags.SuppressEmbeds,
     components: [new ActionRowBuilder().addComponents(
       button(`events:${item ? 'unsub' : 'sub'}:${key}`, item ? '取消訂閱' : '訂閱私訊提醒'),

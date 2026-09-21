@@ -86,11 +86,27 @@ function deadlineLine(event, timeZone, current) {
   return `⏳ ${DEADLINE_LABELS[deadline.kind] || DEADLINE_LABELS.unknown} ${formatDisplayDate(new Date(deadline.at), timeZone, true)}`;
 }
 
+function publicPlace(event) {
+  const country = String(event.country || '').trim();
+  const city = String(event.city || '').trim();
+  const venue = String(event.venue || '').trim();
+  const taiwan = /^(?:台灣|臺灣|Taiwan)$/iu.test(country);
+  if (taiwan) return [city, venue].filter(Boolean).join('・');
+  if (city || country) return [city, country].filter(Boolean).join(', ');
+  return String(event.location || '').trim();
+}
+
 function locationLine(event) {
+  const place = publicPlace(event);
   if (event.attendance === 'online') return '🌐 線上';
-  if (event.attendance === 'onsite') return event.location ? `📍 ${event.location}` : '📍 實體活動，地點請見官網';
-  if (event.attendance === 'hybrid') return event.location ? `📍 ${event.location} · 同步提供線上參與` : '🌐 線上及實體活動，地點請見官網';
+  if (event.attendance === 'onsite') return place ? `📍 ${place}` : '';
+  if (event.attendance === 'hybrid') return place ? `🌐 線上／📍 ${place}` : '🌐 線上／實體';
   return '';
+}
+
+function fullAddressLine(event) {
+  const address = String(event.address || '').trim();
+  return address ? `地址：${address}` : '';
 }
 
 function audienceLine(audience) {
@@ -175,4 +191,5 @@ function createEventPublisher({ channel, config, stateStore, fetchEventsImpl = f
 
 module.exports = {
   createEventMessage, createEventPublisher, eventDecisionLine, eventTimingLine, formatCompactDate, formatCompactDateTime,
+  fullAddressLine, locationLine, publicPlace,
 };

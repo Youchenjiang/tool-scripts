@@ -35,7 +35,7 @@ test('event announcement handles overflow, deadline, hybrid location and eligibi
   assert.match(message.content, /🟣 紫隊 · 工作坊｜進階｜個人報名/u);
   assert.match(message.content, /🧩 Web、Pwn、Reverse、Crypto、Forensics（另有 2 類）/u);
   assert.match(message.content, /⏳ 報名至 2026\/09\/10 23:59/u);
-  assert.match(message.content, /📍 新竹 · 同步提供線上參與/u);
+  assert.match(message.content, /🌐 線上／📍 新竹/u);
   assert.match(message.content, /👤 限高中職學生/u);
 });
 
@@ -47,6 +47,21 @@ test('event announcement states unknown fields without inventing details', () =>
   assert.match(message.content, /⚫ 方向未標示 · 活動｜程度未標示｜人數未公開/u);
   assert.match(message.content, /📅 Sep 2026 – Aug 2027（詳細時間請見官網）/u);
   assert.doesNotMatch(message.content, /🧩/u);
+});
+
+test('event announcement abbreviates public places without exposing street addresses', () => {
+  const overseas = createEventMessage(sampleEvent({
+    attendance: 'onsite', venue: 'Fundação António Cupertino de Miranda', city: 'Porto', country: 'Portugal',
+    address: 'Avenida da Boavista 4245', location: 'Fundação António Cupertino de Miranda / Avenida da Boavista 4245',
+  }));
+  assert.match(overseas.content, /📍 Porto, Portugal/u);
+  assert.doesNotMatch(overseas.content, /Fundação|Avenida/u);
+
+  const taiwan = createEventMessage(sampleEvent({
+    attendance: 'hybrid', venue: 'IEAT 會議中心', city: '台北', country: '台灣', address: '松江路 350 號',
+  }));
+  assert.match(taiwan.content, /🌐 線上／📍 台北・IEAT 會議中心/u);
+  assert.doesNotMatch(taiwan.content, /松江路/u);
 });
 
 test('event announcement presents an unclassified CTF as general instead of blank direction', () => {
