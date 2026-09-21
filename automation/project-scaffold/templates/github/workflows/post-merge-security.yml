@@ -1,0 +1,92 @@
+# ==============================================================================
+# 🔐 Post-Merge Staging Security Validation
+#
+# 【定位】
+# 在程式進入 main / master 後執行部署後安全驗證。此 workflow 不取代 PR gate；
+# CodeQL、TruffleHog 與 policy 仍應在 PR 階段先執行。
+#
+# 【啟用條件】
+# Repository Variable `STAGING_URL` 有設定時才執行 Web DAST。
+# 未配置任何外部平台時，workflow 會安全跳過相對應的 integration。
+# ==============================================================================
+
+name: Post-Merge Security
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  staging-readiness:
+    name: Check staging readiness
+    runs-on: ubuntu-latest
+    env:
+      STAGING_URL: ${{ vars.STAGING_URL }}
+
+    steps:
+      - name: Check staging configuration
+        id: config
+        shell: bash
+        run: |
+          if [[ -n "${STAGING_URL:-}" ]]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Post-merge DAST skipped. Configure STAGING_URL to enable staging scans."
+          fi
+
+      - name: Wait for staging to become reachable
+        if: ${{ steps.config.outputs.enabled == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error --max-time 15 "${STAGING_URL}" > /dev/null; then
+              echo "Staging endpoint is reachable."
+              exit 0
+            fi
+
+            echo "Staging is not ready yet (attempt ${attempt}/20)."
+            sleep 15
+          done
+
+          echo "::error::Staging endpoint did not become reachable within 5 minutes."
+          exit 1
+
+  zap:
+    name: ZAP baseline scan
+    needs: staging-readiness
+    if: ${{ vars.STAGING_URL != '' && needs.staging-readiness.result == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ vars.STAGING_URL }}
+          allow_issue_writing: false
+          fail_action: false
+          artifact_name: zap-post-merge
+          cmd_options: '-J report_json.json -x report_xml.xml'
+
+  defectdojo-zap:
+    name: Send ZAP report to DefectDojo
+    needs: zap
+    if: ${{ needs.zap.result == 'success' }}
+    uses: ./.github/workflows/defectdojo-upload.yml
+    with:
+      artifact_name: zap-post-merge
+      report_path: report_xml.xml
+      scan_type: ZAP Scan
+      test_title: Post-Merge ZAP Scan
+      engagement_name: Post-Merge Security
+    secrets: inherit
