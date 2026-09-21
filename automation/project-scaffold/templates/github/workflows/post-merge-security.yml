@@ -91,6 +91,16 @@ jobs:
       engagement_name: Post-Merge Security
     secrets: inherit
 
+  faraday-zap:
+    name: Send ZAP report to Faraday
+    needs: zap
+    if: ${{ needs.zap.result == 'success' }}
+    uses: ./.github/workflows/faraday-upload.yml
+    with:
+      artifact_name: zap-post-merge
+      report_path: report_xml.xml
+    secrets: inherit
+
   openvas:
     name: Greenbone OpenVAS scan
     runs-on: ubuntu-latest
@@ -214,4 +224,14 @@ jobs:
       scan_type: OpenVAS Parser v2
       test_title: Post-Merge OpenVAS Scan
       engagement_name: Post-Merge Security
+    secrets: inherit
+
+  faraday-openvas:
+    name: Send OpenVAS report to Faraday
+    needs: openvas
+    if: ${{ needs.openvas.result == 'success' }}
+    uses: ./.github/workflows/faraday-upload.yml
+    with:
+      artifact_name: openvas-post-merge
+      report_path: openvas-report.xml
     secrets: inherit
