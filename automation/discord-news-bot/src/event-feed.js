@@ -65,6 +65,7 @@ function normalizeCtfTimeEvent(event) {
     dateText: '',
     teamSize: parseTeamSize(event.description),
     location: String(event.location || (event.onsite ? '' : 'On-line')).trim(),
+    attendance: event.onsite ? 'onsite' : 'online',
     source: 'CTFtime',
     kind: 'ctf',
   });

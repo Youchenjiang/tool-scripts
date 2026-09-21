@@ -5,7 +5,7 @@ const { boardMessage, keyFor } = require('../src/event-board');
 
 const current = new Date('2026-09-21T02:00:00Z');
 const event = { id: 'ctf:1', sourceId: 'ctftime', title: 'Example CTF', url: 'https://example.org/ctf',
-  startsAt: '2026-09-25T02:00:00Z', endsAt: '2026-09-26T02:00:00Z', kind: 'ctf' };
+  startsAt: '2026-09-25T02:00:00Z', endsAt: '2026-09-26T02:00:00Z', kind: 'ctf', attendance: 'online' };
 function harness() {
   let document = null;
   let feed = { events: [event], errors: [] };

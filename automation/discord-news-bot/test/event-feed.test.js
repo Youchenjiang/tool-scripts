@@ -111,6 +111,7 @@ test('CTFtime source requests a bounded window and normalizes official event lin
   assert.equal(events[0].url, 'https://ctf.hackthebox.com/event/details/holmes-3504');
   assert.equal(events[0].teamSize, '5人');
   assert.equal(events[0].kind, 'ctf');
+  assert.equal(events[0].attendance, 'online');
 });
 
 test('OWASP source parses the official events data file', async () => {
