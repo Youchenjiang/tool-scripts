@@ -28,6 +28,12 @@ jobs:
   generate-sbom:
     name: Generate CycloneDX SBOM
     runs-on: ubuntu-latest
+    env:
+      DTRACK_URL: ${{ vars.DTRACK_URL }}
+      DTRACK_PROJECT_UUID: ${{ vars.DTRACK_PROJECT_UUID }}
+      DTRACK_PROJECT_NAME: ${{ vars.DTRACK_PROJECT_NAME }}
+      DTRACK_PROJECT_VERSION: ${{ vars.DTRACK_PROJECT_VERSION }}
+      DTRACK_API_KEY: ${{ secrets.DTRACK_API_KEY }}
 
     steps:
       - name: Checkout repository
@@ -49,3 +55,30 @@ jobs:
           path: sbom.cdx.json
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload SBOM to Dependency-Track
+        if: ${{ github.event_name != 'pull_request' && env.DTRACK_URL != '' && env.DTRACK_API_KEY != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          api_url="${DTRACK_URL%/}/api/v1/bom"
+
+          if [[ -n "${DTRACK_PROJECT_UUID:-}" ]]; then
+            curl --fail-with-body --silent --show-error --retry 3 \
+              --request POST "${api_url}" \
+              --header "X-Api-Key: ${DTRACK_API_KEY}" \
+              --form "project=${DTRACK_PROJECT_UUID}" \
+              --form "bom=@sbom.cdx.json"
+          else
+            project_name="${DTRACK_PROJECT_NAME:-${GITHUB_REPOSITORY#*/}}"
+            project_version="${DTRACK_PROJECT_VERSION:-${GITHUB_REF_NAME}}"
+
+            curl --fail-with-body --silent --show-error --retry 3 \
+              --request POST "${api_url}" \
+              --header "X-Api-Key: ${DTRACK_API_KEY}" \
+              --form "autoCreate=true" \
+              --form "projectName=${project_name}" \
+              --form "projectVersion=${project_version}" \
+              --form "bom=@sbom.cdx.json"
+          fi
