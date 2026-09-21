@@ -5,6 +5,7 @@ const { normalizeEventRecord, eventEndTime } = require('./event-model');
 const { formatCompactDate } = require('./event-publisher');
 const { keyFor, boardMessage } = require('./event-board');
 const { publishWeekly } = require('./event-weekly');
+const { publishNewActivities } = require('./event-announcements');
 const { subscribe, unsubscribe, pruneSubscriptions, detailMessage, deliverReminders, sendMemberReminder } = require('./event-subscriptions');
 
 function createEventService({ channel, config, stateStore, fetchEventsImpl = fetchSecurityEvents, now = () => new Date(),
@@ -73,12 +74,14 @@ function createEventService({ channel, config, stateStore, fetchEventsImpl = fet
         state.lastCheckedAt = current.toISOString();
         await save(state);
         const boardError = await updateBoard(state);
+        const activities = await publishNewActivities({ state, channel, config, now: current, save });
         const published = await publishWeekly({ state, channel, config, now: current, save });
         state.lastCompletedAt = current.toISOString();
         await save(state);
         const reminders = await deliverReminders({ state, config, now: current, save, send: sendReminderImpl });
         latestResult = { checked: events.length, discovered: Object.keys(updated).filter((key) => !old[key]).length,
-          published, reminders, boardId: state.boardId, sourceErrors: [...errors, ...(boardError ? [boardError] : [])], at: state.lastCheckedAt };
+          published, activityDiscovered: activities.discovered, activityPublished: activities.published,
+          reminders, boardId: state.boardId, sourceErrors: [...errors, ...(boardError ? [boardError] : [])], at: state.lastCheckedAt };
         return latestResult;
       });
     } finally { running = false; }
