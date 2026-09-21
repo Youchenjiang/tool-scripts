@@ -235,3 +235,10 @@ jobs:
       artifact_name: openvas-post-merge
       report_path: openvas-report.xml
     secrets: inherit
+
+  wazuh-health:
+    name: Verify Wazuh runtime monitoring
+    needs: staging-readiness
+    if: ${{ needs.staging-readiness.result == 'success' }}
+    uses: ./.github/workflows/wazuh-health.yml
+    secrets: inherit
