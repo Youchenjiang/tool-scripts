@@ -52,6 +52,14 @@ test('KKTIX parser keeps an online competition separate from its award venue and
   assert.doesNotMatch(JSON.stringify(event), /新北電競基地|2026-09-22/u);
 });
 
+test('KKTIX parser derives a concise Taiwan city from a full postal address', () => {
+  const taiwan = detail.replace('"address":"台北市"', '"address":"台北市中山區松江路 350 號"');
+  const event = parseKktixEventPage(taiwan, 'https://hitcon.kktix.cc/events/cyber-range');
+  assert.equal(event.city, '台北');
+  assert.equal(event.country, '台灣');
+  assert.equal(event.address, '台北市中山區松江路 350 號');
+});
+
 test('KKTIX fetch filters the date window before enriching candidate details', async () => {
   const requested = [];
   const events = await fetchKktixEvents({

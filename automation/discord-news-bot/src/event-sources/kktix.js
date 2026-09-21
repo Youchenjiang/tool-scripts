@@ -58,16 +58,17 @@ function structuredPlace(value) {
     && !/VirtualLocation/iu.test(String(item['@type'] || '')));
   const address = physical?.address && typeof physical.address === 'object' ? physical.address : {};
   const venue = String(physical?.name || '').trim();
-  const city = String(address.addressLocality || '').trim();
-  const country = String(address.addressCountry?.name || address.addressCountry || '').trim();
   const street = String(address.streetAddress || (typeof physical?.address === 'string' ? physical.address : '')).trim();
+  const taiwanCity = street.match(/^(?:台灣|臺灣)?\s*([^\s]{2,3}[市縣])/u)?.[1] || '';
+  const city = String(address.addressLocality || taiwanCity).trim().replace(/[市縣]$/u, '');
+  const country = String(address.addressCountry?.name || address.addressCountry || (taiwanCity ? '台灣' : '')).trim();
   const mode = String(value?.eventAttendanceMode || '');
   const online = virtual || /OnlineEventAttendanceMode/iu.test(mode);
   const onsite = Boolean(physical) || /OfflineEventAttendanceMode/iu.test(mode);
   return {
     attendance: online && onsite ? 'hybrid' : online ? 'online' : onsite ? 'onsite' : 'unknown',
     venue, city, country, address: street,
-    location: [venue, city, country, street].filter(Boolean).join(' / '),
+    location: [venue, street || [city, country].filter(Boolean).join(', ')].filter(Boolean).join(' / '),
   };
 }
 
