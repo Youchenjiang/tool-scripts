@@ -15,9 +15,8 @@ function event(index, overrides = {}) {
 
 test('board rows keep decision and timing data while moving details behind selection', () => {
   const text = boardRow(event(0), 'Asia/Taipei', new Date('2026-09-20T00:00:00Z'));
-  assert.match(text, /🔵 藍隊 · 工作坊｜具基礎｜個人報名/u);
+  assert.match(text, /🧩 Forensics · 🔵 藍隊 · 工作坊｜具基礎｜個人報名/u);
   assert.match(text, /📅 2026\/10\/01/u);
-  assert.doesNotMatch(text, /Forensics/u);
   assert.doesNotMatch(text, /🌐 線上/u);
 });
 

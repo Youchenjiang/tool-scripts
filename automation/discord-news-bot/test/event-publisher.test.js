@@ -18,7 +18,7 @@ test('event announcement exposes the fields needed for a quick reading decision'
   const message = createEventMessage(sampleEvent(), 'Asia/Taipei', new Date('2026-09-01T00:00:00Z'));
   assert.equal(message.content, [
     '[Holmes CTF 2026: The Reichenbach Directive](https://ctf.hackthebox.com/event/details/holmes-3504)',
-    '🔴 紅隊 · CTF｜具基礎｜最多 5 人', '🧩 Web、Pwn、Reverse',
+    '🧩 Web、Pwn、Reverse · 🔴 紅隊 · CTF｜具基礎｜最多 5 人',
     '📅 2026/09/18 12:00～09/22 17:00', '🌐 線上',
   ].join('\n'));
   assert.deepEqual(message.allowedMentions, { parse: [] });
@@ -33,7 +33,8 @@ test('event announcement handles overflow, deadline, hybrid location and eligibi
     attendance: 'hybrid', location: '新竹', audience: ['high-school'],
   }), 'Asia/Taipei', new Date('2026-09-01T00:00:00Z'));
   assert.match(message.content, /🟣 紫隊 · 工作坊｜進階｜個人報名/u);
-  assert.match(message.content, /🧩 Web、Pwn、Reverse、Crypto、Forensics（另有 2 類）/u);
+  assert.match(message.content, /🧩 Web、Pwn、Reverse · 🟣 紫隊 · 工作坊/u);
+  assert.doesNotMatch(message.content, /Crypto|Forensics|另有/u);
   assert.match(message.content, /⏳ 報名至 2026\/09\/10 23:59/u);
   assert.match(message.content, /🌐 線上／📍 新竹/u);
   assert.match(message.content, /👤 限高中職學生/u);
@@ -44,7 +45,8 @@ test('event announcement silently omits unknown fields', () => {
     startsAt: null, endsAt: null, dateText: 'Sep 2026 – Aug 2027', directions: ['unspecified'], kind: 'event',
     level: 'unspecified', participation: 'unspecified', teamSizeMax: null, topics: [], attendance: 'unknown',
   }));
-  assert.match(message.content, /⚪ 綜合 · 活動/u);
+  assert.match(message.content, /\n活動\n/u);
+  assert.doesNotMatch(message.content, /綜合/u);
   assert.doesNotMatch(message.content, /未標示|未公開/u);
   assert.match(message.content, /📅 Sep 2026 – Aug 2027（詳細時間請見官網）/u);
   assert.doesNotMatch(message.content, /🧩/u);
@@ -65,9 +67,10 @@ test('event announcement abbreviates public places without exposing street addre
   assert.doesNotMatch(taiwan.content, /松江路/u);
 });
 
-test('event announcement presents an unclassified CTF as general instead of blank direction', () => {
+test('event announcement omits an unclassified CTF direction instead of presenting it as general', () => {
   const message = createEventMessage(sampleEvent({ directions: ['unspecified'], topics: [] }));
-  assert.match(message.content, /⚪ 綜合 · CTF/u);
+  assert.match(message.content, /\nCTF｜具基礎｜最多 5 人\n/u);
+  assert.doesNotMatch(message.content, /綜合/u);
 });
 
 test('event publisher prioritizes nearest deadline and persists every alias', async () => {

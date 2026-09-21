@@ -1,10 +1,11 @@
 const { MessageFlags } = require('discord.js');
 const { fetchSecurityEvents } = require('./event-feed');
 
-const DIRECTION_LABELS = { red: '🔴 紅隊', blue: '🔵 藍隊', purple: '🟣 紫隊', general: '⚪ 綜合', unspecified: '⚪ 綜合' };
+const DIRECTION_LABELS = { red: '🔴 紅隊', blue: '🔵 藍隊', purple: '🟣 紫隊', general: '⚪ 綜合' };
 const KIND_LABELS = { ctf: 'CTF', competition: '競賽', training: '培訓', workshop: '工作坊', conference: '研討會', community: '社群小聚', cfp: '徵稿', event: '活動' };
 const LEVEL_LABELS = { beginner: '入門', foundational: '具基礎', advanced: '進階' };
 const TOPIC_LABELS = {
+  appsec: 'AppSec', api: 'API Security', devsecops: 'DevSecOps',
   web: 'Web', pwn: 'Pwn', reverse: 'Reverse', crypto: 'Crypto', forensics: 'Forensics', malware: 'Malware',
   'threat-intelligence': 'Threat Intelligence', 'threat-hunting': 'Threat Hunting', 'detection-engineering': 'Detection Engineering',
   network: 'Network', cloud: 'Cloud Security', ics: 'ICS/OT', mobile: 'Mobile Security', web3: 'Web3', 'ai-security': 'AI Security',
@@ -38,9 +39,8 @@ function markdownLinkTitle(value) { return String(value || '').replace(/[\[\]]/g
 function eventAliases(event) { return [...new Set([event.id, ...(event.aliases || [])].filter(Boolean))]; }
 
 function directionLabel(directions, kind) {
-  const values = (directions?.length ? directions : ['unspecified']).filter((value, index, all) => all.indexOf(value) === index);
-  if (kind === 'ctf' && values.every((value) => value === 'unspecified')) return DIRECTION_LABELS.general;
-  return values.map((value) => DIRECTION_LABELS[value] || DIRECTION_LABELS.unspecified).join('＋');
+  const values = (directions || []).filter((value, index, all) => value !== 'unspecified' && all.indexOf(value) === index);
+  return values.map((value) => DIRECTION_LABELS[value]).filter(Boolean).join('＋');
 }
 
 function participationLabel(event) {
@@ -63,9 +63,7 @@ function participationLabel(event) {
 function topicLine(topics) {
   if (!topics?.length) return '';
   const labels = topics.map((topic) => TOPIC_LABELS[topic] || topic).filter(Boolean);
-  const visible = labels.slice(0, 5);
-  const remainder = labels.length - visible.length;
-  return `🧩 ${visible.join('、')}${remainder > 0 ? `（另有 ${remainder} 類）` : ''}`;
+  return `🧩 ${labels.slice(0, 3).join('、')}`;
 }
 
 function scheduleLine(event, timeZone) {
@@ -116,7 +114,8 @@ function audienceLine(audience) {
 }
 
 function eventDecisionLine(event) {
-  const decision = `${directionLabel(event.directions, event.kind)} · ${KIND_LABELS[event.kind] || KIND_LABELS.event}`;
+  const decision = [topicLine(event.topics), directionLabel(event.directions, event.kind), KIND_LABELS[event.kind] || KIND_LABELS.event]
+    .filter(Boolean).join(' · ');
   const facts = [LEVEL_LABELS[event.level], participationLabel(event)].filter(Boolean);
   return `${decision}${facts.length ? `｜${facts.join('｜')}` : ''}`;
 }
@@ -129,7 +128,7 @@ function createEventMessage(event, timeZone = 'Asia/Taipei', current = new Date(
   return {
     content: [
       `[${markdownLinkTitle(event.title)}](${event.officialUrl || event.url})`, eventDecisionLine(event),
-      topicLine(event.topics), scheduleLine(event, timeZone), deadlineLine(event, timeZone, current),
+      scheduleLine(event, timeZone), deadlineLine(event, timeZone, current),
       locationLine(event), audienceLine(event.audience),
     ].filter(Boolean).join('\n'),
     allowedMentions: { parse: [] }, flags: MessageFlags.SuppressEmbeds,
