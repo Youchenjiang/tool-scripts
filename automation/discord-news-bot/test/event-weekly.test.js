@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { publishWeekly, weeklyData, weekDayIndex, weekKey } = require('../src/event-weekly');
+const { currentEvents, fingerprint } = require('../src/event-board');
 const config = { eventTimeZone: 'Asia/Taipei' };
 const event = { id: 'one', sourceId: 'ctftime', title: 'Example CTF', url: 'https://example.org',
   startsAt: '2026-10-01T00:00:00Z', endsAt: '2026-10-02T00:00:00Z', kind: 'ctf' };
@@ -38,6 +39,19 @@ test('large weekly digests list substantially more than three competitions withi
   assert.ok((text.match(/CTF \d+/gu) || []).length > 20);
   assert.doesNotMatch(text, /公開整理|適合想透過競賽/u);
   assert.deepEqual(result.payload.files, []);
+});
+
+test('a format upgrade edits an existing digest even when event data is unchanged', async () => {
+  const now = new Date('2026-09-21T02:00:00Z');
+  const state = { events: { one: { event } } };
+  const entries = currentEvents(state, now);
+  state.weekly = { week: '2026-09-21', messageId: '123',
+    signature: fingerprint({ entries: entries.map(({ key, event: item }) => ({ key, event: item })), partial: false }) };
+  const calls = [];
+  const message = { id: '123', edit: async () => calls.push('edit') };
+  const channel = { send: async () => { throw new Error('should edit'); }, messages: { fetch: async () => message } };
+  await publishWeekly({ state, channel, config, now, save: async () => {} });
+  assert.deepEqual(calls, ['edit']);
 });
 
 test('stale entries and distant activities are excluded, but upcoming deadlines qualify', () => {

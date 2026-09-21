@@ -3,6 +3,7 @@ const { currentEvents, fingerprint, button } = require('./event-board');
 const { eventStartTime } = require('./event-model');
 
 const DAY = 86400000;
+const WEEKLY_FORMAT_VERSION = 2;
 const EMBED_TEXT_BUDGET = 5800;
 const EMBED_DESCRIPTION_LIMIT = 3800;
 const TOPIC_LABELS = {
@@ -185,7 +186,8 @@ function weeklyData(state, config, now) {
     && event.kind === 'ctf'
     && (eventStartTime(event) <= limit
       || event.deadlines.some(({ at }) => at.getTime() >= now.getTime() && at.getTime() <= limit)));
-  const signature = fingerprint({ entries: entries.map(({ key, event }) => ({ key, event })), partial: Boolean(state.sourceErrors?.length) });
+  const signature = fingerprint({ format: WEEKLY_FORMAT_VERSION,
+    entries: entries.map(({ key, event }) => ({ key, event })), partial: Boolean(state.sourceErrors?.length) });
   const week = weekKey(now, config.eventTimeZone);
   const groups = scheduleGroups(entries, config, now, week);
   const { embeds, omitted } = scheduleEmbeds(groups, config);
