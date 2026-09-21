@@ -1,0 +1,127 @@
+# ==============================================================================
+# 🧰 Faraday Security Report Import
+#
+# 【功能說明】
+# 從 GitHub Actions Artifact 下載 scanner report，並匯入 Faraday workspace。
+# Faraday 負責滲透測試與弱點協作；此 workflow 僅作為 CI 結果 connector。
+#
+# 【必要設定】
+# Repository Variable: FARADAY_URL, FARADAY_WORKSPACE
+# Repository Secret: FARADAY_API_TOKEN
+# ==============================================================================
+
+name: Faraday Report Upload
+
+on:
+  workflow_call:
+    inputs:
+      artifact_name:
+        description: GitHub Actions artifact containing the scanner report
+        required: true
+        type: string
+      report_path:
+        description: Relative report path inside the downloaded artifact
+        required: true
+        type: string
+      workspace:
+        description: Faraday workspace override; defaults to FARADAY_WORKSPACE
+        required: false
+        default: ''
+        type: string
+    secrets:
+      FARADAY_API_TOKEN:
+        required: false
+
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Actions run ID containing the report artifact
+        required: true
+        type: string
+      artifact_name:
+        description: GitHub Actions artifact containing the scanner report
+        required: true
+        type: string
+      report_path:
+        description: Relative report path inside the downloaded artifact
+        required: true
+        type: string
+      workspace:
+        description: Faraday workspace override; defaults to FARADAY_WORKSPACE
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  upload:
+    name: Upload report to Faraday
+    runs-on: ubuntu-latest
+    env:
+      FARADAY_URL: ${{ vars.FARADAY_URL }}
+      FARADAY_WORKSPACE_DEFAULT: ${{ vars.FARADAY_WORKSPACE }}
+      FARADAY_API_TOKEN: ${{ secrets.FARADAY_API_TOKEN }}
+      FARADAY_WORKSPACE_INPUT: ${{ inputs.workspace }}
+      FARADAY_ARTIFACT_NAME: ${{ inputs.artifact_name }}
+      FARADAY_REPORT_PATH: ${{ inputs.report_path }}
+
+    steps:
+      - name: Check Faraday integration settings
+        id: config
+        shell: bash
+        run: |
+          workspace="${FARADAY_WORKSPACE_INPUT:-${FARADAY_WORKSPACE_DEFAULT:-}}"
+
+          if [[ -n "${FARADAY_URL:-}" &&
+                -n "${FARADAY_API_TOKEN:-}" &&
+                -n "${workspace}" ]]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+            echo "workspace=${workspace}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Faraday upload skipped. Configure FARADAY_URL, FARADAY_WORKSPACE and FARADAY_API_TOKEN to enable it."
+          fi
+
+      - name: Download report artifact from current run
+        if: ${{ steps.config.outputs.enabled == 'true' && github.event_name != 'workflow_dispatch' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: faraday-input
+
+      - name: Download report artifact from selected run
+        if: ${{ steps.config.outputs.enabled == 'true' && github.event_name == 'workflow_dispatch' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: faraday-input
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Upload report to Faraday
+        if: ${{ steps.config.outputs.enabled == 'true' && github.event_name != 'pull_request' }}
+        shell: bash
+        env:
+          FARADAY_WORKSPACE_RESOLVED: ${{ steps.config.outputs.workspace }}
+        run: |
+          set -euo pipefail
+
+          report_file="faraday-input/${FARADAY_REPORT_PATH}"
+          if [[ ! -f "${report_file}" ]]; then
+            echo "::error::Faraday report file not found: ${report_file}"
+            exit 1
+          fi
+
+          workspace_encoded="$(
+            printf '%s' "${FARADAY_WORKSPACE_RESOLVED}" |
+              python -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read().strip(), safe=""))'
+          )"
+          api_url="${FARADAY_URL%/}/_api/v3/ws/${workspace_encoded}/upload_report"
+
+          curl --fail-with-body --silent --show-error --retry 3 \
+            --request POST "${api_url}" \
+            --header "Authorization: Token ${FARADAY_API_TOKEN}" \
+            --form "file=@${report_file}"
