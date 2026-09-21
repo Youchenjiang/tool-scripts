@@ -2,7 +2,6 @@ const { MessageFlags } = require('discord.js');
 const { fetchSecurityEvents } = require('./event-feed');
 const { isEligibleEvent } = require('./event-eligibility');
 const { normalizeEventRecord, eventEndTime } = require('./event-model');
-const { formatCompactDate } = require('./event-publisher');
 const { keyFor, boardMessage } = require('./event-board');
 const { publishWeekly } = require('./event-weekly');
 const { publishNewActivities } = require('./event-announcements');
@@ -45,15 +44,6 @@ function createEventService({ channel, config, stateStore, fetchEventsImpl = fet
       return await exclusive(async () => {
         const current = now();
         const state = await load();
-        const today = formatCompactDate(current, config.eventTimeZone);
-        const hour = Number(new Intl.DateTimeFormat('en', { timeZone: config.eventTimeZone, hour: '2-digit', hourCycle: 'h23' }).format(current));
-        if (!force && (state.lastCompletedAt && formatCompactDate(new Date(state.lastCompletedAt), config.eventTimeZone) === today
-          || hour < config.eventScanHour)) {
-          const reminders = await deliverReminders({ state, config, now: current, save, send: sendReminderImpl });
-          await save(state);
-          if (latestResult) latestResult.reminders = reminders;
-          return { skipped: true, reason: '等待每日活動更新', reminders, at: current.toISOString() };
-        }
         const { events, errors } = await fetchEventsImpl(config, { now: current });
         const old = state.events || {};
         const updated = {};

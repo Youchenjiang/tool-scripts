@@ -1,6 +1,6 @@
 # Discord 自動新聞推送 Bot
 
-定時抓取 The Hacker News，由 AI 依 Discord 頻道中設定的規則篩選，再將符合條件的資安新聞用 Discord Embed 推送到指定頻道。Bot 也會每日從官方結構化來源尋找新的資安競賽、社群與研討會活動，去重後公告至獨立活動頻道。專案沿用 `Script-List/security/hacker-news-scraper` 的 Blogger JSON Feed 抓取方式，以及 `loss-found-app-bot` 的 `discord.js` Bot／slash command 架構。
+定時抓取 The Hacker News，由 AI 依 Discord 頻道中設定的規則篩選，再將符合條件的資安新聞用 Discord Embed 推送到指定頻道。Bot 也會定期從官方結構化來源尋找新的資安競賽、社群與研討會活動；非 CTF 活動在發現後公告，CTF 則整理成每週週報。專案沿用 `Script-List/security/hacker-news-scraper` 的 Blogger JSON Feed 抓取方式，以及 `loss-found-app-bot` 的 `discord.js` Bot／slash command 架構。
 
 互動式規則設定的使用流程、欄位與判斷契約請見 [Discord AI 新聞規則設定規格](./docs/ai-rule-setup-spec.md)。
 
@@ -22,7 +22,7 @@
 - `/news_now`：具「管理伺服器」權限者可立即檢查
 - `/news_ai_check`：實際測試 AI 供應商連線與結構化輸出
 - `/news_status`：查看上次檢查與推送數量
-- 每日從 CTFtime、OWASP、Taiwan Security Deadlines、已驗證的 KKTIX feed，以及 SCIST、BambooFox 公開日曆尋找未公告過的競賽、培訓、社群及研討會
+- 定期從 CTFtime、OWASP、Taiwan Security Deadlines、已驗證的 KKTIX feed，以及 SCIST、BambooFox 公開日曆尋找競賽、培訓、社群及研討會
 - 活動總表每天編輯同一則置頂訊息，以精簡列表提供私人分頁及比賽／社群分類，不再逐場公告
 - 每週從未來四週活動中整理跨類型精選；大量 CTF 合併為行程摘要，完整資料仍保留在總表
 - 成員可訂閱個別活動，在報名截止與開始前 24 小時收到私訊，並隨時取消
@@ -72,7 +72,7 @@ npm start
 
 若不希望啟動時立刻抓取，將 `PUSH_ON_START=false`。其他設定及預設值可參考 [.env.example](./.env.example)。
 
-活動雷達預設每天台灣時間 09:00 後執行一次，公告新發現且未公告過的活動；服務重啟不會重複發送。`EVENT_SCAN_HOUR`、`EVENT_TIME_ZONE`、`EVENT_LOOKAHEAD_DAYS` 與 `MAX_EVENTS_PER_RUN` 可調整時間、預看天數及單日公告上限。`EVENT_CHANNEL_ID` 預設為 `1536696484286824519`，因此既有 Northflank 環境不必新增變數；若要停用則設定 `EVENTS_ENABLED=false`。
+活動雷達依 `EVENT_POLL_INTERVAL_MINUTES` 輪詢，預設每 30 分鐘一次；第一次同步只建立基準，服務重啟不會補發或重複公告。`EVENT_TIME_ZONE` 與 `EVENT_LOOKAHEAD_DAYS` 可調整時區及預看天數。`EVENT_CHANNEL_ID` 預設為 `1536696484286824519`，因此既有 Northflank 環境不必新增變數；若要停用則設定 `EVENTS_ENABLED=false`。
 
 九個額外 RSS／Atom 來源已先登錄為觀察來源，不會進入新聞推送。要蒐集其可用率與更新頻率時可設定 `SOURCE_OBSERVATION_ENABLED=true`；觀察器每天輪流檢查最多 `MAX_SOURCES_PER_RUN` 個最久未檢查的來源，只保存健康狀態。連續七次失敗的來源會隔離，90 天沒有新文章的來源會停止自動檢查，兩者都不會偷偷轉成正式推送來源。
 

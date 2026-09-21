@@ -74,7 +74,7 @@ test('view buttons reply privately and never edit the public board', async () =>
   assert.equal(h.calls.filter(([type]) => type === 'edit').length, 0);
 });
 
-test('personal subscriptions persist and reminders run between daily source scans', async () => {
+test('personal subscriptions persist and reminders run during scheduled scans', async () => {
   const h = harness();
   h.setFeed({ events: [{ ...event, startsAt: '2026-09-22T01:00:00Z' }], errors: [] });
   const delivered = [];
@@ -87,4 +87,20 @@ test('personal subscriptions persist and reminders run between daily source scan
   assert.deepEqual(delivered, ['alice']);
   await service.handle({ ...interaction, guildId: null, channelId: 'dm', customId: `events:unsub:${keyFor(event)}` });
   assert.deepEqual(h.document.subscriptions, {});
+});
+
+test('scheduled runs detect activities added later on the same day', async () => {
+  const h = harness();
+  h.setFeed({ events: [{ ...event, kind: 'workshop', id: 'existing', aliases: ['existing'] }], errors: [] });
+  const service = h.make();
+  await service.run();
+  h.setFeed({ events: [
+    { ...event, kind: 'workshop', id: 'existing', aliases: ['existing'] },
+    { ...event, kind: 'community', id: 'new', aliases: ['new'], title: 'New community event' },
+  ], errors: [] });
+  const result = await service.run();
+  assert.equal(result.activityDiscovered, 1);
+  assert.equal(result.activityPublished, 1);
+  assert.match(h.calls.find(([type, body]) => type === 'send' && /New community event/u.test(body.content))?.[1].content,
+    /New community event/u);
 });
