@@ -44,10 +44,46 @@ function eventKind(text) {
 }
 
 function attendance(text, location) {
-  const online = /(?:線上|online)(?:活動|競賽|參與|舉辦|作戰|\s+(?:event|competition))/iu.test(text);
+  const online = /(?:線上|\bonline\b)(?:活動|競賽|參與|舉辦|作戰|\s+(?:event|competition))/iu.test(text);
   if (location && online) return 'hybrid';
   if (location) return 'onsite';
   return online ? 'online' : 'unknown';
+}
+
+function structuredPlace(value) {
+  const locations = asArray(value?.location);
+  const virtual = locations.some((item) => /VirtualLocation/iu.test(String(item?.['@type'] || ''))
+    || /^(?:Online Event|線上活動)$/iu.test(String(item?.name || item || '').trim()));
+  const physical = locations.find((item) => item && typeof item === 'object'
+    && !/VirtualLocation/iu.test(String(item['@type'] || '')));
+  const address = physical?.address && typeof physical.address === 'object' ? physical.address : {};
+  const venue = String(physical?.name || '').trim();
+  const city = String(address.addressLocality || '').trim();
+  const country = String(address.addressCountry?.name || address.addressCountry || '').trim();
+  const street = String(address.streetAddress || (typeof physical?.address === 'string' ? physical.address : '')).trim();
+  const mode = String(value?.eventAttendanceMode || '');
+  const online = virtual || /OnlineEventAttendanceMode/iu.test(mode);
+  const onsite = Boolean(physical) || /OfflineEventAttendanceMode/iu.test(mode);
+  return {
+    attendance: online && onsite ? 'hybrid' : online ? 'online' : onsite ? 'onsite' : 'unknown',
+    venue, city, country, address: street,
+    location: [venue, city, country, street].filter(Boolean).join(' / '),
+  };
+}
+
+function explicitRegistrationDeadline(html) {
+  const text = decodeHtml(html);
+  const patterns = [
+    /報名(?:延長至|截止(?:日期|時間)?)[^\d]{0,80}(\d{4})\s*[年\/]\s*(\d{1,2})\s*[月\/]\s*(\d{1,2})\s*(?:日)?[^\d]{0,40}(\d{1,2}):(\d{2})/iu,
+    /Registration Deadline[^\dA-Za-z]{0,80}(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})[^\d]{0,40}(\d{1,2}):(\d{2})/iu,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    const at = new Date(`${match[1]}-${String(match[2]).padStart(2, '0')}-${String(match[3]).padStart(2, '0')}T${String(match[4]).padStart(2, '0')}:${match[5]}:00+08:00`);
+    if (Number.isFinite(at.getTime())) return { at, kind: 'registration', note: '官方頁面明示報名截止' };
+  }
+  return null;
 }
 
 function safeEventUrl(value, feedUrl) {
@@ -119,16 +155,17 @@ function parseKktixEventPage(html, expectedUrl) {
   if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime())) {
     throw new Error('KKTIX event page contained invalid dates');
   }
-  const location = [value.location?.name, value.location?.address].map((item) => String(item || '').trim()).filter(Boolean);
-  const deadlines = asArray(value.offers).flatMap((offer) => {
+  const place = structuredPlace(value);
+  const explicitDeadline = explicitRegistrationDeadline(html);
+  const offerDeadlines = asArray(value.offers).flatMap((offer) => {
     const at = new Date(offer?.validThrough || '');
     return Number.isFinite(at.getTime()) ? [{ at, kind: 'registration', note: String(offer.name || '') }] : [];
   });
   return {
     startsAt,
     endsAt,
-    location: [...new Set(location)].join(' / '),
-    deadlines,
+    ...place,
+    deadlines: explicitDeadline ? [explicitDeadline] : offerDeadlines,
   };
 }
 
@@ -162,7 +199,8 @@ async function fetchKktixEvents({ source, start, finish, fetchImpl = fetch, maxD
         ...detail,
         start: detail.startsAt,
         finish: detail.endsAt,
-        attendance: attendance(combined, detail.location || event.location),
+        attendance: detail.attendance !== 'unknown'
+          ? detail.attendance : attendance(`${combined}\n${html}`, detail.location || event.location),
       });
     } catch {
       return event;

@@ -21,6 +21,7 @@ const atom = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">
 </feed>`;
 
 const detail = `<html><script type="application/ld+json">[{"@context":"http://schema.org","@type":"Event","name":"Cyber Range","url":"https://hitcon.kktix.cc/events/cyber-range","startDate":"2026-10-02T10:00:00.000+08:00","endDate":"2026-10-02T17:00:00.000+08:00","location":{"@type":"EventVenue","name":"台北會議中心","address":"台北市"},"offers":[{"@type":"Offer","name":"參賽票","validThrough":"2026-09-30T23:59:00.000+08:00"}]}]</script></html>`;
+const onlineDetail = `<html><script type="application/ld+json">[{"@type":"Event","url":"https://hitcon.kktix.cc/events/cyber-range","startDate":"2026-10-02T10:00:00+08:00","endDate":"2026-10-02T17:00:00+08:00","eventAttendanceMode":"https://schema.org/OnlineEventAttendanceMode","location":{"@type":"VirtualLocation","name":"Online Event"},"offers":[{"name":"資格通知","validThrough":"2026-09-22T17:00:00+08:00"}]}]</script><p>報名截止：2026 年 9 月 18 日 23:59</p><p>頒獎典禮地點：新北電競基地</p></html>`;
 
 test('KKTIX Atom parser extracts event time, venue and security category without following foreign links', () => {
   const events = parseKktixAtom(atom, source);
@@ -40,6 +41,15 @@ test('KKTIX event page parser uses matching JSON-LD dates, location and ticket d
   assert.equal(event.deadlines[0].at.toISOString(), '2026-09-30T15:59:00.000Z');
   assert.equal(event.deadlines[0].kind, 'registration');
   assert.throws(() => parseKktixEventPage(detail, 'https://hitcon.kktix.cc/events/other'), /matching structured data/u);
+});
+
+test('KKTIX parser keeps an online competition separate from its award venue and notification date', () => {
+  const event = parseKktixEventPage(onlineDetail, 'https://hitcon.kktix.cc/events/cyber-range');
+  assert.equal(event.attendance, 'online');
+  assert.equal(event.location, '');
+  assert.equal(event.venue, '');
+  assert.equal(event.deadlines[0].at.toISOString(), '2026-09-18T15:59:00.000Z');
+  assert.doesNotMatch(JSON.stringify(event), /新北電競基地|2026-09-22/u);
 });
 
 test('KKTIX fetch filters the date window before enriching candidate details', async () => {
