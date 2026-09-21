@@ -1,0 +1,133 @@
+# ==============================================================================
+# 🩺 Wazuh Runtime Agent Health Check
+#
+# 【功能說明】
+# 部署後向 Wazuh server API 取得 JWT，確認指定 agent 仍處於 active 狀態。
+# 這個 workflow 只驗證 runtime monitoring 是否在線，不把 Wazuh 當成一次性 CI scanner。
+#
+# 【必要設定】
+# Repository Variable: WAZUH_URL, WAZUH_AGENT_NAME
+# Repository Secret: WAZUH_API_USER, WAZUH_API_PASSWORD
+# Optional Variable: WAZUH_TLS_INSECURE=true（僅自簽憑證環境）
+# ==============================================================================
+
+name: Wazuh Runtime Health
+
+on:
+  workflow_call:
+    inputs:
+      agent_name:
+        description: Wazuh agent name override; defaults to WAZUH_AGENT_NAME
+        required: false
+        default: ''
+        type: string
+    secrets:
+      WAZUH_API_USER:
+        required: false
+      WAZUH_API_PASSWORD:
+        required: false
+
+  workflow_dispatch:
+    inputs:
+      agent_name:
+        description: Wazuh agent name override; defaults to WAZUH_AGENT_NAME
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    name: Verify Wazuh agent health
+    runs-on: ubuntu-latest
+    env:
+      WAZUH_URL: ${{ vars.WAZUH_URL }}
+      WAZUH_AGENT_NAME_DEFAULT: ${{ vars.WAZUH_AGENT_NAME }}
+      WAZUH_AGENT_NAME_INPUT: ${{ inputs.agent_name }}
+      WAZUH_TLS_INSECURE: ${{ vars.WAZUH_TLS_INSECURE }}
+      WAZUH_API_USER: ${{ secrets.WAZUH_API_USER }}
+      WAZUH_API_PASSWORD: ${{ secrets.WAZUH_API_PASSWORD }}
+
+    steps:
+      - name: Check Wazuh integration settings
+        id: config
+        shell: bash
+        run: |
+          agent_name="${WAZUH_AGENT_NAME_INPUT:-${WAZUH_AGENT_NAME_DEFAULT:-}}"
+
+          if [[ -n "${WAZUH_URL:-}" &&
+                -n "${agent_name}" &&
+                -n "${WAZUH_API_USER:-}" &&
+                -n "${WAZUH_API_PASSWORD:-}" ]]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+            echo "agent_name=${agent_name}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Wazuh health check skipped. Configure WAZUH_URL, WAZUH_AGENT_NAME and API credentials to enable it."
+          fi
+
+      - name: Verify Wazuh agent is active
+        if: ${{ steps.config.outputs.enabled == 'true' }}
+        shell: bash
+        env:
+          WAZUH_AGENT_NAME_RESOLVED: ${{ steps.config.outputs.agent_name }}
+        run: |
+          set -euo pipefail
+
+          curl_options=(--fail-with-body --silent --show-error --retry 3)
+          if [[ "${WAZUH_TLS_INSECURE:-false}" == "true" ]]; then
+            curl_options+=(--insecure)
+          fi
+
+          base_url="${WAZUH_URL%/}"
+          token="$(
+            curl "${curl_options[@]}" \
+              --user "${WAZUH_API_USER}:${WAZUH_API_PASSWORD}" \
+              --request POST "${base_url}/security/user/authenticate?raw=true"
+          )"
+
+          if [[ -z "${token}" ]]; then
+            echo "::error::Wazuh authentication returned an empty token."
+            exit 1
+          fi
+
+          agent_name_encoded="$(
+            printf '%s' "${WAZUH_AGENT_NAME_RESOLVED}" |
+              python -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read().strip(), safe=""))'
+          )"
+
+          curl "${curl_options[@]}" \
+            --header "Authorization: Bearer ${token}" \
+            "${base_url}/agents?name=${agent_name_encoded}&status=active&limit=10" \
+            > wazuh-agent.json
+
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          with open("wazuh-agent.json", encoding="utf-8") as handle:
+              data = json.load(handle)
+
+          name = os.environ["WAZUH_AGENT_NAME_RESOLVED"]
+          items = data.get("data", {}).get("affected_items", [])
+          match = next(
+              (
+                  item
+                  for item in items
+                  if item.get("name") == name and item.get("status") == "active"
+              ),
+              None,
+          )
+
+          if match is None:
+              print(f"Wazuh agent {name} is not active")
+              sys.exit(1)
+
+          print(
+              f"Wazuh agent {name}: active, "
+              f"lastKeepAlive={match.get('lastKeepAlive', 'n/a')}"
+          )
+          PY
