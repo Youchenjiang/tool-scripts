@@ -1,6 +1,9 @@
 # ==============================================================================
 # 🧰 Faraday Security Report Import
 #
+# 【生命週期】
+# Post-Merge / Pentest Collaboration：接收已完成的掃描 Artifact，供滲透測試與弱點協作使用。
+#
 # 【功能說明】
 # 從 GitHub Actions Artifact 下載 scanner report，並匯入 Faraday workspace。
 # Faraday 負責滲透測試與弱點協作；此 workflow 僅作為 CI 結果 connector。

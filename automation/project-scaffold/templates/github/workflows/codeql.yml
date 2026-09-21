@@ -1,6 +1,10 @@
 # ==============================================================================
 # 🔍 GitHub CodeQL SAST Analysis (靜態程式碼安全性與語意資料流分析)
 #
+# 【生命週期】
+# PR Gate / Soft Security Signal：PR 階段提供 SAST 結果；目前分析步驟採 continue-on-error，
+# 因此預設不把第三方分析失敗當成硬性合併阻擋。主要分支與每週排程會再次巡檢。
+#
 # 【功能說明】
 # 透過 GitHub 官方 CodeQL 引擎，對原始碼進行 AST 語意分析與污點資料流追蹤 (Dataflow / Taint Analysis)，
 # 深度偵測 SQL Injection、Command Injection、XSS、路徑遍歷 (Path Traversal)、不安全反序列化等嚴重漏洞。

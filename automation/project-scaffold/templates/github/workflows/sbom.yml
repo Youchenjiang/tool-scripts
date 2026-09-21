@@ -1,6 +1,10 @@
 # ==============================================================================
 # 📦 CycloneDX Software Bill of Materials (SBOM)
 #
+# 【生命週期】
+# PR Gate / Artifact-only：PR 階段只產生並保存 SBOM Artifact，不將 PR 資料送往外部平台。
+# Post-Merge：main / master Push 時才在已配置的情況下上傳正式 SBOM 至 Dependency-Track。
+#
 # 【功能說明】
 # 使用 Anchore Syft 掃描專案相依元件並產生 CycloneDX JSON SBOM。
 # SBOM 會保留為 GitHub Actions Artifact，供稽核、Dependency-Track、

@@ -1,6 +1,9 @@
 # ==============================================================================
 # 🔑 TruffleHog Secrets & Credential Leak Scan (機敏資訊與金鑰洩漏即時防禦)
 #
+# 【生命週期】
+# PR Gate / Security Gate：PR 階段優先攔截可驗證的 Secret 洩漏；主要分支 Push 時再巡檢一次。
+#
 # 【功能說明】
 # 深度掃描 Git Commit 歷史與變更檔案，精準辨識 800+ 種常見 API Keys、私人私鑰 (Private Keys)、
 # 資料庫連線字串、雲端憑證 (AWS, GCP, Azure, OpenAI, GitHub Tokens 等)。

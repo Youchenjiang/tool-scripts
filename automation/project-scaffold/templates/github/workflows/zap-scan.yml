@@ -1,6 +1,10 @@
 # ==============================================================================
 # 🛡️ OWASP ZAP Baseline Security Scan (DAST - 動態應用程式安全測試)
 #
+# 【生命週期】
+# Manual DAST：供人工指定 Dev / Staging URL 測試；一般 PR 不自動啟動。
+# Merge 後的自動 DAST 由 post-merge-security.yml 對 STAGING_URL 執行。
+#
 # 【功能說明】
 # 透過 OWASP ZAP 容器對目標 Web 應用程式發起黑箱動態漏洞掃描（如 XSS、CORS、
 # 安全 Header 缺失、Cookie 安全性等常見 Web 弱點）。

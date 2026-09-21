@@ -1,6 +1,10 @@
 # ==============================================================================
 # 🩺 Wazuh Runtime Agent Health Check
 #
+# 【生命週期】
+# Runtime Monitoring Verification：部署後只確認既有 Wazuh Agent 仍為 active；
+# Wazuh 本身應持續 24/7 執行，不把每次 CI 當成一次新的端點掃描。
+#
 # 【功能說明】
 # 部署後向 Wazuh server API 取得 JWT，確認指定 agent 仍處於 active 狀態。
 # 這個 workflow 只驗證 runtime monitoring 是否在線，不把 Wazuh 當成一次性 CI scanner。

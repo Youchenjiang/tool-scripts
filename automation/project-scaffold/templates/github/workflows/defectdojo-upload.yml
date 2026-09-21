@@ -1,6 +1,9 @@
 # ==============================================================================
 # 🗂️ DefectDojo Security Report Reimport
 #
+# 【生命週期】
+# Post-Merge Aggregation：作為報告聚合 connector，不負責掃描，也不在一般 PR 自動匯入結果。
+#
 # 【功能說明】
 # 將其他 GitHub Actions 工作產生的掃描報告 Artifact 送至 DefectDojo。
 # 使用 /api/v2/reimport-scan/，讓週期性 CI 掃描可以沿用既有 Test、

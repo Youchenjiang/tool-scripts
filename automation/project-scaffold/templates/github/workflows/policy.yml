@@ -1,6 +1,9 @@
 # ==============================================================================
 # 🚦 Repository Policy & Conventional Commit Gatekeeper (PR 與提交看門狗)
 #
+# 【生命週期】
+# PR Gate / Hard Gate：只在 Pull Request 階段執行，格式違規會直接讓檢查失敗。
+#
 # 【功能說明】
 # 1. 嚴格驗證 PR 標題與所有 Commit Subject 是否遵循 Conventional Commits 格式：
 #    `<type>(<scope>): <subject>` 或 `<type>: <subject>`

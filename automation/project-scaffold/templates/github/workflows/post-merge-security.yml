@@ -1,6 +1,9 @@
 # ==============================================================================
 # 🔐 Post-Merge Staging Security Validation
 #
+# 【生命週期】
+# Post-Merge Security：只在程式進入 main / master 後自動啟動部署層安全驗證。
+#
 # 【定位】
 # 在程式進入 main / master 後執行部署後安全驗證。此 workflow 不取代 PR gate；
 # CodeQL、TruffleHog 與 policy 仍應在 PR 階段先執行。
