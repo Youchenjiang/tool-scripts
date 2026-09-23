@@ -3,15 +3,11 @@ const { currentEvents, fingerprint, button } = require('./event-board');
 const { eventStartTime } = require('./event-model');
 
 const DAY = 86400000;
-const WEEKLY_FORMAT_VERSION = 6;
+const WEEKLY_FORMAT_VERSION = 7;
 const EMBED_TEXT_BUDGET = 5800;
 const EMBED_DESCRIPTION_LIMIT = 3800;
-const TOPIC_LABELS = {
-  web: 'Web', pwn: 'Pwn', reverse: 'Reverse', crypto: 'Crypto', forensics: '鑑識', malware: '惡意程式',
-  'threat-intelligence': '威脅情資', 'threat-hunting': '威脅獵捕', 'detection-engineering': '偵測工程',
-  network: '網路安全', cloud: '雲端安全', ics: 'ICS/OT', mobile: '行動安全', web3: 'Web3', 'ai-security': 'AI 安全',
-};
 const DEADLINE_LABELS = { registration: '報名截止', submission: '提交截止', selection: '甄選截止', materials: '資料截止' };
+const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 
 function weekKey(now, timeZone) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en', {
@@ -42,54 +38,6 @@ function localDateKey(value, timeZone) {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
-function shortDateTime(value, timeZone) {
-  const parts = localParts(value, timeZone);
-  return `${parts.month}/${parts.day} ${parts.hour}:${parts.minute}`;
-}
-
-function scheduleText(event, timeZone) {
-  const start = new Date(event.startsAt || event.start || '');
-  const finish = new Date(event.endsAt || event.finish || event.startsAt || event.start || '');
-  if (!Number.isFinite(start.getTime())) return '';
-  const startText = shortDateTime(start, timeZone);
-  if (!Number.isFinite(finish.getTime()) || finish.getTime() === start.getTime()) return startText;
-  const startParts = localParts(start, timeZone);
-  const finishParts = localParts(finish, timeZone);
-  const sameDay = startParts.year === finishParts.year && startParts.month === finishParts.month && startParts.day === finishParts.day;
-  return `${startText}–${sameDay ? `${finishParts.hour}:${finishParts.minute}` : shortDateTime(finish, timeZone)}`;
-}
-
-function attendanceText(event) {
-  if (event.attendance === 'online') return '線上';
-  if (event.attendance === 'onsite') return event.location ? `實體・${event.location}` : '實體';
-  if (event.attendance === 'hybrid') return event.location ? `線上／實體・${event.location}` : '線上／實體';
-  return '';
-}
-
-function teamText(event) {
-  if (['不限人數', '人數不限'].includes(event.teamSize)) return '不限人數';
-  if (event.teamSizeMin && event.teamSizeMax) {
-    return event.teamSizeMin === event.teamSizeMax ? `每隊 ${event.teamSizeMax} 人` : `每隊 ${event.teamSizeMin}–${event.teamSizeMax} 人`;
-  }
-  if (event.teamSizeMax) return `每隊最多 ${event.teamSizeMax} 人`;
-  const range = String(event.teamSize || '').match(/^(\d+)～(\d+)人$/u);
-  if (range) return `每隊 ${range[1]}–${range[2]} 人`;
-  const maximum = String(event.teamSize || '').match(/^(\d+)人$/u);
-  if (maximum) return `每隊最多 ${maximum[1]} 人`;
-  if (event.participation === 'individual') return '個人賽';
-  if (event.participation === 'team') return '團隊賽';
-  return '';
-}
-
-function topicText(event) {
-  const topics = (event.topics || []).map((topic) => TOPIC_LABELS[topic] || topic).filter(Boolean);
-  return topics.length ? `題型 ${topics.slice(0, 5).join('／')}${topics.length > 5 ? `／另 ${topics.length - 5} 類` : ''}` : '';
-}
-
-function levelText(event) {
-  return { beginner: '入門', foundational: '需具基礎', advanced: '進階' }[event.level] || '';
-}
-
 function knownDeadline(event, now) {
   return (event.deadlines || []).map((deadline) => ({ ...deadline, at: new Date(deadline.at) }))
     .filter(({ at, kind }) => DEADLINE_LABELS[kind] && Number.isFinite(at.getTime()) && at >= now)
@@ -98,91 +46,110 @@ function knownDeadline(event, now) {
 
 function safeTitle(value) { return String(value || '').replace(/[\[\]]/gu, '').trim().slice(0, 180); }
 
-function entryText(event, config, group, deadline) {
-  const schedule = scheduleText(event, config.eventTimeZone);
-  const title = `[${safeTitle(event.title)}](${event.officialUrl || event.url})`;
-  const lead = group === '即將截止'
-    ? `${DEADLINE_LABELS[deadline.kind]} ${shortDateTime(deadline.at, config.eventTimeZone)}`
-    : schedule;
-  const facts = [
-    group === '即將截止' && schedule ? `賽程 ${schedule}` : '', attendanceText(event),
-    teamText(event), levelText(event), topicText(event),
-  ].filter(Boolean);
-  return `**${lead ? `${lead}｜` : ''}${title}**${facts.length ? `\n${facts.join('・')}` : ''}`;
+function weekDateKeys(week) {
+  const start = new Date(`${week}T00:00:00Z`);
+  return Array.from({ length: 7 }, (_, index) => new Date(start.getTime() + index * DAY).toISOString().slice(0, 10));
 }
 
-function scheduleGroups(entries, config, now, week) {
-  const groups = new Map([
-    ['即將截止', []], ['進行中', []], ['本週開賽', []], ['下週開賽', []], ['後續賽程', []],
-  ]);
-  const weekTime = new Date(`${week}T00:00:00Z`).getTime();
-  for (const entry of entries) {
-    const { event } = entry;
-    const deadline = knownDeadline(event, now);
-    const start = new Date(event.startsAt || event.start || '');
-    const finish = new Date(event.endsAt || event.finish || event.startsAt || event.start || '');
-    let group;
-    if (deadline && deadline.at.getTime() - now.getTime() <= 7 * DAY) group = '即將截止';
-    else if (Number.isFinite(start.getTime()) && start <= now && finish >= now) group = '進行中';
-    else {
-      const dateKey = Number.isFinite(start.getTime()) ? localDateKey(start, config.eventTimeZone) : week;
-      const offset = Math.floor((new Date(`${dateKey}T00:00:00Z`).getTime() - weekTime) / DAY);
-      group = offset < 7 ? '本週開賽' : offset < 14 ? '下週開賽' : '後續賽程';
-    }
-    groups.get(group).push({ ...entry, deadline });
+function discordTime(value, style) {
+  return `<t:${Math.floor(new Date(value).getTime() / 1000)}:${style}>`;
+}
+
+function localClock(value, timeZone, includeDate = false) {
+  const parts = localParts(value, timeZone);
+  return `${includeDate ? `${parts.month}/${parts.day} ` : ''}${parts.hour}:${parts.minute}`;
+}
+
+function dailyStatus(event, dateKey, timeZone) {
+  const start = new Date(event.startsAt || event.start || '');
+  const finish = new Date(event.endsAt || event.finish || event.startsAt || event.start || '');
+  const startKey = localDateKey(start, timeZone);
+  const finishKey = localDateKey(finish, timeZone);
+  if (startKey === dateKey && finishKey === dateKey) {
+    return `${localClock(start, timeZone)}–${localClock(finish, timeZone)}（${discordTime(finish, 'R')}結束）`;
   }
-  for (const [name, values] of groups) values.sort((left, right) => {
-    const leftTime = name === '即將截止' ? left.deadline.at.getTime() : eventStartTime(left.event);
-    const rightTime = name === '即將截止' ? right.deadline.at.getTime() : eventStartTime(right.event);
-    return leftTime - rightTime || left.event.title.localeCompare(right.event.title);
-  });
-  return groups;
+  if (startKey === dateKey) return `${localClock(start, timeZone)} 開始・${localClock(finish, timeZone, true)} 結束（${discordTime(finish, 'R')}）`;
+  if (finishKey === dateKey) return `進行至 ${localClock(finish, timeZone)}（${discordTime(finish, 'R')}）`;
+  return `持續進行・${localClock(finish, timeZone, true)} 結束（${discordTime(finish, 'R')}）`;
 }
 
-function scheduleEmbeds(groups, config) {
+function dailyGroups(entries, config, week) {
+  return weekDateKeys(week).map((dateKey, index) => {
+    const values = entries.filter(({ event }) => {
+      const start = new Date(event.startsAt || event.start || '');
+      const finish = new Date(event.endsAt || event.finish || event.startsAt || event.start || '');
+      if (!Number.isFinite(start.getTime()) || !Number.isFinite(finish.getTime())) return false;
+      return localDateKey(start, config.eventTimeZone) <= dateKey
+        && localDateKey(finish, config.eventTimeZone) >= dateKey;
+    }).sort((left, right) => eventStartTime(left.event) - eventStartTime(right.event)
+      || left.event.title.localeCompare(right.event.title));
+    const [, month, day] = dateKey.split('-');
+    return { dateKey, title: `${Number(month)}/${Number(day)}（${WEEKDAYS[index]}）`, values };
+  });
+}
+
+function deadlineEntries(entries, now, week, timeZone) {
+  const dates = weekDateKeys(week);
+  return entries.flatMap((entry) => {
+    const deadline = knownDeadline(entry.event, now);
+    if (!deadline) return [];
+    const dateKey = localDateKey(deadline.at, timeZone);
+    return dateKey >= dates[0] && dateKey <= dates[6] ? [{ ...entry, deadline }] : [];
+  }).sort((left, right) => left.deadline.at - right.deadline.at);
+}
+
+function dailyEmbeds(entries, config, now, week) {
   const embeds = [];
   let used = 0;
   let omitted = 0;
-  for (const [heading, entries] of groups) {
-    let title = heading;
-    let description = '';
-    for (const entry of entries) {
-      const text = entryText(entry.event, config, heading, entry.deadline);
-      const addition = `${description ? '\n\n' : ''}${text}`;
-      if (description && description.length + addition.length > EMBED_DESCRIPTION_LIMIT) {
-        embeds.push(new EmbedBuilder().setColor(0x5865F2).setTitle(title).setDescription(description).toJSON());
-        used += title.length + description.length;
-        title = `${heading}（續）`;
-        description = '';
-      }
-      if (used + title.length + description.length + text.length > EMBED_TEXT_BUDGET || embeds.length >= 9) {
-        omitted += 1;
-        continue;
-      }
-      description += `${description ? '\n\n' : ''}${text}`;
+  const deadlines = deadlineEntries(entries, now, week, config.eventTimeZone);
+  if (deadlines.length) {
+    const lines = [];
+    for (const { event, deadline } of deadlines) {
+      const text = `**${DEADLINE_LABELS[deadline.kind]} ${localClock(deadline.at, config.eventTimeZone, true)}｜[${safeTitle(event.title)}](${event.officialUrl || event.url})**`;
+      if (lines.join('\n').length + text.length > EMBED_DESCRIPTION_LIMIT) omitted += 1;
+      else lines.push(text);
     }
-    if (description) {
-      embeds.push(new EmbedBuilder().setColor(0x5865F2).setTitle(title).setDescription(description).toJSON());
-      used += title.length + description.length;
+    const description = lines.join('\n');
+    embeds.push(new EmbedBuilder().setColor(0xF0B232).setTitle('本週報名期限').setDescription(description).toJSON());
+    used += '本週報名期限'.length + description.length;
+  }
+  for (const group of dailyGroups(entries, config, week)) {
+    const lines = [];
+    for (const { event } of group.values) {
+      const text = `**[${safeTitle(event.title)}](${event.officialUrl || event.url})**｜${dailyStatus(event, group.dateKey, config.eventTimeZone)}`;
+      if (used + group.title.length + lines.join('\n').length + text.length > EMBED_TEXT_BUDGET) omitted += 1;
+      else lines.push(text);
     }
+    const description = lines.join('\n') || '沒有賽事';
+    embeds.push(new EmbedBuilder().setColor(0x5865F2).setTitle(group.title).setDescription(description).toJSON());
+    used += group.title.length + description.length;
   }
   return { embeds, omitted };
 }
 
 function weeklyData(state, config, now) {
-  const limit = now.getTime() + 28 * 86400000;
-  const entries = currentEvents(state, now).filter(({ event, stale }) => !stale
-    && event.kind === 'ctf'
-    && (eventStartTime(event) <= limit
-      || event.deadlines.some(({ at }) => at.getTime() >= now.getTime() && at.getTime() <= limit)));
+  const week = weekKey(now, config.eventTimeZone);
+  const dates = weekDateKeys(week);
+  const entries = currentEvents(state, now).filter(({ event, stale }) => {
+    if (stale || event.kind !== 'ctf') return false;
+    const start = new Date(event.startsAt || event.start || '');
+    const finish = new Date(event.endsAt || event.finish || event.startsAt || event.start || '');
+    const overlapsWeek = Number.isFinite(start.getTime()) && Number.isFinite(finish.getTime())
+      && localDateKey(start, config.eventTimeZone) <= dates[6]
+      && localDateKey(finish, config.eventTimeZone) >= dates[0];
+    const deadlineThisWeek = event.deadlines.some(({ at }) => {
+      const key = localDateKey(at, config.eventTimeZone);
+      return key >= dates[0] && key <= dates[6];
+    });
+    return overlapsWeek || deadlineThisWeek;
+  });
   const signature = fingerprint({ format: WEEKLY_FORMAT_VERSION,
     entries: entries.map(({ key, event }) => ({ key, event })), partial: Boolean(state.sourceErrors?.length) });
-  const week = weekKey(now, config.eventTimeZone);
-  const groups = scheduleGroups(entries, config, now, week);
-  const { embeds, omitted } = scheduleEmbeds(groups, config);
-  let content = `**本週 CTF 賽程｜${week}**`;
+  const { embeds, omitted } = dailyEmbeds(entries, config, now, week);
+  let content = `**本週 CTF｜${dates[0].slice(5).replace('-', '/')}～${dates[6].slice(5).replace('-', '/')}**`;
   if (state.sourceErrors?.length) content += '\n部分來源暫時無法更新；本期僅列已確認賽事。';
-  if (omitted) content += `\n另有 ${omitted} 場超出 Discord 顯示容量，請從完整 CTF 賽程查看。`;
+  if (omitted) content += `\n另有 ${omitted} 個當日項目超出顯示容量，請從完整 CTF 賽程查看。`;
   const payload = {
     content, embeds, flags: 0, allowedMentions: { parse: [] }, attachments: [],
     components: [new ActionRowBuilder().addComponents(button('events:view:ctf:0', '完整 CTF 賽程'))],
@@ -210,4 +177,4 @@ async function publishWeekly({ state, channel, config, now, save }) {
   return previous?.week === next.week ? 0 : 1;
 }
 
-module.exports = { scheduleText, teamText, weekDayIndex, weekKey, weeklyData, publishWeekly };
+module.exports = { dailyGroups, dailyStatus, weekDayIndex, weekKey, weeklyData, publishWeekly };

@@ -4,7 +4,7 @@ const { publishWeekly, weeklyData, weekDayIndex, weekKey } = require('../src/eve
 const { currentEvents, fingerprint } = require('../src/event-board');
 const config = { eventTimeZone: 'Asia/Taipei' };
 const event = { id: 'one', sourceId: 'ctftime', title: 'Example CTF', url: 'https://example.org',
-  startsAt: '2026-10-01T00:00:00Z', endsAt: '2026-10-02T00:00:00Z', kind: 'ctf' };
+  startsAt: '2026-09-25T00:00:00Z', endsAt: '2026-09-26T00:00:00Z', kind: 'ctf' };
 const payloadText = (payload) => [payload.content, ...(payload.embeds || []).flatMap((embed) => [embed.title, embed.description])]
   .filter(Boolean).join('\n');
 
@@ -79,14 +79,14 @@ test('the weekly digest excludes non-CTF activities', () => {
   const result = weeklyData(state, config, new Date('2026-09-21T02:00:00Z'));
   const text = payloadText(result.payload);
   assert.equal(result.count, 1);
-  assert.match(result.payload.content, /本週 CTF 賽程/u);
+  assert.match(result.payload.content, /本週 CTF｜09\/21～09\/27/u);
   assert.match(text, /Example CTF/u);
   assert.doesNotMatch(text, /Blue Team Workshop|Security Competition/u);
   assert.equal(result.payload.components[0].components[0].data.custom_id, 'events:view:ctf:0');
   assert.equal(result.payload.components[0].components[0].data.label, '完整 CTF 賽程');
 });
 
-test('the schedule groups starts and known deadlines by calendar week', () => {
+test('the schedule shows this week by day and keeps known deadlines ahead of it', () => {
   const state = { events: {
     urgent: { event: { ...event, id: 'urgent', title: 'Registration closes soon', startsAt: '2026-10-10T00:00:00Z',
       endsAt: '2026-10-11T00:00:00Z', deadlines: [{ kind: 'registration', at: '2026-09-23T15:59:00Z' }] } },
@@ -95,22 +95,48 @@ test('the schedule groups starts and known deadlines by calendar week', () => {
   } };
   const result = weeklyData(state, config, new Date('2026-09-21T02:00:00Z'));
   const text = payloadText(result.payload);
-  assert.match(text, /即將截止[\s\S]*Registration closes soon/u);
-  assert.match(text, /本週開賽[\s\S]*This week/u);
-  assert.match(text, /下週開賽[\s\S]*Next week/u);
+  assert.match(text, /本週報名期限[\s\S]*Registration closes soon/u);
+  assert.match(text, /9\/25（五）[\s\S]*This week/u);
+  assert.match(text, /9\/26（六）[\s\S]*This week/u);
+  assert.doesNotMatch(text, /Next week/u);
 });
 
-test('the schedule shows confirmed facts and silently omits unknown fields', () => {
+test('the public schedule stays concise and moves detailed facts behind the button', () => {
   const state = { events: { one: { event: { ...event, startsAt: '2026-09-25T04:00:00Z', endsAt: '2026-09-26T08:30:00Z',
     attendance: 'online', teamSizeMax: 4, participation: 'team', level: 'foundational', topics: ['web', 'pwn'] } } } };
   const rich = payloadText(weeklyData(state, config, new Date('2026-09-21T02:00:00Z')).payload);
-  assert.match(rich, /09\/25 12:00–09\/26 16:30/u);
-  assert.match(rich, /線上・每隊最多 4 人・需具基礎・題型 Web／Pwn/u);
-  assert.doesNotMatch(rich, /28 小時 30 分鐘/u);
+  assert.match(rich, /9\/25（五）[\s\S]*Example CTF/u);
+  assert.match(rich, /9\/26（六）[\s\S]*Example CTF/u);
+  assert.doesNotMatch(rich, /線上|每隊最多|需具基礎|題型/u);
 
   const sparse = payloadText(weeklyData({ events: { one: { event } } }, config, new Date('2026-09-21T02:00:00Z')).payload);
   assert.doesNotMatch(sparse, /未公開|尚未公布|未確認|人數未標示|程度未標示|題型資訊/u);
   assert.equal(weeklyData(state, config, new Date('2026-09-21T02:00:00Z')).payload.flags, 0);
+});
+
+test('Sunday block alone answers which competitions remain playable that day', () => {
+  const values = [
+    ['nile', 'NileCTF', '2026-09-25T12:00:00Z', '2026-09-27T12:00:00Z'],
+    ['flight', 'FlightPath2026', '2026-09-25T13:30:00Z', '2026-09-27T21:00:00Z'],
+    ['bcs', 'BCS CTF 2026', '2026-09-25T14:00:00Z', '2026-09-27T14:00:00Z'],
+    ['h7', 'H7CTF 2026 Quals', '2026-09-26T03:30:00Z', '2026-09-27T15:30:00Z'],
+    ['faust', 'FAUST CTF 2026', '2026-09-26T12:00:00Z', '2026-09-26T21:00:00Z'],
+    ['sunshine', 'SunshineCTF 2026', '2026-09-26T14:00:00Z', '2026-09-28T14:00:00Z'],
+    ['pointer', 'Pointer Overflow CTF', '2026-09-27T14:00:00Z', '2026-12-06T14:00:00Z'],
+  ];
+  const state = { events: Object.fromEntries(values.map(([id, title, startsAt, endsAt]) => [id, {
+    event: { ...event, id, title, startsAt, endsAt, url: `https://example.org/${id}` },
+  }])) };
+  const result = weeklyData(state, config, new Date('2026-09-21T02:00:00Z'));
+  const sunday = result.payload.embeds.find((embed) => embed.title === '9/27（日）');
+  assert.ok(sunday);
+  for (const title of values.map(([, title]) => title)) assert.match(sunday.description, new RegExp(title, 'u'));
+  assert.match(sunday.description, /NileCTF[^\n]*進行至/u);
+  assert.match(sunday.description, /NileCTF[^\n]*20:00/u);
+  assert.match(sunday.description, /FAUST CTF 2026[^\n]*進行至/u);
+  assert.match(sunday.description, /FAUST CTF 2026[^\n]*05:00/u);
+  assert.match(sunday.description, /Pointer Overflow CTF[^\n]*開始/u);
+  assert.match(sunday.description, /Pointer Overflow CTF[^\n]*22:00/u);
 });
 
 test('a new digest is not backfilled after Tuesday but an existing digest can still be edited', async () => {
