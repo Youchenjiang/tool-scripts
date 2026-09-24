@@ -1,10 +1,15 @@
 const { MessageFlags, PermissionFlagsBits } = require('discord.js');
 
 function createEventInteractionHandler({ config, getEventService, runEventPublisher }) {
+  function channelIdFor(interaction) {
+    if (interaction.guildId) return interaction.channelId;
+    return interaction.customId?.match(/^events:unsub:(\d+):/u)?.[1] || config.eventChannelId;
+  }
+
   async function handleComponent(interaction) {
     if (!interaction.customId?.startsWith('events:')) return false;
     try {
-      const eventService = getEventService();
+      const eventService = getEventService(channelIdFor(interaction));
       if (eventService) await eventService.handle(interaction);
       else await interaction.reply({ content: '活動功能尚未準備完成。', flags: MessageFlags.Ephemeral });
     } catch (error) {
@@ -22,7 +27,8 @@ function createEventInteractionHandler({ config, getEventService, runEventPublis
       await interaction.reply({ content: '資安活動推送目前未啟用。', flags: MessageFlags.Ephemeral });
       return;
     }
-    const status = getEventService()?.getStatus();
+    const eventChannelId = channelIdFor(interaction);
+    const status = getEventService(eventChannelId)?.getStatus();
     const latest = status?.latestResult;
     const text = latest
       ? [
@@ -31,7 +37,7 @@ function createEventInteractionHandler({ config, getEventService, runEventPublis
         latest.skipped
           ? `狀態：${latest.reason}`
           : `讀取 ${latest.checked} 場／資料庫新增 ${latest.discovered} 場／活動公告 ${latest.activityPublished ?? 0} 則（${latest.activityDiscovered ?? 0} 場）／新 CTF 週報 ${latest.published} 則`,
-        latest.boardId ? `活動總表：https://discord.com/channels/${interaction.guildId}/${config.eventChannelId}/${latest.boardId}` : null,
+        latest.boardId ? `活動總表：https://discord.com/channels/${interaction.guildId}/${eventChannelId}/${latest.boardId}` : null,
         latest.reminders ? `本輪私訊：送出 ${latest.reminders.sent} 則／失敗 ${latest.reminders.failed} 則` : null,
         latest.sourceErrors?.length ? `來源錯誤：${latest.sourceErrors.join('；')}` : null,
       ].filter(Boolean).join('\n')
@@ -44,13 +50,14 @@ function createEventInteractionHandler({ config, getEventService, runEventPublis
       await interaction.reply({ content: '你需要「管理伺服器」權限。', flags: MessageFlags.Ephemeral });
       return;
     }
-    if (!getEventService()) {
+    const eventChannelId = channelIdFor(interaction);
+    if (!getEventService(eventChannelId)) {
       await interaction.reply({ content: '活動推送尚未啟用或 Bot 尚未完成啟動。', flags: MessageFlags.Ephemeral });
       return;
     }
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
-      const result = await runEventPublisher('command', { force: true });
+      const result = await runEventPublisher('command', { force: true }, eventChannelId);
       await interaction.editReply(
         result.skipped ? result.reason
           : `總表已更新：讀取 ${result.checked} 場，資料庫新增 ${result.discovered} 場，活動公告 ${result.activityPublished ?? 0} 則（${result.activityDiscovered ?? 0} 場），新 CTF 週報 ${result.published} 則。`,

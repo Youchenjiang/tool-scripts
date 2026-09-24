@@ -86,7 +86,17 @@ function createEventService({ channel, config, stateStore, fetchEventsImpl = fet
     await interaction.deferReply(interaction.guildId ? { flags: MessageFlags.Ephemeral } : {});
     await exclusive(async () => {
       const state = await load();
-      const [, action, filter, page] = interaction.customId.split(':');
+      const parts = interaction.customId.split(':');
+      let [, action, filter, page] = parts;
+      if (dmUnsubscribe && parts.length >= 4) {
+        const eventChannelId = parts[2];
+        if (eventChannelId !== config.eventChannelId) {
+          await interaction.editReply({ content: '此操作不屬於目前的活動頻道。', components: [] });
+          return;
+        }
+        filter = parts[3];
+        page = undefined;
+      }
       if (action === 'view' || action === 'page') {
         const visible = filter === 'mine' ? { ...state, events: Object.fromEntries(Object.entries(state.events)
           .filter(([key]) => state.subscriptions?.[`${interaction.user.id}:${key}`])) } : state;

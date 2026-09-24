@@ -71,7 +71,9 @@ async function deliverReminders({ state, config, now, save, send }) {
         await send(item.userId, {
           content: `**${notice.label}**\n${compactEvent(event, config.eventTimeZone, now)}`.slice(0, 2000),
           allowedMentions: { parse: [] }, flags: MessageFlags.SuppressEmbeds,
-          components: [new ActionRowBuilder().addComponents(button(`events:unsub:${item.eventKey}`, '取消此活動提醒'))],
+          components: [new ActionRowBuilder().addComponents(
+            button(`events:unsub:${config.eventChannelId}:${item.eventKey}`, '取消此活動提醒'),
+          )],
         });
         item.notices[id].status = 'sent'; sent += 1;
       } catch (error) {

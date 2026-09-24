@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { subscribe, unsubscribe, pruneSubscriptions, deliverReminders, sendMemberReminder } = require('../src/event-subscriptions');
 
 const now = new Date('2026-09-21T02:00:00Z');
-const config = { eventTimeZone: 'Asia/Taipei' };
+const config = { eventTimeZone: 'Asia/Taipei', eventChannelId: '222' };
 function state() {
   return { events: { one: { verifiedAt: now.toISOString(), event: {
     id: 'one', sourceId: 'ctftime', title: 'CTF', url: 'https://example.org',
@@ -32,6 +32,7 @@ test('reminders send once per member and milestone even after restart', async ()
   assert.ok(messages.every(([user]) => user === 'alice'));
   assert.match(messages[0][1].content, /24 小時內開始/);
   assert.match(messages[1][1].content, /24 小時內截止/);
+  assert.equal(messages[0][1].components[0].components[0].data.custom_id, 'events:unsub:222:one');
 });
 
 test('blocked DMs are recorded without retry storms or a public fallback', async () => {

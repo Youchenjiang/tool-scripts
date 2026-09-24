@@ -34,7 +34,19 @@ function readTimeZone(name, fallback) {
   return value;
 }
 
+function parseChannelIds(value, fallback) {
+  const ids = [...new Set(String(value || fallback).split(',').map((item) => item.trim()).filter(Boolean))];
+  if (!ids.length || ids.some((id) => !/^\d+$/u.test(id))) {
+    throw new Error('EVENT_CHANNEL_IDS must be a comma-separated list of Discord channel IDs');
+  }
+  return ids;
+}
+
 function loadConfig() {
+  const eventChannelIds = parseChannelIds(
+    process.env.EVENT_CHANNEL_IDS || process.env.EVENT_CHANNEL_ID,
+    '1536696484286824519',
+  );
   return {
     token: required('DISCORD_TOKEN'),
     clientId: process.env.DISCORD_CLIENT_ID?.trim() || '',
@@ -58,7 +70,8 @@ function loadConfig() {
     sourceObservationIntervalMs: readPositiveInteger('SOURCE_OBSERVATION_INTERVAL_MINUTES', 1440) * 60_000,
     maxSourcesPerRun: readPositiveInteger('MAX_SOURCES_PER_RUN', 3),
     eventsEnabled: readBoolean('EVENTS_ENABLED', true),
-    eventChannelId: process.env.EVENT_CHANNEL_ID?.trim() || '1536696484286824519',
+    eventChannelId: eventChannelIds[0],
+    eventChannelIds,
     eventPollIntervalMs: readPositiveInteger('EVENT_POLL_INTERVAL_MINUTES', 30) * 60_000,
     eventWeeklyEnabled: readBoolean('EVENT_WEEKLY_ENABLED', true),
     eventTimeZone: readTimeZone('EVENT_TIME_ZONE', 'Asia/Taipei'),
@@ -80,4 +93,4 @@ function loadConfig() {
   };
 }
 
-module.exports = { loadConfig, readBoolean, readPositiveInteger, readTimeZone };
+module.exports = { loadConfig, parseChannelIds, readBoolean, readPositiveInteger, readTimeZone };

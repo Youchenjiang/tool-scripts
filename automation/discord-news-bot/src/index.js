@@ -24,12 +24,12 @@ async function main() {
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
   const stateStore = createStateStore(config);
   let publisher;
-  let eventPublisher;
+  const eventPublishers = new Map();
   let sourceObserver;
   let ruleSetup;
   const eventInteractions = createEventInteractionHandler({
     config,
-    getEventService: () => eventPublisher,
+    getEventService: (channelId) => eventPublishers.get(channelId),
     runEventPublisher,
   });
   const newsInteractions = createNewsInteractionHandler({
@@ -74,22 +74,29 @@ async function main() {
         console.log(`[Bot] Source observation: enabled, ${config.maxSourcesPerRun} source(s) per run`);
       }
       if (config.eventsEnabled) {
-        eventPublisher = await initializeOptionalFeature('Events', async () => {
-          const eventChannel = await readyClient.channels.fetch(config.eventChannelId);
-          if (!eventChannel?.isTextBased() || !('send' in eventChannel)) {
-            throw new Error(`EVENT_CHANNEL_ID ${config.eventChannelId} is not a sendable text channel`);
-          }
-          const service = createEventService({
-            channel: eventChannel,
-            config,
-            stateStore,
+        for (const eventChannelId of config.eventChannelIds) {
+          const service = await initializeOptionalFeature(`Events:${eventChannelId}`, async () => {
+            const eventChannel = await readyClient.channels.fetch(eventChannelId);
+            if (!eventChannel?.isTextBased() || !('send' in eventChannel)) {
+              throw new Error(`Event channel ${eventChannelId} is not a sendable text channel`);
+            }
+            const channelConfig = { ...config, eventChannelId };
+            const initialized = createEventService({
+              channel: eventChannel,
+              config: channelConfig,
+              stateStore,
+            });
+            eventPublishers.set(eventChannelId, initialized);
+            await runEventPublisher('startup', {}, eventChannelId).catch(() => {});
+            scheduleRecurringTask(
+              () => runEventPublisher('schedule', {}, eventChannelId),
+              config.eventPollIntervalMs,
+            );
+            return initialized;
           });
-          eventPublisher = service;
-          await runEventPublisher('startup').catch(() => {});
-          scheduleRecurringTask(() => runEventPublisher('schedule'), config.eventPollIntervalMs);
-          console.log(`[Bot] Security events: polling every ${config.eventPollIntervalMs / 60_000} minute(s)`);
-          return service;
-        });
+          if (!service) eventPublishers.delete(eventChannelId);
+        }
+        console.log(`[Bot] Security events: ${eventPublishers.size}/${config.eventChannelIds.length} channel(s), polling every ${config.eventPollIntervalMs / 60_000} minute(s)`);
       }
       if (config.pushOnStart) await runPublisher('startup').catch(() => {});
       scheduleRecurringTask(() => runPublisher('schedule'), config.pollIntervalMs);
@@ -112,13 +119,15 @@ async function main() {
     }
   }
 
-  async function runEventPublisher(trigger, options = {}) {
+  async function runEventPublisher(trigger, options = {}, eventChannelId = config.eventChannelId) {
     try {
+      const eventPublisher = eventPublishers.get(eventChannelId);
+      if (!eventPublisher) throw new Error(`Event channel ${eventChannelId} is not initialized`);
       const result = await eventPublisher.run(options);
-      console.log('[Task]', createTaskLogRecord('events', trigger, result));
+      console.log('[Task]', createTaskLogRecord(`events:${eventChannelId}`, trigger, result));
       return result;
     } catch (error) {
-      console.error('[Task]', createTaskErrorRecord('events', trigger, error));
+      console.error('[Task]', createTaskErrorRecord(`events:${eventChannelId}`, trigger, error));
       throw error;
     }
   }
