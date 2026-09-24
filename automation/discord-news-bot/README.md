@@ -50,7 +50,7 @@ DISCORD_TOKEN=機器人權杖
 DISCORD_CLIENT_ID=Application_ID
 DISCORD_GUILD_ID=測試伺服器_ID
 DISCORD_CHANNEL_ID=新聞頻道_ID
-EVENT_CHANNEL_ID=1536696484286824519
+EVENT_CHANNEL_IDS=1536696484286824519,1552523178298056724
 AI_BASE_URL=供應商的_OpenAI_相容端點
 AI_API_KEY=供應商的_API_Key
 AI_MODEL=供應商的模型_ID
@@ -72,7 +72,7 @@ npm start
 
 若不希望啟動時立刻抓取，將 `PUSH_ON_START=false`。其他設定及預設值可參考 [.env.example](./.env.example)。
 
-活動雷達依 `EVENT_POLL_INTERVAL_MINUTES` 輪詢，預設每 30 分鐘一次；第一次同步只建立基準，服務重啟不會補發或重複公告。`EVENT_TIME_ZONE` 與 `EVENT_LOOKAHEAD_DAYS` 可調整時區及預看天數。`EVENT_CHANNEL_ID` 預設為 `1536696484286824519`，因此既有 Northflank 環境不必新增變數；若要停用則設定 `EVENTS_ENABLED=false`。
+活動雷達依 `EVENT_POLL_INTERVAL_MINUTES` 輪詢，預設每 30 分鐘一次；第一次同步只建立基準，服務重啟不會補發或重複公告。`EVENT_TIME_ZONE` 與 `EVENT_LOOKAHEAD_DAYS` 可調整時區及預看天數。`EVENT_CHANNEL_IDS` 接受以逗號分隔的頻道 ID，每個頻道會維護獨立的活動總表、CTF 週報、去重狀態及個人訂閱。未設定時仍支援舊的 `EVENT_CHANNEL_ID`，兩者皆未設定則使用 `1536696484286824519`；若要停用則設定 `EVENTS_ENABLED=false`。
 
 九個額外 RSS／Atom 來源已先登錄為觀察來源，不會進入新聞推送。要蒐集其可用率與更新頻率時可設定 `SOURCE_OBSERVATION_ENABLED=true`；觀察器每天輪流檢查最多 `MAX_SOURCES_PER_RUN` 個最久未檢查的來源，只保存健康狀態。連續七次失敗的來源會隔離，90 天沒有新文章的來源會停止自動檢查，兩者都不會偷偷轉成正式推送來源。
 
