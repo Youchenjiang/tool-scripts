@@ -14,6 +14,7 @@ const { formatRuleConfig } = require('./rule-options');
 const { createRuleSetupManager } = require('./rule-setup');
 const { createStateStore } = require('./state-store');
 const { createSourceObserver } = require('./source-observer');
+const { scheduleRecurringTask } = require('./task-scheduler');
 
 async function main() {
   const config = loadConfig();
@@ -55,9 +56,7 @@ async function main() {
       if (config.sourceObservationEnabled) {
         sourceObserver = createSourceObserver({ config, stateStore });
         void runSourceObserver('startup').catch(() => {});
-        setInterval(() => {
-          void runSourceObserver('schedule').catch(() => {});
-        }, config.sourceObservationIntervalMs).unref();
+        scheduleRecurringTask(() => runSourceObserver('schedule'), config.sourceObservationIntervalMs);
         console.log(`[Bot] Source observation: enabled, ${config.maxSourcesPerRun} source(s) per run`);
       }
       if (config.eventsEnabled) {
@@ -71,15 +70,11 @@ async function main() {
           stateStore,
         });
         await runEventPublisher('startup').catch(() => {});
-        setInterval(() => {
-          void runEventPublisher('schedule').catch(() => {});
-        }, config.eventPollIntervalMs).unref();
+        scheduleRecurringTask(() => runEventPublisher('schedule'), config.eventPollIntervalMs);
         console.log(`[Bot] Security events: polling every ${config.eventPollIntervalMs / 60_000} minute(s)`);
       }
       if (config.pushOnStart) await runPublisher('startup').catch(() => {});
-      setInterval(() => {
-        void runPublisher('schedule').catch(() => {});
-      }, config.pollIntervalMs).unref();
+      scheduleRecurringTask(() => runPublisher('schedule'), config.pollIntervalMs);
       console.log(`[Bot] Polling every ${config.pollIntervalMs / 60_000} minute(s)`);
     } catch (error) {
       console.error(`[Bot setup] ${error.stack || error.message}`);
