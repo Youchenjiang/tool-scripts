@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 256 256">
+  <circle cx="128" cy="128" r="128" fill="#071a2f"/>
+
+  <g transform="translate(12.8 12.8) scale(0.9)">
+    <path
+      d="M128 34 L214 66 V119 C214 167 185 202 128 222 C71 202 42 167 42 119 V66 Z"
+      fill="none"
+      stroke="#f4f8fb"
+      stroke-width="13"
+      stroke-linejoin="round"
+    />
+
+    <circle
+      cx="128"
+      cy="124"
+      r="47"
+      fill="none"
+      stroke="#16dff1"
+      stroke-width="9"
+    />
+
+    <path
+      d="M128 124 L128 78 A46 46 0 0 1 163 94 Z"
+      fill="#16dff1"
+    />
+    <circle
+      cx="128"
+      cy="124"
+      r="11"
+      fill="#071a2f"
+      stroke="#16dff1"
+      stroke-width="7"
+    />
+  </g>
+</svg>
