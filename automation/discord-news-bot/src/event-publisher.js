@@ -1,5 +1,4 @@
 const { MessageFlags } = require('discord.js');
-const { fetchSecurityEvents } = require('./event-feed');
 
 const DIRECTION_LABELS = { red: '🔴 紅隊', blue: '🔵 藍隊', purple: '🟣 紫隊', general: '⚪ 綜合' };
 const KIND_LABELS = { ctf: 'CTF', competition: '競賽', training: '培訓', workshop: '工作坊', conference: '研討會', community: '社群小聚', cfp: '徵稿', event: '活動' };
@@ -34,9 +33,7 @@ function formatCompactDateTime(date, timeZone) {
   return `${parts.year}${parts.month}${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
-function localHour(date, timeZone) { return Number(dateParts(date, timeZone, true).hour); }
 function markdownLinkTitle(value) { return String(value || '').replace(/[\[\]]/gu, '').trim().slice(0, 200); }
-function eventAliases(event) { return [...new Set([event.id, ...(event.aliases || [])].filter(Boolean))]; }
 
 function directionLabel(directions, kind) {
   const values = (directions || []).filter((value, index, all) => value !== 'unspecified' && all.indexOf(value) === index);
@@ -135,61 +132,7 @@ function createEventMessage(event, timeZone = 'Asia/Taipei', current = new Date(
   };
 }
 
-function nextDeadlineTime(event, current) {
-  return (event.deadlines || []).map(({ at }) => new Date(at).getTime())
-    .find((value) => Number.isFinite(value) && value >= current.getTime()) ?? Number.POSITIVE_INFINITY;
-}
-
-function eventStartTime(event) {
-  const value = new Date(event.startsAt || event.start || '').getTime();
-  return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
-}
-
-function createEventPublisher({ channel, config, stateStore, fetchEventsImpl = fetchSecurityEvents, now = () => new Date() }) {
-  const stateKey = `security-events:${config.eventChannelId}`;
-  let running = false;
-  let latestResult = null;
-  async function saveCheckpoint(sent, lastCheckedAt) { await stateStore.saveNamedState(stateKey, { sentIds: [...sent], lastCheckedAt }); }
-
-  async function run({ force = false } = {}) {
-    if (running) return { skipped: true, reason: '活動檢查正在執行中' };
-    running = true;
-    try {
-      const current = now();
-      const state = await stateStore.loadNamedState(stateKey);
-      const currentDate = formatCompactDate(current, config.eventTimeZone);
-      const previousDate = state.lastCheckedAt ? formatCompactDate(new Date(state.lastCheckedAt), config.eventTimeZone) : '';
-      if (!force && previousDate === currentDate) {
-        latestResult = { skipped: true, reason: '今天已完成活動檢查', at: current.toISOString() };
-        return latestResult;
-      }
-      if (!force && localHour(current, config.eventTimeZone) < config.eventScanHour) {
-        latestResult = { skipped: true, reason: `等待每日 ${String(config.eventScanHour).padStart(2, '0')}:00 檢查`, at: current.toISOString() };
-        return latestResult;
-      }
-      const { events, errors } = await fetchEventsImpl(config, { now: current });
-      const sent = new Set(state.sentIds);
-      const isSent = (event) => eventAliases(event).some((id) => sent.has(id));
-      const discovered = events.filter((event) => !isSent(event));
-      const pending = discovered.sort((left, right) => nextDeadlineTime(left, current) - nextDeadlineTime(right, current)
-        || eventStartTime(left) - eventStartTime(right)).slice(0, config.maxEventsPerRun);
-      let published = 0;
-      for (const event of pending) {
-        await channel.send(createEventMessage(event, config.eventTimeZone, current));
-        for (const id of eventAliases(event)) sent.add(id);
-        published += 1;
-        await saveCheckpoint(sent, state.lastCheckedAt);
-      }
-      const at = current.toISOString();
-      await saveCheckpoint(sent, at);
-      latestResult = { checked: events.length, discovered: discovered.length, published, sourceErrors: errors, at };
-      return latestResult;
-    } finally { running = false; }
-  }
-  return { run, getStatus: () => ({ running, latestResult, stateStore: stateStore.kind }) };
-}
-
 module.exports = {
-  createEventMessage, createEventPublisher, eventDecisionLine, eventTimingLine, formatCompactDate, formatCompactDateTime,
+  createEventMessage, eventDecisionLine, eventTimingLine, formatCompactDate, formatCompactDateTime,
   fullAddressLine, locationLine, publicPlace,
 };

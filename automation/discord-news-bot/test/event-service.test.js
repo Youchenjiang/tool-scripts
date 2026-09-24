@@ -14,7 +14,7 @@ function harness() {
     edit: async (body) => { calls.push(['edit', body]); }, pin: async () => { message.pinned = true; calls.push(['pin']); } };
   const channel = { id: '10', guild: { id: '30' },
     messages: { fetch: async () => message }, send: async (body) => { calls.push(['send', body]); return message; } };
-  const config = { eventChannelId: '10', eventTimeZone: 'Asia/Taipei', eventScanHour: 9, eventWeeklyEnabled: false };
+  const config = { eventChannelId: '10', eventTimeZone: 'Asia/Taipei', eventWeeklyEnabled: false };
   const store = { loadEventDocument: async () => structuredClone(document),
     saveEventDocument: async (_id, value) => { document = JSON.parse(JSON.stringify(value)); } };
   const make = (options = {}) => createEventService({ channel, config, stateStore: store, now: () => current,

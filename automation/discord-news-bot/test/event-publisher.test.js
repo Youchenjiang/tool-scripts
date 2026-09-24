@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { MessageFlags } = require('discord.js');
-const { createEventMessage, createEventPublisher } = require('../src/event-publisher');
+const { createEventMessage } = require('../src/event-publisher');
 
 function sampleEvent(overrides = {}) {
   return {
@@ -71,52 +71,4 @@ test('event announcement omits an unclassified CTF direction instead of presenti
   const message = createEventMessage(sampleEvent({ directions: ['unspecified'], topics: [] }));
   assert.match(message.content, /\nCTF｜具基礎｜最多 5 人\n/u);
   assert.doesNotMatch(message.content, /綜合/u);
-});
-
-test('event publisher prioritizes nearest deadline and persists every alias', async () => {
-  const sentMessages = [];
-  let savedState = { sentIds: [], lastCheckedAt: null };
-  const stateStore = {
-    kind: 'memory', loadNamedState: async () => ({ ...savedState, sentIds: [...savedState.sentIds] }),
-    saveNamedState: async (_key, state) => { savedState = { ...state, sentIds: [...state.sentIds] }; },
-  };
-  const later = sampleEvent({ id: 'later', aliases: ['later'] });
-  const nearer = sampleEvent({ id: 'nearer', aliases: ['nearer', 'organizer:nearer'], title: 'Nearer deadline', deadlines: [{ at: new Date('2026-09-12T00:00:00Z'), kind: 'registration' }] });
-  const publisher = createEventPublisher({
-    channel: { send: async (message) => sentMessages.push(message) },
-    config: { eventChannelId: 'events', eventTimeZone: 'Asia/Taipei', eventScanHour: 9, maxEventsPerRun: 1 }, stateStore,
-    now: () => new Date('2026-09-01T04:30:00Z'), fetchEventsImpl: async () => ({ events: [later, nearer], errors: [] }),
-  });
-  assert.equal((await publisher.run()).published, 1);
-  assert.match(sentMessages[0].content, /Nearer deadline/u);
-  assert.deepEqual(savedState.sentIds.sort(), ['nearer', 'organizer:nearer']);
-  assert.equal((await publisher.run()).skipped, true);
-  assert.equal((await publisher.run({ force: true })).published, 1);
-});
-
-test('event publisher treats any sent alias as the same event', async () => {
-  const sentMessages = [];
-  let savedState = { sentIds: ['organizer:holmes-2026'], lastCheckedAt: null };
-  const publisher = createEventPublisher({
-    channel: { send: async (message) => sentMessages.push(message) },
-    config: { eventChannelId: 'events', eventTimeZone: 'Asia/Taipei', eventScanHour: 0, maxEventsPerRun: 5 },
-    stateStore: { kind: 'memory', loadNamedState: async () => savedState, saveNamedState: async (_key, state) => { savedState = state; } },
-    now: () => new Date('2026-09-01T04:30:00Z'), fetchEventsImpl: async () => ({ events: [sampleEvent()], errors: [] }),
-  });
-  const result = await publisher.run({ force: true });
-  assert.equal(result.discovered, 0);
-  assert.equal(result.published, 0);
-  assert.equal(sentMessages.length, 0);
-});
-
-test('event publisher waits until configured local scan hour', async () => {
-  const publisher = createEventPublisher({
-    channel: { send: async () => { throw new Error('should not publish'); } },
-    config: { eventChannelId: 'events', eventTimeZone: 'Asia/Taipei', eventScanHour: 9, maxEventsPerRun: 5 },
-    stateStore: { kind: 'memory', loadNamedState: async () => ({ sentIds: [], lastCheckedAt: null }), saveNamedState: async () => {} },
-    now: () => new Date('2026-09-17T23:30:00Z'), fetchEventsImpl: async () => { throw new Error('should not fetch'); },
-  });
-  const result = await publisher.run();
-  assert.equal(result.skipped, true);
-  assert.match(result.reason, /09:00/u);
 });

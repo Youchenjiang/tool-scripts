@@ -24,16 +24,6 @@ function required(name) {
   return value;
 }
 
-function readHour(name, fallback) {
-  const raw = process.env[name];
-  if (raw === undefined || raw === '') return fallback;
-  const value = Number(raw);
-  if (!Number.isInteger(value) || value < 0 || value > 23) {
-    throw new Error(`${name} must be an integer from 0 to 23`);
-  }
-  return value;
-}
-
 function readTimeZone(name, fallback) {
   const value = process.env[name]?.trim() || fallback;
   try {
@@ -70,7 +60,6 @@ function loadConfig() {
     eventsEnabled: readBoolean('EVENTS_ENABLED', true),
     eventChannelId: process.env.EVENT_CHANNEL_ID?.trim() || '1536696484286824519',
     eventPollIntervalMs: readPositiveInteger('EVENT_POLL_INTERVAL_MINUTES', 30) * 60_000,
-    eventScanHour: readHour('EVENT_SCAN_HOUR', 9),
     eventWeeklyEnabled: readBoolean('EVENT_WEEKLY_ENABLED', true),
     eventTimeZone: readTimeZone('EVENT_TIME_ZONE', 'Asia/Taipei'),
     eventLookaheadDays: readPositiveInteger('EVENT_LOOKAHEAD_DAYS', 120),
@@ -91,4 +80,4 @@ function loadConfig() {
   };
 }
 
-module.exports = { loadConfig, readBoolean, readHour, readPositiveInteger, readTimeZone };
+module.exports = { loadConfig, readBoolean, readPositiveInteger, readTimeZone };
