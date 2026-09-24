@@ -63,6 +63,16 @@ test('classifier leaves a CTF without directional evidence unclassified', () => 
   assert.deepEqual(result.topics, ['crypto']);
 });
 
+test('classifier does not treat words inside URLs as CTF topic evidence', () => {
+  const result = classifyEvent(event({
+    title: 'NileCTF',
+    kind: 'ctf',
+    description: 'Community links: https://web.facebook.com/example and https://discord.gg/example',
+  }));
+  assert.deepEqual(result.directions, ['unspecified']);
+  assert.deepEqual(result.topics, []);
+});
+
 test('classifier recognizes broad conferences, explicit levels, and participation', () => {
   const result = classifyEvent(event({
     title: 'Security Community Conference',

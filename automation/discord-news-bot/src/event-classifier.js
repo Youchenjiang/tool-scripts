@@ -129,7 +129,7 @@ function classifyParticipation(event, text) {
 function classifyEvent(event) {
   if (!event) return event;
   const text = [event.title, event.description, event.classificationText, event.dateText]
-    .filter(Boolean).join('\n');
+    .filter(Boolean).join('\n').replace(/https?:\/\/\S+/giu, ' ');
   const topicMatches = orderedTopics(text);
   const directions = classifyDirections(event, text, topicMatches);
   const level = classifyLevel(text);
