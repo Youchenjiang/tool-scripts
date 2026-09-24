@@ -40,6 +40,9 @@ const BLUE_RULES = [
 const PURPLE_EXPLICIT = /\bpurple team(?:ing)?\b|紫隊/iu;
 const ADVERSARY_EVIDENCE = /adversary emulation|attack simulation|atomic red team|對手模擬|攻擊模擬/iu;
 const DETECTION_EVIDENCE = /detection validation|detection engineering|偵測驗證|偵測工程|防禦驗證/iu;
+const CTF_ATTACK_DEFENSE = /\battack\s*(?:&|and|-)\s*defen[cs]e\b|\bad[- ]ctf\b/iu;
+const CTF_RED_TOPICS = new Set(['appsec', 'web', 'api', 'pwn', 'reverse']);
+const CTF_BLUE_TOPICS = new Set(['forensics', 'threat-intelligence', 'threat-hunting', 'detection-engineering']);
 
 function firstEvidence(text, rules) {
   for (const rule of rules) {
@@ -56,7 +59,7 @@ function orderedTopics(text) {
   }).sort((left, right) => left.index - right.index);
 }
 
-function classifyDirections(event, text) {
+function classifyDirections(event, text, topicMatches) {
   const explicitPurple = firstEvidence(text, [PURPLE_EXPLICIT]);
   const adversary = firstEvidence(text, [ADVERSARY_EVIDENCE]);
   const detection = firstEvidence(text, [DETECTION_EVIDENCE]);
@@ -65,6 +68,20 @@ function classifyDirections(event, text) {
       values: ['purple'],
       evidence: explicitPurple || `${adversary}; ${detection}`,
     };
+  }
+
+  if (event.kind === 'ctf') {
+    const attackDefense = firstEvidence(text, [CTF_ATTACK_DEFENSE]);
+    if (attackDefense) return { values: ['red', 'blue'], evidence: attackDefense };
+    const redTopics = topicMatches.filter(({ topic }) => CTF_RED_TOPICS.has(topic));
+    const blueTopics = topicMatches.filter(({ topic }) => CTF_BLUE_TOPICS.has(topic));
+    const values = [redTopics.length ? 'red' : '', blueTopics.length ? 'blue' : ''].filter(Boolean);
+    if (values.length) {
+      return {
+        values,
+        evidence: [...redTopics, ...blueTopics].map(({ evidence }) => evidence).join('; '),
+      };
+    }
   }
 
   const red = firstEvidence(text, RED_RULES);
@@ -114,7 +131,7 @@ function classifyEvent(event) {
   const text = [event.title, event.description, event.classificationText, event.dateText]
     .filter(Boolean).join('\n');
   const topicMatches = orderedTopics(text);
-  const directions = classifyDirections(event, text);
+  const directions = classifyDirections(event, text, topicMatches);
   const level = classifyLevel(text);
   const participation = classifyParticipation(event, text);
   const existingDirections = event.directions?.filter((value) => value !== 'unspecified') || [];

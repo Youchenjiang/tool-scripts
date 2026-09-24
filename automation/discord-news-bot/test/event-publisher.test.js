@@ -72,3 +72,9 @@ test('event announcement omits an unclassified CTF direction instead of presenti
   assert.match(message.content, /\nCTF｜具基礎｜最多 5 人\n/u);
   assert.doesNotMatch(message.content, /綜合/u);
 });
+
+test('event announcement keeps attack and defense directions visible without calling them purple team', () => {
+  const message = createEventMessage(sampleEvent({ directions: ['red', 'blue'] }));
+  assert.match(message.content, /🔴 紅隊＋🔵 藍隊/u);
+  assert.doesNotMatch(message.content, /紫隊|綜合/u);
+});

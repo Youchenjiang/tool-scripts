@@ -32,13 +32,35 @@ test('classifier treats independent red and blue tracks as a broad program inste
   assert.deepEqual(result.directions, ['general']);
 });
 
-test('classifier does not label a generic CTF as red team', () => {
+test('classifier derives CTF directions from explicit challenge domains', () => {
   const result = classifyEvent(event({
     title: 'Example CTF 2026',
     description: 'Challenges include Web, Pwn, Reverse, Crypto, and Forensics.',
+    kind: 'ctf',
+  }));
+  assert.deepEqual(result.directions, ['red', 'blue']);
+  assert.deepEqual(result.topics, ['web', 'pwn', 'reverse', 'crypto', 'forensics']);
+  assert.match(result.evidence.directions, /Web.*Pwn.*Reverse.*Forensics/iu);
+});
+
+test('classifier recognizes attack-defense CTFs without calling them purple team', () => {
+  const result = classifyEvent(event({
+    title: 'FAUST CTF 2026',
+    kind: 'ctf',
+    classificationText: 'CTF format: Attack-Defense',
+  }));
+  assert.deepEqual(result.directions, ['red', 'blue']);
+  assert.match(result.evidence.directions, /Attack-Defense/iu);
+});
+
+test('classifier leaves a CTF without directional evidence unclassified', () => {
+  const result = classifyEvent(event({
+    title: 'Crypto CTF 2026',
+    kind: 'ctf',
+    description: 'Jeopardy challenges focused on cryptography.',
   }));
   assert.deepEqual(result.directions, ['unspecified']);
-  assert.deepEqual(result.topics, ['web', 'pwn', 'reverse', 'crypto', 'forensics']);
+  assert.deepEqual(result.topics, ['crypto']);
 });
 
 test('classifier recognizes broad conferences, explicit levels, and participation', () => {
