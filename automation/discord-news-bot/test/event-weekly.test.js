@@ -139,14 +139,20 @@ test('Sunday block alone answers which competitions remain playable that day', (
   assert.match(sunday.description, /Pointer Overflow CTF[^\n]*22:00/u);
 });
 
-test('a new digest is not backfilled after Tuesday but an existing digest can still be edited', async () => {
+test('the first digest is backfilled midweek while later weeks keep the weekly schedule', async () => {
   const state = { events: { one: { event } } }; const calls = [];
   const message = { id: '123', edit: async () => calls.push('edit') };
   const channel = { send: async () => { calls.push('send'); return message; }, messages: { fetch: async () => message } };
   const save = async () => {};
+  assert.equal(await publishWeekly({ state, channel, config, now: new Date('2026-09-23T02:00:00Z'), save }), 1);
+  assert.deepEqual(calls, ['send']);
+
+  state.events.one.event = { ...event, title: 'Updated CTF' };
   assert.equal(await publishWeekly({ state, channel, config, now: new Date('2026-09-23T02:00:00Z'), save }), 0);
+  assert.deepEqual(calls, ['send', 'edit']);
+
+  state.events.one.event = { ...event, startsAt: '2026-10-02T00:00:00Z', endsAt: '2026-10-03T00:00:00Z' };
+  calls.length = 0;
+  assert.equal(await publishWeekly({ state, channel, config, now: new Date('2026-10-01T02:00:00Z'), save }), 0);
   assert.deepEqual(calls, []);
-  state.weekly = { week: '2026-09-21', messageId: '123', signature: 'old' };
-  assert.equal(await publishWeekly({ state, channel, config, now: new Date('2026-09-23T02:00:00Z'), save }), 0);
-  assert.deepEqual(calls, ['edit']);
 });

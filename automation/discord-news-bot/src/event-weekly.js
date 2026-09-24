@@ -164,7 +164,7 @@ async function publishWeekly({ state, channel, config, now, save }) {
   const previous = state.weekly;
   if (previous?.signature === next.signature) return 0;
   if (!next.count && previous?.week !== next.week) return 0;
-  if (previous?.week !== next.week && weekDayIndex(now, config.eventTimeZone) > 1) return 0;
+  if (previous && previous.week !== next.week && weekDayIndex(now, config.eventTimeZone) > 1) return 0;
   let message;
   if (previous?.week === next.week && previous.messageId) {
     try { message = await channel.messages.fetch(previous.messageId); }
