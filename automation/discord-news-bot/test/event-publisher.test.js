@@ -74,7 +74,10 @@ test('event announcement omits an unclassified CTF direction instead of presenti
 });
 
 test('event announcement keeps attack and defense directions visible without calling them purple team', () => {
-  const message = createEventMessage(sampleEvent({ directions: ['red', 'blue'] }));
+  const message = createEventMessage(sampleEvent({
+    directions: ['red', 'blue'], topics: ['web', 'crypto', 'reverse', 'forensics'],
+  }));
+  assert.match(message.content, /🧩 Web、Forensics、Crypto/u);
   assert.match(message.content, /🔴 紅隊＋🔵 藍隊/u);
   assert.doesNotMatch(message.content, /紫隊|綜合/u);
 });

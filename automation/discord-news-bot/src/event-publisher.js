@@ -9,6 +9,8 @@ const TOPIC_LABELS = {
   'threat-intelligence': 'Threat Intelligence', 'threat-hunting': 'Threat Hunting', 'detection-engineering': 'Detection Engineering',
   network: 'Network', cloud: 'Cloud Security', ics: 'ICS/OT', mobile: 'Mobile Security', web3: 'Web3', 'ai-security': 'AI Security',
 };
+const RED_CTF_TOPICS = new Set(['appsec', 'web', 'api', 'pwn', 'reverse']);
+const BLUE_CTF_TOPICS = new Set(['forensics', 'threat-intelligence', 'threat-hunting', 'detection-engineering']);
 const DEADLINE_LABELS = { registration: '報名至', submission: '投稿至', selection: '甄選至', materials: '資料繳交至', unknown: '最近期限' };
 
 function dateParts(date, timeZone, includeTime = false) {
@@ -57,10 +59,16 @@ function participationLabel(event) {
   return '';
 }
 
-function topicLine(topics) {
+function topicLine(topics, directions = []) {
   if (!topics?.length) return '';
-  const labels = topics.map((topic) => TOPIC_LABELS[topic] || topic).filter(Boolean);
-  return `🧩 ${labels.slice(0, 3).join('、')}`;
+  const values = [...new Set(topics)];
+  const mixedCtf = directions.includes('red') && directions.includes('blue');
+  const representatives = mixedCtf
+    ? [values.find((topic) => RED_CTF_TOPICS.has(topic)), values.find((topic) => BLUE_CTF_TOPICS.has(topic))].filter(Boolean)
+    : [];
+  const selected = [...new Set([...representatives, ...values])].slice(0, 3);
+  const labels = selected.map((topic) => TOPIC_LABELS[topic] || topic).filter(Boolean);
+  return `🧩 ${labels.join('、')}`;
 }
 
 function scheduleLine(event, timeZone) {
@@ -111,7 +119,7 @@ function audienceLine(audience) {
 }
 
 function eventDecisionLine(event) {
-  const decision = [topicLine(event.topics), directionLabel(event.directions, event.kind), KIND_LABELS[event.kind] || KIND_LABELS.event]
+  const decision = [topicLine(event.topics, event.directions), directionLabel(event.directions, event.kind), KIND_LABELS[event.kind] || KIND_LABELS.event]
     .filter(Boolean).join(' · ');
   const facts = [LEVEL_LABELS[event.level], participationLabel(event)].filter(Boolean);
   return `${decision}${facts.length ? `｜${facts.join('｜')}` : ''}`;
