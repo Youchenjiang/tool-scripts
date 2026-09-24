@@ -54,6 +54,11 @@ function normalizeCtfTimeEvent(event) {
       || !Number.isFinite(finish.getTime())) return null;
   const url = String(event.url || event.ctftime_url || '').trim();
   if (!/^https?:\/\//iu.test(url)) return null;
+  const description = String(event.description || '').replace(/\s+/gu, ' ').trim().slice(0, 4_000);
+  const classificationText = [
+    event.format ? `CTF format: ${event.format}` : '',
+    event.restrictions ? `Restrictions: ${event.restrictions}` : '',
+  ].filter(Boolean).join('\n');
   return normalizeEventRecord({
     id: `ctftime:${event.id}`,
     sourceId: 'ctftime',
@@ -63,7 +68,9 @@ function normalizeCtfTimeEvent(event) {
     finish,
     allDay: false,
     dateText: '',
-    teamSize: parseTeamSize(event.description),
+    description,
+    classificationText,
+    teamSize: parseTeamSize(description),
     location: String(event.location || (event.onsite ? '' : 'On-line')).trim(),
     attendance: event.onsite ? 'onsite' : 'online',
     source: 'CTFtime',

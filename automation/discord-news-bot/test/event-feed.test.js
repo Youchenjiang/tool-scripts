@@ -98,7 +98,9 @@ test('CTFtime source requests a bounded window and normalizes official event lin
           finish: '2026-09-22T09:00:00Z',
           url: 'https://ctf.hackthebox.com/event/details/holmes-3504',
           ctftime_url: 'https://ctftime.org/event/3504/',
-          description: 'Team Size: 5 Members',
+          description: 'Team Size: 5 Members. Web exploitation and digital forensics challenges.',
+          format: 'Attack-Defense',
+          restrictions: 'Open',
           participants: 900,
           onsite: false,
         }]),
@@ -110,6 +112,8 @@ test('CTFtime source requests a bounded window and normalizes official event lin
   assert.match(requestedUrl, /start=1789689600/u);
   assert.equal(events[0].url, 'https://ctf.hackthebox.com/event/details/holmes-3504');
   assert.equal(events[0].teamSize, '5人');
+  assert.equal(events[0].description, 'Team Size: 5 Members. Web exploitation and digital forensics challenges.');
+  assert.equal(events[0].classificationText, 'CTF format: Attack-Defense Restrictions: Open');
   assert.equal(events[0].kind, 'ctf');
   assert.equal(events[0].attendance, 'online');
 });
