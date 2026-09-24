@@ -16,6 +16,7 @@ const { formatRuleConfig } = require('./rule-options');
 const { createRuleSetupManager } = require('./rule-setup');
 const { createStateStore } = require('./state-store');
 const { createSourceObserver } = require('./source-observer');
+const { createTaskErrorRecord, createTaskLogRecord } = require('./task-log');
 const { scheduleRecurringTask } = require('./task-scheduler');
 
 async function main() {
@@ -103,10 +104,10 @@ async function main() {
   async function runPublisher(trigger) {
     try {
       const result = await publisher.run();
-      console.log(`[News:${trigger}]`, result);
+      console.log('[Task]', createTaskLogRecord('news', trigger, result));
       return result;
     } catch (error) {
-      console.error(`[News:${trigger}] ${error.stack || error.message}`);
+      console.error('[Task]', createTaskErrorRecord('news', trigger, error));
       throw error;
     }
   }
@@ -114,10 +115,10 @@ async function main() {
   async function runEventPublisher(trigger, options = {}) {
     try {
       const result = await eventPublisher.run(options);
-      console.log(`[Events:${trigger}]`, result);
+      console.log('[Task]', createTaskLogRecord('events', trigger, result));
       return result;
     } catch (error) {
-      console.error(`[Events:${trigger}] ${error.stack || error.message}`);
+      console.error('[Task]', createTaskErrorRecord('events', trigger, error));
       throw error;
     }
   }
@@ -125,10 +126,10 @@ async function main() {
   async function runSourceObserver(trigger) {
     try {
       const result = await sourceObserver.run();
-      console.log(`[Sources:${trigger}]`, result);
+      console.log('[Task]', createTaskLogRecord('sources', trigger, result));
       return result;
     } catch (error) {
-      console.error(`[Sources:${trigger}] ${error.stack || error.message}`);
+      console.error('[Task]', createTaskErrorRecord('sources', trigger, error));
       throw error;
     }
   }
