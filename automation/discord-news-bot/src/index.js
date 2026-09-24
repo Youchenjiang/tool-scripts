@@ -10,6 +10,7 @@ const { loadConfig } = require('./config');
 const { createEventInteractionHandler } = require('./event-interactions');
 const { createEventService } = require('./event-service');
 const { createNewsInteractionHandler } = require('./news-interactions');
+const { initializeOptionalFeature } = require('./optional-feature');
 const { createPublisher } = require('./publisher');
 const { formatRuleConfig } = require('./rule-options');
 const { createRuleSetupManager } = require('./rule-setup');
@@ -72,18 +73,22 @@ async function main() {
         console.log(`[Bot] Source observation: enabled, ${config.maxSourcesPerRun} source(s) per run`);
       }
       if (config.eventsEnabled) {
-        const eventChannel = await readyClient.channels.fetch(config.eventChannelId);
-        if (!eventChannel?.isTextBased() || !('send' in eventChannel)) {
-          throw new Error(`EVENT_CHANNEL_ID ${config.eventChannelId} is not a sendable text channel`);
-        }
-        eventPublisher = createEventService({
-          channel: eventChannel,
-          config,
-          stateStore,
+        eventPublisher = await initializeOptionalFeature('Events', async () => {
+          const eventChannel = await readyClient.channels.fetch(config.eventChannelId);
+          if (!eventChannel?.isTextBased() || !('send' in eventChannel)) {
+            throw new Error(`EVENT_CHANNEL_ID ${config.eventChannelId} is not a sendable text channel`);
+          }
+          const service = createEventService({
+            channel: eventChannel,
+            config,
+            stateStore,
+          });
+          eventPublisher = service;
+          await runEventPublisher('startup').catch(() => {});
+          scheduleRecurringTask(() => runEventPublisher('schedule'), config.eventPollIntervalMs);
+          console.log(`[Bot] Security events: polling every ${config.eventPollIntervalMs / 60_000} minute(s)`);
+          return service;
         });
-        await runEventPublisher('startup').catch(() => {});
-        scheduleRecurringTask(() => runEventPublisher('schedule'), config.eventPollIntervalMs);
-        console.log(`[Bot] Security events: polling every ${config.eventPollIntervalMs / 60_000} minute(s)`);
       }
       if (config.pushOnStart) await runPublisher('startup').catch(() => {});
       scheduleRecurringTask(() => runPublisher('schedule'), config.pollIntervalMs);
