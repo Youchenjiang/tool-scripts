@@ -1,9 +1,10 @@
 const { ActionRowBuilder, EmbedBuilder } = require('discord.js');
 const { currentEvents, fingerprint, button } = require('./event-board');
 const { eventStartTime } = require('./event-model');
+const { eventTechnicalLine } = require('./event-publisher');
 
 const DAY = 86400000;
-const WEEKLY_FORMAT_VERSION = 7;
+const WEEKLY_FORMAT_VERSION = 8;
 const EMBED_TEXT_BUDGET = 5800;
 const EMBED_DESCRIPTION_LIMIT = 3800;
 const DEADLINE_LABELS = { registration: '報名截止', submission: '提交截止', selection: '甄選截止', materials: '資料截止' };
@@ -117,7 +118,8 @@ function dailyEmbeds(entries, config, now, week) {
   for (const group of dailyGroups(entries, config, week)) {
     const lines = [];
     for (const { event } of group.values) {
-      const text = `**[${safeTitle(event.title)}](${event.officialUrl || event.url})**｜${dailyStatus(event, group.dateKey, config.eventTimeZone)}`;
+      const technical = eventTechnicalLine(event);
+      const text = `**[${safeTitle(event.title)}](${event.officialUrl || event.url})**｜${technical ? `${technical}｜` : ''}${dailyStatus(event, group.dateKey, config.eventTimeZone)}`;
       if (used + group.title.length + lines.join('\n').length + text.length > EMBED_TEXT_BUDGET) omitted += 1;
       else lines.push(text);
     }

@@ -114,6 +114,17 @@ test('the public schedule stays concise and moves detailed facts behind the butt
   assert.equal(weeklyData(state, config, new Date('2026-09-21T02:00:00Z')).payload.flags, 0);
 });
 
+test('the public schedule exposes evidence-backed CTF directions and balanced topics', () => {
+  const state = { events: { one: { event: { ...event,
+    directions: ['red', 'blue'], topics: ['web', 'crypto', 'reverse', 'forensics'] } } } };
+  const text = payloadText(weeklyData(state, config, new Date('2026-09-21T02:00:00Z')).payload);
+  assert.match(text, /Example CTF[^\n]*🔴 紅隊＋🔵 藍隊[^\n]*🧩 Web、Forensics、Crypto/u);
+
+  const unknown = payloadText(weeklyData({ events: { one: { event: { ...event,
+    directions: ['unspecified'], topics: [] } } } }, config, new Date('2026-09-21T02:00:00Z')).payload);
+  assert.doesNotMatch(unknown, /紅隊|藍隊|紫隊|綜合|🧩/u);
+});
+
 test('Sunday block alone answers which competitions remain playable that day', () => {
   const values = [
     ['nile', 'NileCTF', '2026-09-25T12:00:00Z', '2026-09-27T12:00:00Z'],

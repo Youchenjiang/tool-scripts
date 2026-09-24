@@ -125,6 +125,11 @@ function eventDecisionLine(event) {
   return `${decision}${facts.length ? `｜${facts.join('｜')}` : ''}`;
 }
 
+function eventTechnicalLine(event) {
+  return [directionLabel(event.directions, event.kind), topicLine(event.topics, event.directions)]
+    .filter(Boolean).join(' · ');
+}
+
 function eventTimingLine(event, timeZone, current) {
   return [scheduleLine(event, timeZone), deadlineLine(event, timeZone, current)].filter(Boolean).join('；');
 }
@@ -141,6 +146,6 @@ function createEventMessage(event, timeZone = 'Asia/Taipei', current = new Date(
 }
 
 module.exports = {
-  createEventMessage, eventDecisionLine, eventTimingLine, formatCompactDate, formatCompactDateTime,
+  createEventMessage, eventDecisionLine, eventTechnicalLine, eventTimingLine, formatCompactDate, formatCompactDateTime,
   fullAddressLine, locationLine, publicPlace,
 };
