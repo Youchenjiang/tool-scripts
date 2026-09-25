@@ -129,7 +129,7 @@ PUBLISH_INITIAL_ARTICLES=false
 6. 將完整技術細節以短鍵保存；成員按下「查看技術細節」後，由全域互動處理器讀取資料並以 ephemeral 訊息呈現，因此不會建立大量討論串，Bot 重啟後舊按鈕仍可使用。
 7. 透過單一執行鎖避免排程與 `/news_now` 同時重複抓取。
 
-活動雷達每天讀取 CTFtime、OWASP、Taiwan Security Deadlines、KKTIX 及公開 iCal，再更新同一則置頂總表。SCIST、BambooFox 必須有明確對外開放資訊與資安內容，例行社課、迎新及內部培訓不收錄。週報採週一為週起點，只在週一至週二建立新一期；同週新增資料會編輯原週報。程式依期限、時間、可及性、資料完整度與活動型態選出至多八場，並將超額 CTF 合併為行程摘要。所有活動仍可從總表私人分頁查閱。活動訊息關閉網站預覽，全部活動功能均不使用 AI。
+活動雷達每天讀取 CTFtime、OWASP、Taiwan Security Deadlines、KKTIX 及公開 iCal，再更新同一則置頂總表。SCIST、BambooFox 必須有明確對外開放資訊與資安內容，例行社課、迎新及內部培訓不收錄。CTF 週報採週一為週起點，每週只建立一則；同週新增資料會編輯原週報。公開週報按有賽事的絕對日期分段，跨日賽事刻意出現在涵蓋的每一天，讓成員不必自行比較日期區間。完整呈現契約與已否決方案記錄於 [`docs/ctf-weekly-presentation-spec.md`](docs/ctf-weekly-presentation-spec.md)。活動訊息關閉網站預覽，全部活動功能均不使用 AI。
 
 成員從總表選擇活動，再按「訂閱私訊提醒」。提醒依 `EVENT_POLL_INTERVAL_MINUTES` 檢查，預設每 30 分鐘；沒有明確報名期限就只檢查活動開始時間。完整操作、部署權限與資料保留方式見 [活動總表、週報與訂閱](docs/event-delivery.md)。
 
