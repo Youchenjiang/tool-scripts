@@ -4,7 +4,7 @@ const { eventStartTime } = require('./event-model');
 const { eventTechnicalLine } = require('./event-publisher');
 
 const DAY = 86400000;
-const WEEKLY_FORMAT_VERSION = 8;
+const WEEKLY_FORMAT_VERSION = 9;
 const EMBED_TEXT_BUDGET = 5800;
 const EMBED_DESCRIPTION_LIMIT = 3800;
 const DEADLINE_LABELS = { registration: '報名截止', submission: '提交截止', selection: '甄選截止', materials: '資料截止' };
@@ -116,6 +116,7 @@ function dailyEmbeds(entries, config, now, week) {
     used += '本週報名期限'.length + description.length;
   }
   for (const group of dailyGroups(entries, config, week)) {
+    if (!group.values.length) continue;
     const lines = [];
     for (const { event } of group.values) {
       const technical = eventTechnicalLine(event);
@@ -123,7 +124,7 @@ function dailyEmbeds(entries, config, now, week) {
       if (used + group.title.length + lines.join('\n').length + text.length > EMBED_TEXT_BUDGET) omitted += 1;
       else lines.push(text);
     }
-    const description = lines.join('\n') || '沒有賽事';
+    const description = lines.join('\n');
     embeds.push(new EmbedBuilder().setColor(0x5865F2).setTitle(group.title).setDescription(description).toJSON());
     used += group.title.length + description.length;
   }

@@ -101,6 +101,13 @@ test('the schedule shows this week by day and keeps known deadlines ahead of it'
   assert.doesNotMatch(text, /Next week/u);
 });
 
+test('the public schedule omits dates without competitions', () => {
+  const state = { events: { one: { event } } };
+  const result = weeklyData(state, config, new Date('2026-09-21T02:00:00Z'));
+  assert.deepEqual(result.payload.embeds.map(({ title }) => title), ['9/25（五）', '9/26（六）']);
+  assert.doesNotMatch(payloadText(result.payload), /沒有賽事/u);
+});
+
 test('the public schedule stays concise and moves detailed facts behind the button', () => {
   const state = { events: { one: { event: { ...event, startsAt: '2026-09-25T04:00:00Z', endsAt: '2026-09-26T08:30:00Z',
     attendance: 'online', teamSizeMax: 4, participation: 'team', level: 'foundational', topics: ['web', 'pwn'] } } } };
