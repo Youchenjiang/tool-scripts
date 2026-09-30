@@ -248,6 +248,37 @@ if (Test-Path $GitDir) {
     Write-Host "  + Installed: .git/hooks/commit-msg" -ForegroundColor Green
   }
 
+  # Setup version-controlled scripts/hooks/ for npm prepare lifecycle
+  $TargetScriptsDir = Join-Path $TargetDir "scripts"
+  $TargetScriptsHooksDir = Join-Path $TargetScriptsDir "hooks"
+  if (-not (Test-Path $TargetScriptsHooksDir)) { New-Item -ItemType Directory -Path $TargetScriptsHooksDir -Force | Out-Null }
+  Copy-Item $HookSrc (Join-Path $TargetScriptsHooksDir "commit-msg") -Force
+  
+  $installHooksSrc = Join-Path $TemplatesDir "git\scripts\install-hooks.mjs"
+  if (Test-Path $installHooksSrc) {
+    Copy-Item $installHooksSrc (Join-Path $TargetScriptsDir "install-hooks.mjs") -Force
+    Write-Host "  + Deployed: scripts/install-hooks.mjs & scripts/hooks/commit-msg" -ForegroundColor Gray
+  }
+
+  # If package.json exists, inject "prepare": "node scripts/install-hooks.mjs"
+  $pkgJsonPath = Join-Path $TargetDir "package.json"
+  if (Test-Path $pkgJsonPath) {
+    try {
+      $pkg = Get-Content $pkgJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+      if (-not $pkg.scripts) {
+        $pkg | Add-Member -MemberType NoteProperty -Name "scripts" -Value ([PSCustomObject]@{})
+      }
+      if (-not $pkg.scripts.prepare) {
+        $pkg.scripts | Add-Member -MemberType NoteProperty -Name "prepare" -Value "node scripts/install-hooks.mjs"
+        $newJson = $pkg | ConvertTo-Json -Depth 10
+        [System.IO.File]::WriteAllText($pkgJsonPath, $newJson, [System.Text.Encoding]::UTF8)
+        Write-Host "  + Configured: npm 'prepare' hook in package.json" -ForegroundColor Green
+      }
+    } catch {
+      # Non-fatal if JSON parsing fails
+    }
+  }
+
   try {
     Push-Location $TargetDir
     git config commit.template .gitmessage.txt
