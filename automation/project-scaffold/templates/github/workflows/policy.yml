@@ -47,25 +47,42 @@ jobs:
               "perf",
               "security",
             ];
+            // Allowed scopes can be tailored to the archetype during scaffolding via SCOPES_PLACEHOLDER
             const allowedScopes = [
+              /* SCOPES_PLACEHOLDER_START */
+              "app",
               "core",
               "ui",
               "web",
+              "api",
+              "auth",
+              "db",
+              "service",
               "cli",
               "shell",
               "msix",
-              "study",
-              "plan",
-              "ctfd",
-              "labs",
-              "challenge",
-              "plugin",
+              "native",
+              "poc",
+              "vuln",
+              "exploit",
+              "scanner",
+              "report",
+              "data",
               "docs",
               "ci",
               "deps",
               "sec",
               "store",
+              "test",
+              "rules",
+              "spec",
+              "schema",
+              "style",
+              "setup",
+              "quality",
+              "workflow",
               "agent",
+              /* SCOPES_PLACEHOLDER_END */
             ];
 
             const typePattern = allowedTypes.join("|");
