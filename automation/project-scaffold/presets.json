@@ -29,6 +29,10 @@
         "pull_request_template.md",
         "dependabot.yml",
         "SECURITY.md"
+      ],
+      "toolFiles": [
+        "lint_commits.py",
+        "pr_helper.py"
       ]
     },
     "web": {
@@ -60,6 +64,10 @@
         "pull_request_template.md",
         "dependabot.yml",
         "SECURITY.md"
+      ],
+      "toolFiles": [
+        "lint_commits.py",
+        "pr_helper.py"
       ]
     },
     "research": {
@@ -90,6 +98,10 @@
       "githubFiles": [
         "pull_request_template.md",
         "SECURITY.md"
+      ],
+      "toolFiles": [
+        "lint_commits.py",
+        "pr_helper.py"
       ]
     },
     "minimal": {
@@ -110,6 +122,10 @@
       ],
       "githubFiles": [
         "pull_request_template.md"
+      ],
+      "toolFiles": [
+        "lint_commits.py",
+        "pr_helper.py"
       ]
     }
   }

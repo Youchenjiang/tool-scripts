@@ -66,6 +66,19 @@ jobs:
               "sec",
               "store",
               "agent",
+              "infra",
+              "build",
+              "release",
+              "governance",
+              "tracks",
+              "practice",
+              "tools",
+              "knowledge",
+              "memory",
+              "deepsource",
+              "links",
+              "scaffold",
+              "automation",
             ];
 
             const typePattern = allowedTypes.join("|");
