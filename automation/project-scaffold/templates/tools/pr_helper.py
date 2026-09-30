@@ -63,11 +63,12 @@ def sanitize_title(title_str):
 
 def get_safe_path(user_path):
     safe_name = os.path.basename(user_path)
-    return os.path.join(PROJECT_ROOT, safe_name)
+    return os.path.join(os.getcwd(), safe_name)
 
 
-def run_cmd(cmd, cwd=PROJECT_ROOT):
+def run_cmd(cmd, cwd=None):
     safe_cmd = []
+    run_cwd = cwd or os.getcwd()
     for arg in cmd:
         clean_arg = str(arg).strip()
         if any(bad in clean_arg for bad in [";", "&", "|", "`", "$", "\n", "\r"]):
@@ -76,7 +77,7 @@ def run_cmd(cmd, cwd=PROJECT_ROOT):
     try:
         res = subprocess.run(
             safe_cmd,
-            cwd=cwd,
+            cwd=run_cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -290,7 +291,7 @@ def handle_create(args):
         print("❌ 生成之 PR Body 結構不合規：", lint_errors)
         sys.exit(1)
 
-    temp_body_path = os.path.join(PROJECT_ROOT, ".git", "PR_SUBMIT_TMP.md")
+    temp_body_path = os.path.join(os.getcwd(), ".git", "PR_SUBMIT_TMP.md")
     with open(temp_body_path, "w", encoding="utf-8") as f:
         f.write(body_content)
 
