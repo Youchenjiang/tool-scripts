@@ -237,18 +237,32 @@ foreach ($gf in $SelectedArchetype.gitFiles) {
 
 # Setup Git Hook if .git repository exists
 $GitDir = Join-Path $TargetDir ".git"
+$HookSrc = Join-Path $TemplatesDir "git\hooks\commit-msg"
+
 if (Test-Path $GitDir) {
   $HooksDir = Join-Path $GitDir "hooks"
   if (-not (Test-Path $HooksDir)) { New-Item -ItemType Directory -Path $HooksDir -Force | Out-Null }
   
-  $HookSrc = Join-Path $TemplatesDir "git\hooks\commit-msg"
   $HookDst = Join-Path $HooksDir "commit-msg"
   if (Test-Path $HookSrc) {
     Copy-Item $HookSrc $HookDst -Force
     Write-Host "  + Installed: .git/hooks/commit-msg" -ForegroundColor Green
   }
 
-  # Setup version-controlled scripts/hooks/ for npm prepare lifecycle
+  try {
+    Push-Location $TargetDir
+    git config commit.template .gitmessage.txt
+    Pop-Location
+    Write-Host "  + Configured: git config commit.template .gitmessage.txt" -ForegroundColor Green
+  } catch {
+    # Non-fatal
+  }
+} else {
+  Write-Host "  (Note: .git directory not found. Run 'git init' later to install hooks)" -ForegroundColor DarkYellow
+}
+
+# Setup version-controlled scripts/hooks/ for npm prepare lifecycle
+if (Test-Path $HookSrc) {
   $TargetScriptsDir = Join-Path $TargetDir "scripts"
   $TargetScriptsHooksDir = Join-Path $TargetScriptsDir "hooks"
   if (-not (Test-Path $TargetScriptsHooksDir)) { New-Item -ItemType Directory -Path $TargetScriptsHooksDir -Force | Out-Null }
@@ -278,17 +292,6 @@ if (Test-Path $GitDir) {
       # Non-fatal if JSON parsing fails
     }
   }
-
-  try {
-    Push-Location $TargetDir
-    git config commit.template .gitmessage.txt
-    Pop-Location
-    Write-Host "  + Configured: git config commit.template .gitmessage.txt" -ForegroundColor Green
-  } catch {
-    # Non-fatal
-  }
-} else {
-  Write-Host "  (Note: .git directory not found. Run 'git init' later to install hooks)" -ForegroundColor DarkYellow
 }
 
 # Step 3: Setup Engineering Tools & Code Quality
