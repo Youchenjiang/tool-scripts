@@ -118,7 +118,31 @@ jobs:
               summaryRows.push(["PR Title", `\`${prTitle}\``, "✅ Passed", "-"]);
             }
 
-            // 2. Check Commits
+            // 2. Check PR Body Structure (PR Template Parity)
+            const prBody = (context.payload.pull_request.body || "").trim();
+            const bodyIssues = [];
+            if (!prBody) {
+              bodyIssues.push("PR description body must not be empty.");
+            } else {
+              if (!/^##\s+Summary/mi.test(prBody)) {
+                bodyIssues.push("Missing required section heading `## Summary`.");
+              }
+              if (!/^##\s+Key Changes/mi.test(prBody)) {
+                bodyIssues.push("Missing required section heading `## Key Changes`.");
+              }
+              if (!/^##\s+(How to Verify|Verification)/mi.test(prBody)) {
+                bodyIssues.push("Missing required section heading `## How to Verify` or `## Verification`.");
+              }
+            }
+
+            if (bodyIssues.length > 0) {
+              blockers.push({ target: "PR Body", text: "PR Template Sections", issues: bodyIssues });
+              summaryRows.push(["PR Body", "Structure Validation", "❌ Failed", bodyIssues.join("<br>")]);
+            } else {
+              summaryRows.push(["PR Body", "Structure Validation", "✅ Passed", "-"]);
+            }
+
+            // 3. Check Commits
             const commits = await github.paginate(github.rest.pulls.listCommits, {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -152,7 +176,7 @@ jobs:
               }
             }
 
-            // 3. Check Metadata (Warnings only, non-blocking)
+            // 4. Check Metadata (Warnings only, non-blocking)
             const pr = context.payload.pull_request;
             if (!pr.assignees || pr.assignees.length === 0) {
               try {
@@ -171,7 +195,7 @@ jobs:
               warnings.push("No labels attached to PR. Please add a relevant scope/type label.");
             }
 
-            // 4. Output Summary Table
+            // 5. Output Summary Table
             await core.summary
               .addHeading("📋 Repository Policy Validation Summary", 2)
               .addTable([
@@ -186,7 +210,7 @@ jobs:
               }
             }
 
-            // 5. Hard Fail only on Blocker errors
+            // 6. Hard Fail only on Blocker errors
             if (blockers.length > 0) {
               for (const b of blockers) {
                 for (const iss of b.issues) {
