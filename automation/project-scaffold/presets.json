@@ -1,7 +1,115 @@
 {
-  "presets": {
-    "desktop": {
-      "description": "Windows / .NET / WinUI / C# / Python 桌面端應用 (如 Tapster, Clickra)",
+  "archetypes": {
+    "web-spa": {
+      "name": "Web SPA / Frontend",
+      "description": "Web / Frontend SPA / React / Vite / Ionic 靜態發布應用 (如 Wildwatch, 零後端應用)",
+      "defaultScopes": [
+        "app",
+        "ui",
+        "style",
+        "render",
+        "sim",
+        "test",
+        "docs",
+        "ci",
+        "deps",
+        "spec",
+        "rules",
+        "setup",
+        "quality"
+      ],
+      "agentRules": [
+        "core.md",
+        "memory-protocol.md",
+        "git-discipline.md",
+        "web-guidelines.md"
+      ],
+      "gitFiles": [
+        ".gitignore",
+        ".gitmessage.txt",
+        ".editorconfig",
+        "hooks/commit-msg"
+      ],
+      "githubWorkflows": [
+        "policy.yml",
+        "trufflehog.yml",
+        "codeql.yml"
+      ],
+      "githubFiles": [
+        "pull_request_template.md",
+        "dependabot.yml",
+        "SECURITY.md"
+      ],
+      "toolFiles": [
+        "lint_commits.py",
+        "pr_helper.py"
+      ],
+      "recommendedFeatures": [
+        "strict-linting",
+        "chained-prs"
+      ]
+    },
+    "backend-api": {
+      "name": "Backend / API Service",
+      "description": "Backend / API / Node.js / ASP.NET / FastAPI 服務端全端應用",
+      "defaultScopes": [
+        "api",
+        "auth",
+        "db",
+        "service",
+        "middleware",
+        "config",
+        "test",
+        "deps",
+        "docs",
+        "ci",
+        "setup"
+      ],
+      "agentRules": [
+        "core.md",
+        "memory-protocol.md",
+        "git-discipline.md"
+      ],
+      "gitFiles": [
+        ".gitignore",
+        ".gitmessage.txt",
+        ".editorconfig",
+        "hooks/commit-msg"
+      ],
+      "githubWorkflows": [
+        "policy.yml",
+        "trufflehog.yml",
+        "codeql.yml",
+        "sbom.yml"
+      ],
+      "githubFiles": [
+        "pull_request_template.md",
+        "dependabot.yml",
+        "SECURITY.md"
+      ],
+      "toolFiles": [
+        "lint_commits.py",
+        "pr_helper.py"
+      ],
+      "recommendedFeatures": [
+        "strict-linting"
+      ]
+    },
+    "desktop-app": {
+      "name": "Desktop Application",
+      "description": "Windows / .NET / WinUI / C# / Tauri 桌面端應用 (如 Tapster, Clickra)",
+      "defaultScopes": [
+        "shell",
+        "core",
+        "ui",
+        "native",
+        "msix",
+        "store",
+        "deps",
+        "docs",
+        "ci",
+        "setup"
+      ],
       "agentRules": [
         "core.md",
         "memory-protocol.md",
@@ -19,11 +127,7 @@
         "policy.yml",
         "trufflehog.yml",
         "codeql.yml",
-        "sbom.yml",
-        "defectdojo-upload.yml",
-        "faraday-upload.yml",
-        "wazuh-health.yml",
-        "post-merge-security.yml"
+        "sbom.yml"
       ],
       "githubFiles": [
         "pull_request_template.md",
@@ -33,45 +137,26 @@
       "toolFiles": [
         "lint_commits.py",
         "pr_helper.py"
+      ],
+      "recommendedFeatures": [
+        "chained-prs"
       ]
     },
-    "web": {
-      "description": "Web / Frontend / React / Ionic / 全端應用 (如 NCUIM2026-Fresher)",
-      "agentRules": [
-        "core.md",
-        "memory-protocol.md",
-        "git-discipline.md",
-        "web-guidelines.md"
+    "sec-research": {
+      "name": "Security Research / PoC",
+      "description": "資安研究 / 漏洞分析 / 概念驗證 PoC / 腳本庫 / 知識庫 (如 sec-compendium)",
+      "defaultScopes": [
+        "poc",
+        "vuln",
+        "exploit",
+        "report",
+        "scanner",
+        "data",
+        "docs",
+        "ci",
+        "deps",
+        "setup"
       ],
-      "gitFiles": [
-        ".gitignore",
-        ".gitmessage.txt",
-        ".editorconfig",
-        "hooks/commit-msg"
-      ],
-      "githubWorkflows": [
-        "policy.yml",
-        "trufflehog.yml",
-        "codeql.yml",
-        "zap-scan.yml",
-        "sbom.yml",
-        "defectdojo-upload.yml",
-        "faraday-upload.yml",
-        "wazuh-health.yml",
-        "post-merge-security.yml"
-      ],
-      "githubFiles": [
-        "pull_request_template.md",
-        "dependabot.yml",
-        "SECURITY.md"
-      ],
-      "toolFiles": [
-        "lint_commits.py",
-        "pr_helper.py"
-      ]
-    },
-    "research": {
-      "description": "AI 論文分析 / 資安漏洞挖掘 / 實驗專案 (如 code-security-research)",
       "agentRules": [
         "core.md",
         "memory-protocol.md",
@@ -89,11 +174,7 @@
         "trufflehog.yml",
         "codeql.yml",
         "pr_agent.yml",
-        "sbom.yml",
-        "defectdojo-upload.yml",
-        "faraday-upload.yml",
-        "wazuh-health.yml",
-        "post-merge-security.yml"
+        "sbom.yml"
       ],
       "githubFiles": [
         "pull_request_template.md",
@@ -102,10 +183,20 @@
       "toolFiles": [
         "lint_commits.py",
         "pr_helper.py"
-      ]
+      ],
+      "recommendedFeatures": []
     },
     "minimal": {
+      "name": "Minimal Utility",
       "description": "極簡小工具 / 輕量腳本庫 / 快速原型",
+      "defaultScopes": [
+        "core",
+        "tool",
+        "docs",
+        "test",
+        "ci",
+        "chore"
+      ],
       "agentRules": [
         "core.md",
         "memory-protocol.md",
@@ -121,12 +212,53 @@
         "policy.yml"
       ],
       "githubFiles": [
-        "pull_request_template.md"
+        "pull_request_template.md",
+        "SECURITY.md"
       ],
       "toolFiles": [
         "lint_commits.py",
         "pr_helper.py"
+      ],
+      "recommendedFeatures": []
+    }
+  },
+  "features": {
+    "strict-linting": {
+      "name": "Strict Code Quality (ESLint Flat Config)",
+      "description": "本地嚴格代碼品質守門員 (ESLint flat config，禁 ! 非空斷言、禁單字母變數、禁巢狀三元、class 方法 static 檢查)",
+      "lintFiles": [
+        "eslint.config.mjs"
+      ],
+      "npmDevDeps": [
+        "eslint",
+        "@eslint/js",
+        "@typescript-eslint/parser",
+        "@typescript-eslint/eslint-plugin"
+      ]
+    },
+    "chained-prs": {
+      "name": "Chained / Stacked PR Workflow Guidelines",
+      "description": "注入滾動 Rebase 串接 PR 規範與 GitHub Ruleset / Push 判斷防護指引",
+      "agentRules": [
+        "chained-prs.md"
+      ]
+    },
+    "sec-enterprise": {
+      "name": "Enterprise Security Platform Integration",
+      "description": "整合外部資安平台工作流 (DefectDojo, Faraday, Wazuh, ZAP, Post-merge security)",
+      "githubWorkflows": [
+        "defectdojo-upload.yml",
+        "faraday-upload.yml",
+        "wazuh-health.yml",
+        "zap-scan.yml",
+        "post-merge-security.yml"
       ]
     }
+  },
+  "legacyAliases": {
+    "desktop": "desktop-app",
+    "web": "web-spa",
+    "research": "sec-research",
+    "minimal": "minimal"
   }
 }
