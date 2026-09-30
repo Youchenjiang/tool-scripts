@@ -15,32 +15,61 @@
 ```powershell
 .\init-project.ps1
 ```
+互動式選單會引導您選擇 **Archetype（專案雛型）** 以及是否啟用 **可選擴充模組（Features）**。
 
 ### 2. 命令列快速執行
 ```powershell
-# 桌面端 (Windows / .NET / Python)
-.\init-project.ps1 -Preset desktop -TargetDir "C:\path\to\NewApp" -ProjectName "NewApp"
+# 網頁 / 前端全端 (React / Ionic / Vite) + 啟用代碼規範與鏈式 PR 指引
+.\init-project.ps1 -Archetype web-spa -Features strict-linting,chained-prs -TargetDir "C:\path\to\WebPortal" -ProjectName "WebPortal"
 
-# 網頁 / 前端全端 (React / Ionic / Vite)
-.\init-project.ps1 -Preset web -TargetDir "C:\path\to\WebPortal" -ProjectName "WebPortal"
+# 後端 API 服務 (Node / Express / FastAPI) + 啟用全部模組
+.\init-project.ps1 -Archetype backend-api -AllFeatures -TargetDir "C:\path\to\ApiServer" -ProjectName "ApiServer"
 
-# AI 研究 / 資安分析
-.\init-project.ps1 -Preset research -TargetDir "C:\path\to\Research" -ProjectName "Research"
+# 桌面端 (Windows / C# / .NET / WinUI)
+.\init-project.ps1 -Archetype desktop-app -TargetDir "C:\path\to\NewApp" -ProjectName "NewApp"
 
-# 極簡小腳本 / 輕量工具
-.\init-project.ps1 -Preset minimal -TargetDir "C:\path\to\Tool" -ProjectName "Tool"
+# AI 研究 / 資安實驗室
+.\init-project.ps1 -Archetype sec-research -TargetDir "C:\path\to\Research" -ProjectName "Research"
+
+# 極簡小工具 / 單檔腳本 (無額外擴充模組)
+.\init-project.ps1 -Archetype minimal -NoFeatures -TargetDir "C:\path\to\Tool" -ProjectName "Tool"
 ```
+*(向後相容：亦可繼續使用 `-Preset` 參數傳入舊有名稱如 `web`、`desktop`、`research`。)*
+
+### 3. 直接對 Agent 下指令
+在新專案開啟對話時，直接告訴 Agent：
+> *「請使用 `Script-List/automation/project-scaffold` 的 `web-spa` archetype（啟用 `strict-linting` 與 `chained-prs`）初始化這個專案」*
+
+Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scopes。
 
 ---
 
-## Presets 設定一覽
+## 🏗️ 雙層架構設計 (Archetypes & Features)
 
-| Preset | 適用技術棧 | 包含 Agent 規則 | 包含 GitHub Workflows |
-| :--- | :--- | :--- | :--- |
-| **`desktop`** | Windows / C# / .NET / WinUI | Core + Memory + Git + .NET Hygiene + Store Release | `policy.yml`, `trufflehog.yml`, `codeql.yml`, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
-| **`web`** | React / Ionic / Vite / Node | Core + Memory + Git + Web Guidelines | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, **`zap-scan.yml`**, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
-| **`research`** | AI 論文 / 資安挖掘 / 實驗 | Core + Memory + Git | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, `pr_agent.yml`, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
-| **`minimal`** | 快速小工具 / 單檔腳本 | Core + Memory + Git | `policy.yml` |
+腳手架採用 **「基礎專案雛型 (Archetype) ➔ 可選擴充模組 (Modular Features)」** 的兩層架構：
+
+### 1. 基礎雛型 (Archetypes)
+
+| Archetype | 相容別名 | 適用場景 | 自動注入 CI Scopes | 專屬預載規範 / 設定 |
+| :--- | :--- | :--- | :--- | :--- |
+| **`web-spa`** | `web`, `frontend` | React, Ionic, Vue, Vite, SPA 前端專案 | `app, ui, style, render, sim, test, docs, ci, deps, spec, rules, setup, quality` | Web Guidelines、`eslint.config.mjs`、npm prepare hook |
+| **`backend-api`** | `api`, `server`, `service` | Node/Express, Nest, FastAPI, Go 服務 | `api, auth, db, models, routes, test, docs, ci, deps, spec, rules, setup, quality, sec` | Backend Guidelines |
+| **`desktop-app`** | `desktop`, `winui`, `wpf` | Windows, C#, .NET, WinUI, Electron | `app, ui, winui, core, test, docs, ci, deps, spec, rules, setup, quality, release` | .NET Hygiene, Store Release |
+| **`sec-research`** | `research`, `security`, `lab` | AI 論文, 漏洞分析, PoC 實驗 | `agent, audit, rules, poc, exp, test, docs, ci, deps, spec, setup, quality, sec` | PR-Agent, Security Audit rules |
+| **`minimal`** | `tool`, `script`, `cli` | 輕量腳本, 小型命令列工具 | `core, cli, test, docs, ci, deps, setup` | 僅核心 Commit 規範與 policy.yml |
+
+### 2. 可選擴充模組 (Modular Features / Add-ons)
+
+| Feature | 模組名稱 | 功用與配置內容 |
+| :--- | :--- | :--- |
+| **`strict-linting`** | 嚴格代碼規範 | 部署 `eslint.config.mjs`，內建 TypeScript 嚴格規則、SonarCloud S3358 巢狀三元運算式防禦 (`no-nested-ternary`)、變數命名長度規範 (`id-length`)、物件非空斷言防禦 (`no-non-null-assertion`)。 |
+| **`chained-prs`** | 鏈式 PR 工作流 | 部署 `chained-prs.md` 規則，規範滾動 Rebase（Rolling Rebase）技巧、分支推動決策樹（普通 append vs force-with-lease）、GitHub 倉儲設定（關閉 squash merge、Rulesets 配置）。 |
+| **`sec-enterprise`** | 企業級資安平台對接 | 部署完整 Post-Merge 安全驗證工作流（Dependency-Track, DefectDojo, Faraday, Wazuh, post-merge-security）。適合企業正式環境使用。 |
+
+### 3. 自動化 Git Hook 生命週期 (npm prepare)
+- 當目標專案包含 `package.json` 時，腳手架會自動於 `scripts` 中注入 `"prepare": "node scripts/install-hooks.mjs"`。
+- 同步產出 `scripts/install-hooks.mjs` 與版本庫納管的 `scripts/hooks/commit-msg`。
+- 任何團隊成員或 AI 代理人執行 `npm install` 時，本機 `.git/hooks/commit-msg` 便會自動部署就緒，免除手動安裝步驟。
 
 ---
 
@@ -174,3 +203,12 @@ jobs:
       scan_type: ZAP Scan
     secrets: inherit
 ```
+
+---
+
+## 如何擴充與自訂
+1. **新增/修改 Rule**：在 `templates/agent-rules/` 新增或調整 `.md` 模組。
+2. **新增/調整 Lint 設定**：在 `templates/lint/` 調整 `eslint.config.mjs`。
+3. **新增 Workflow**：在 `templates/github/workflows/` 新增 `.yml` 檔案。
+4. **調整 Archetype 與 Feature 結構**：編輯 `presets.json`，在 `archetypes` 或 `features` 中定義包含的 rules、workflows、與專屬 `allowedScopes`。
+
