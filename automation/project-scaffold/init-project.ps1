@@ -2,27 +2,41 @@
 .SYNOPSIS
   Project Scaffolding Tool for Agent Rules, Git Policies & CI Workflows
 .DESCRIPTION
-  Automatically initializes Agent rules, Conventional Commit hooks, and GitHub Actions workflows for new or existing projects.
-.PARAMETER Preset
-  Preset profile: desktop, web, research, minimal
+  Two-tier project initializer:
+  1. Select project Archetype (web-spa, backend-api, desktop-app, sec-research, minimal)
+  2. Select optional Features (strict-linting, chained-prs, sec-enterprise)
+.PARAMETER Archetype
+  Project core archetype profile (or alias -Preset)
+.PARAMETER Features
+  Optional array of features to enable
 .PARAMETER TargetDir
   Target project directory (defaults to current directory)
 .PARAMETER ProjectName
   Project name (defaults to TargetDir folder name)
+.PARAMETER AllFeatures
+  Enable all optional features
+.PARAMETER NoFeatures
+  Disable all optional features (do not even apply recommended)
 .PARAMETER Force
   Overwrite existing rule/workflow files
 .EXAMPLE
-  .\init-project.ps1 -Preset desktop -ProjectName "MyNewApp"
+  .\init-project.ps1 -Archetype web-spa -ProjectName "MyWebApp"
 #>
 
 [CmdletBinding()]
 param(
-  [ValidateSet('desktop', 'web', 'research', 'minimal')]
-  [string]$Preset,
+  [Alias('Preset')]
+  [string]$Archetype,
+
+  [string[]]$Features,
 
   [string]$TargetDir = (Get-Location).Path,
 
   [string]$ProjectName,
+
+  [switch]$AllFeatures,
+
+  [switch]$NoFeatures,
 
   [switch]$Force
 )
@@ -38,38 +52,69 @@ if (-not (Test-Path $PresetsFile)) {
 
 $Config = Get-Content $PresetsFile -Raw -Encoding UTF8 | ConvertFrom-Json
 
-# Interactive selection if preset not provided
-if (-not $Preset) {
+# Handle legacy aliases
+if ($Archetype -and $Config.legacyAliases.$Archetype) {
+  $Archetype = $Config.legacyAliases.$Archetype
+}
+
+# 1. Interactive Selection for Archetype
+if (-not $Archetype) {
   Write-Host ""
   Write-Host "=================================================" -ForegroundColor Cyan
   Write-Host "   🚀 Youchen Project Scaffolding Initializer" -ForegroundColor Yellow
   Write-Host "=================================================" -ForegroundColor Cyan
-  Write-Host "Please select a project preset profile:"
+  Write-Host "Stage 1: Please select a Project Archetype:"
   Write-Host ""
 
-  $presetKeys = @($Config.presets.PSObject.Properties.Name)
-  for ($i = 0; $i -lt $presetKeys.Count; $i++) {
-    $key = $presetKeys[$i]
-    $desc = $Config.presets.$key.description
-    Write-Host "  [$($i + 1)] $key" -ForegroundColor Green -NoNewline
-    Write-Host " - $desc" -ForegroundColor Gray
+  $archetypeKeys = @($Config.archetypes.PSObject.Properties.Name)
+  for ($i = 0; $i -lt $archetypeKeys.Count; $i++) {
+    $key = $archetypeKeys[$i]
+    $arch = $Config.archetypes.$key
+    Write-Host "  [$($i + 1)] $key ($($arch.name))" -ForegroundColor Green -NoNewline
+    Write-Host " - $($arch.description)" -ForegroundColor Gray
   }
   Write-Host ""
 
-  $choice = Read-Host "Enter number (1-$($presetKeys.Count))"
+  $choice = Read-Host "Enter number (1-$($archetypeKeys.Count))"
   $index = [int]$choice - 1
-  if ($index -ge 0 -and $index -lt $presetKeys.Count) {
-    $Preset = $presetKeys[$index]
+  if ($index -ge 0 -and $index -lt $archetypeKeys.Count) {
+    $Archetype = $archetypeKeys[$index]
   } else {
     Write-Error "Invalid choice. Aborting."
     exit 1
   }
 }
 
-$SelectedPreset = $Config.presets.$Preset
-if (-not $SelectedPreset) {
-  Write-Error "Preset '$Preset' not found in configuration."
+$SelectedArchetype = $Config.archetypes.$Archetype
+if (-not $SelectedArchetype) {
+  Write-Error "Archetype '$Archetype' not found in configuration."
   exit 1
+}
+
+# 2. Resolve Active Features
+$ActiveFeatures = @()
+if ($NoFeatures) {
+  $ActiveFeatures = @()
+} elseif ($AllFeatures) {
+  $ActiveFeatures = @($Config.features.PSObject.Properties.Name)
+} elseif ($Features -and $Features.Count -gt 0) {
+  $ActiveFeatures = $Features
+} else {
+  # Default to recommended features for this archetype
+  $recommended = @($SelectedArchetype.recommendedFeatures)
+  if ($recommended.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Stage 2: Features Configuration:" -ForegroundColor Cyan
+    Write-Host "Recommended features for ${Archetype}: $($recommended -join ', ')" -ForegroundColor Yellow
+    $prompt = Read-Host "Enable recommended features? [Y/n] (or enter custom comma-separated list)"
+    if ($prompt -eq '' -or $prompt -match '^[Yy]') {
+      $ActiveFeatures = $recommended
+    } elseif ($prompt -match '^[Nn]') {
+      $ActiveFeatures = @()
+    } else {
+      $ActiveFeatures = $prompt -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    }
+  }
 }
 
 # Resolve Target Directory & Project Name
@@ -85,11 +130,12 @@ if (-not $ProjectName) {
 Write-Host ""
 Write-Host "Target Directory : $TargetDir" -ForegroundColor Cyan
 Write-Host "Project Name     : $ProjectName" -ForegroundColor Cyan
-Write-Host "Selected Preset  : $Preset ($($SelectedPreset.description))" -ForegroundColor Green
+Write-Host "Archetype        : $Archetype ($($SelectedArchetype.name))" -ForegroundColor Green
+Write-Host "Active Features  : $(if ($ActiveFeatures.Count -gt 0) { $ActiveFeatures -join ', ' } else { '(None)' })" -ForegroundColor Yellow
 Write-Host "-------------------------------------------------"
 
-# 1. Assemble Agent Rules
-Write-Host "[1/4] Assembling Agent Rules..." -ForegroundColor Yellow
+# Step 1: Assemble Agent Rules
+Write-Host "[1/5] Assembling Agent Rules..." -ForegroundColor Yellow
 
 $RulesHeader = @"
 # $ProjectName Agent Rules & Developer Guidelines
@@ -101,11 +147,26 @@ Follow the mandatory rules and engineering constraints outlined below.
 
 $CombinedRules = $RulesHeader
 
-foreach ($ruleFile in $SelectedPreset.agentRules) {
+# Add Archetype agent rules
+foreach ($ruleFile in $SelectedArchetype.agentRules) {
   $rulePath = Join-Path $TemplatesDir "agent-rules\$ruleFile"
   if (Test-Path $rulePath) {
     $content = Get-Content $rulePath -Raw -Encoding UTF8
     $CombinedRules += "`n`n" + $content
+  }
+}
+
+# Add Feature agent rules
+foreach ($featKey in $ActiveFeatures) {
+  $feat = $Config.features.$featKey
+  if ($feat -and $feat.agentRules) {
+    foreach ($ruleFile in $feat.agentRules) {
+      $rulePath = Join-Path $TemplatesDir "agent-rules\$ruleFile"
+      if (Test-Path $rulePath) {
+        $content = Get-Content $rulePath -Raw -Encoding UTF8
+        $CombinedRules += "`n`n" + $content
+      }
+    }
   }
 }
 
@@ -139,27 +200,28 @@ if (-not (Test-Path $MemoryPath) -or $Force) {
 ---
 
 ## 📋 Current Active Tasks
-- Initial project setup completed.
+- Initial project setup completed with archetype '$Archetype'.
 
 ---
 
 ## 🏗️ Architectural Context
 - **Project**: $ProjectName
-- **Preset**: $Preset
+- **Archetype**: $Archetype ($($SelectedArchetype.name))
+- **Features**: $(if ($ActiveFeatures.Count -gt 0) { $ActiveFeatures -join ', ' } else { 'Standard baseline' })
 
 ---
 
 ## ✅ Completed Decisions & Lessons Learned
-- Initialized with standard scaffolding system.
+- Initialized with Youchen two-tier scaffolding system.
 "@
   [System.IO.File]::WriteAllText($MemoryPath, $StarterMemory, [System.Text.Encoding]::UTF8)
   Write-Host "  + Created: MEMORY.md (Starter Context)" -ForegroundColor Gray
 }
 
-# 2. Setup Git Policies & Templates
-Write-Host "[2/4] Configuring Git Templates & Hooks..." -ForegroundColor Yellow
+# Step 2: Setup Git Policies & Templates
+Write-Host "[2/5] Configuring Git Templates & Hooks..." -ForegroundColor Yellow
 
-foreach ($gf in $SelectedPreset.gitFiles) {
+foreach ($gf in $SelectedArchetype.gitFiles) {
   if ($gf -like "hooks/*") { continue }
   $gfSrc = Join-Path $TemplatesDir "git\$gf"
   $gfDst = Join-Path $TargetDir $gf
@@ -186,36 +248,80 @@ if (Test-Path $GitDir) {
     Write-Host "  + Installed: .git/hooks/commit-msg" -ForegroundColor Green
   }
 
-  # Configure commit template locally
   try {
     Push-Location $TargetDir
     git config commit.template .gitmessage.txt
     Pop-Location
     Write-Host "  + Configured: git config commit.template .gitmessage.txt" -ForegroundColor Green
   } catch {
-    # Non-fatal if git fails
+    # Non-fatal
   }
 } else {
-  Write-Host "  (Note: .git directory not found. Run 'git init' later and re-run to install hook)" -ForegroundColor DarkYellow
+  Write-Host "  (Note: .git directory not found. Run 'git init' later to install hooks)" -ForegroundColor DarkYellow
 }
 
-# 3. Setup GitHub Actions Workflows & Templates
-Write-Host "[3/4] Deploying GitHub Workflows & Policy CI..." -ForegroundColor Yellow
+# Step 3: Setup Code Quality Linter (if strict-linting enabled)
+Write-Host "[3/5] Configuring Code Quality & Linter..." -ForegroundColor Yellow
+if ($ActiveFeatures -contains "strict-linting") {
+  $eslintSrc = Join-Path $TemplatesDir "lint\eslint.config.mjs"
+  $eslintDst = Join-Path $TargetDir "eslint.config.mjs"
+  if ((Test-Path $eslintSrc) -and (-not (Test-Path $eslintDst) -or $Force)) {
+    Copy-Item $eslintSrc $eslintDst -Force
+    Write-Host "  + Deployed: eslint.config.mjs (Strict Code Quality Gate)" -ForegroundColor Green
+  }
+} else {
+  Write-Host "  - Skipped: strict-linting feature not enabled" -ForegroundColor DarkGray
+}
+
+# Step 4: Setup GitHub Actions Workflows & Templates
+Write-Host "[4/5] Deploying GitHub Workflows & Policy CI..." -ForegroundColor Yellow
 
 $GithubDir = Join-Path $TargetDir ".github"
 $WorkflowsDir = Join-Path $GithubDir "workflows"
 if (-not (Test-Path $WorkflowsDir)) { New-Item -ItemType Directory -Path $WorkflowsDir -Force | Out-Null }
 
-foreach ($wf in $SelectedPreset.githubWorkflows) {
-  $wfSrc = Join-Path $TemplatesDir "github\workflows\$wf"
-  $wfDst = Join-Path $WorkflowsDir $wf
-  if (Test-Path $wfSrc) {
-    Copy-Item $wfSrc $wfDst -Force
-    Write-Host "  + Deployed Workflow: .github/workflows/$wf" -ForegroundColor Gray
+# Collect all workflows (Archetype + Active Features)
+$AllWorkflows = [System.Collections.Generic.HashSet[string]]::new()
+foreach ($wf in $SelectedArchetype.githubWorkflows) {
+  [void]$AllWorkflows.Add($wf)
+}
+foreach ($featKey in $ActiveFeatures) {
+  $feat = $Config.features.$featKey
+  if ($feat -and $feat.githubWorkflows) {
+    foreach ($wf in $feat.githubWorkflows) {
+      [void]$AllWorkflows.Add($wf)
+    }
   }
 }
 
-foreach ($ghFile in $SelectedPreset.githubFiles) {
+foreach ($wf in $AllWorkflows) {
+  $wfSrc = Join-Path $TemplatesDir "github\workflows\$wf"
+  $wfDst = Join-Path $WorkflowsDir $wf
+  if (Test-Path $wfSrc) {
+    if ($wf -eq "policy.yml" -and $SelectedArchetype.defaultScopes) {
+      # Inject archetype-specific scopes into policy.yml
+      $policyContent = Get-Content $wfSrc -Raw -Encoding UTF8
+      $formattedScopes = "/* SCOPES_PLACEHOLDER_START */`n"
+      foreach ($s in $SelectedArchetype.defaultScopes) {
+        $formattedScopes += "              `"$s`",`n"
+      }
+      $formattedScopes += "              /* SCOPES_PLACEHOLDER_END */"
+
+      $policyContent = [System.Text.RegularExpressions.Regex]::Replace(
+        $policyContent,
+        '/\*\s*SCOPES_PLACEHOLDER_START\s*\*/[\s\S]*?/\*\s*SCOPES_PLACEHOLDER_END\s*\*/',
+        $formattedScopes
+      )
+      [System.IO.File]::WriteAllText($wfDst, $policyContent, [System.Text.Encoding]::UTF8)
+      Write-Host "  + Deployed Workflow: .github/workflows/$wf (Tailored Scopes: $($SelectedArchetype.defaultScopes.Count))" -ForegroundColor Green
+    } else {
+      Copy-Item $wfSrc $wfDst -Force
+      Write-Host "  + Deployed Workflow: .github/workflows/$wf" -ForegroundColor Gray
+    }
+  }
+}
+
+foreach ($ghFile in $SelectedArchetype.githubFiles) {
   $ghSrc = Join-Path $TemplatesDir "github\$ghFile"
   $ghDst = Join-Path $GithubDir $ghFile
   if (Test-Path $ghSrc) {
@@ -224,16 +330,11 @@ foreach ($ghFile in $SelectedPreset.githubFiles) {
   }
 }
 
-# Auto-inject Secrets via gh CLI if present in environment
+# Auto-inject Secrets via gh CLI if present
 $ApiKey = $env:SILICONFLOW_API_KEY
 $SecretName = "SILICONFLOW_API_KEY"
-if (-not $ApiKey) {
-  $ApiKey = $env:DEFAULT_API_KEY
-}
-if (-not $ApiKey) {
-  $ApiKey = $env:OPENAI_KEY
-  $SecretName = "OPENAI_KEY"
-}
+if (-not $ApiKey) { $ApiKey = $env:DEFAULT_API_KEY }
+if (-not $ApiKey) { $ApiKey = $env:OPENAI_KEY; $SecretName = "OPENAI_KEY" }
 
 if ($ApiKey -and (Test-Path $GitDir)) {
   try {
@@ -249,15 +350,17 @@ if ($ApiKey -and (Test-Path $GitDir)) {
       }
     }
   } catch {
-    # Non-fatal if remote repo is not set or gh fails
+    # Non-fatal
   }
 }
 
-# 4. Final Summary
-Write-Host "[4/4] Scaffolding Complete!" -ForegroundColor Green
+# Step 5: Final Summary
+Write-Host "[5/5] Scaffolding Complete!" -ForegroundColor Green
 Write-Host "=================================================" -ForegroundColor Cyan
 Write-Host "✨ Project '$ProjectName' is fully scaffolded!" -ForegroundColor Green
-Write-Host "   - Agent Rules: AGENTS.md, .agent/rules.md, MEMORY.md"
-Write-Host "   - Git Policies: .editorconfig, .gitmessage.txt, commit-msg hook"
-Write-Host "   - GitHub CI: $($SelectedPreset.githubWorkflows -join ', ')"
+Write-Host "   - Archetype: $Archetype ($($SelectedArchetype.name))"
+Write-Host "   - Features : $(if ($ActiveFeatures.Count -gt 0) { $ActiveFeatures -join ', ' } else { 'None' })"
+Write-Host "   - Scopes   : $($SelectedArchetype.defaultScopes -join ', ')"
+Write-Host "   - Rules    : AGENTS.md, .agent/rules.md, MEMORY.md"
+Write-Host "   - Workflows: $($AllWorkflows -join ', ')"
 Write-Host "=================================================" -ForegroundColor Cyan
