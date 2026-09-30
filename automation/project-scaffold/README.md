@@ -41,12 +41,42 @@ Agent 會自動讀取配置並就地生成完整的規範體系。
 
 ## Presets 設定一覽
 
-| Preset | 適用技術棧 | 包含 Agent 規則 | 包含 GitHub Workflows |
-| :--- | :--- | :--- | :--- |
-| **`desktop`** | Windows / C# / .NET / WinUI | Core + Memory + Git + .NET Hygiene + Store Release | `policy.yml`, `trufflehog.yml`, `codeql.yml`, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
-| **`web`** | React / Ionic / Vite / Node | Core + Memory + Git + Web Guidelines | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, **`zap-scan.yml`**, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
-| **`research`** | AI 論文 / 資安挖掘 / 實驗 | Core + Memory + Git | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, `pr_agent.yml`, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
-| **`minimal`** | 快速小工具 / 單檔腳本 | Core + Memory + Git | `policy.yml` |
+| Preset | 適用技術棧 | 包含 Agent 規則 | 內建工程與治理工具 | 包含 GitHub Workflows |
+| :--- | :--- | :--- | :--- | :--- |
+| **`desktop`** | Windows / C# / .NET / WinUI | Core + Memory + Git (含職責分離防搭便車) + .NET Hygiene + Store Release | `lint_commits.py`, `pr_helper.py` | `policy.yml`, `trufflehog.yml`, `codeql.yml`, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
+| **`web`** | React / Ionic / Vite / Node | Core + Memory + Git (含職責分離防搭便車) + Web Guidelines | `lint_commits.py`, `pr_helper.py` | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, **`zap-scan.yml`**, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
+| **`research`** | AI 論文 / 資安挖掘 / 實驗 | Core + Memory + Git (含職責分離防搭便車) | `lint_commits.py`, `pr_helper.py` | `policy.yml`, `trufflehog.yml`, **`codeql.yml`**, `pr_agent.yml`, `sbom.yml`, `defectdojo-upload.yml`, `faraday-upload.yml`, `wazuh-health.yml`, `post-merge-security.yml` |
+| **`minimal`** | 快速小工具 / 單檔腳本 | Core + Memory + Git (含職責分離防搭便車) | `lint_commits.py`, `pr_helper.py` | `policy.yml` |
+
+---
+
+## 🛠️ 內建工程規範與 PR 工具說明
+
+初始化專案會在 `tools/` 目錄裝配兩套經 SonarCloud 零漏洞驗證之跨平台自動化工具：
+
+### 1. `tools/lint_commits.py` (Commit 規範與職責分離稽核器)
+* **檢驗項目**：Conventional Commits 標題格式、長度 $\le 72$ 字元、白名單 Scope、禁止句點結尾、杜絕空洞描述。
+* **防搭便車 (Anti-Free-Riding)**：自動使用 `git diff-tree` 掃描整條修訂範圍，若偵測到在同一筆 Commit 中將治理文檔 (`MEMORY.md`, `docs/HANDOVER.md`, `.agent/`) 與功能代碼混雜提交，立即發出告警或錯誤阻擋。
+* **執行方式**：
+  ```bash
+  python tools/lint_commits.py --base origin/main
+  # 嚴格模式（將警告視為錯誤）
+  python tools/lint_commits.py --base origin/main --strict
+  ```
+
+### 2. `tools/pr_helper.py` (PR 自動生成、結構驗證與安全提交助手)
+* **自動萃取 Body**：解析自基準分支以來的所有 Commit，按 Conventional Commits 分類產出合規 Markdown。
+* **格式驗證**：推送前本機檢驗 PR 標題、分支命名、與 PR Body 三大章節（`## Summary`, `## Key Changes`, `## Verification`）。
+* **規避 Shell 字串截斷**：以 `--body-file` 搭配 `--label` 呼叫 `gh pr create`，徹底消除 Windows/PowerShell 引號脫落與 GitHub Actions 時序競態問題。
+* **執行方式**：
+  ```bash
+  # 1. 自動產生 PR 內容
+  python tools/pr_helper.py generate --base origin/main
+  # 2. 本機驗證 PR 格式
+  python tools/pr_helper.py lint --body-file PR_BODY.md --title "feat(core): implement new feature"
+  # 3. 本機預檢並一鍵安全提交 PR
+  python tools/pr_helper.py create --title "feat(core): implement new feature" --label "documentation"
+  ```
 
 ---
 

@@ -89,7 +89,7 @@ Write-Host "Selected Preset  : $Preset ($($SelectedPreset.description))" -Foregr
 Write-Host "-------------------------------------------------"
 
 # 1. Assemble Agent Rules
-Write-Host "[1/4] Assembling Agent Rules..." -ForegroundColor Yellow
+Write-Host "[1/5] Assembling Agent Rules..." -ForegroundColor Yellow
 
 $RulesHeader = @"
 # $ProjectName Agent Rules & Developer Guidelines
@@ -157,7 +157,7 @@ if (-not (Test-Path $MemoryPath) -or $Force) {
 }
 
 # 2. Setup Git Policies & Templates
-Write-Host "[2/4] Configuring Git Templates & Hooks..." -ForegroundColor Yellow
+Write-Host "[2/5] Configuring Git Templates & Hooks..." -ForegroundColor Yellow
 
 foreach ($gf in $SelectedPreset.gitFiles) {
   if ($gf -like "hooks/*") { continue }
@@ -199,8 +199,23 @@ if (Test-Path $GitDir) {
   Write-Host "  (Note: .git directory not found. Run 'git init' later and re-run to install hook)" -ForegroundColor DarkYellow
 }
 
-# 3. Setup GitHub Actions Workflows & Templates
-Write-Host "[3/4] Deploying GitHub Workflows & Policy CI..." -ForegroundColor Yellow
+# 3. Setup Engineering & Governance Tools
+if ($SelectedPreset.toolFiles) {
+  Write-Host "[3/5] Deploying Engineering & Governance Tools..." -ForegroundColor Yellow
+  $ToolsDir = Join-Path $TargetDir "tools"
+  if (-not (Test-Path $ToolsDir)) { New-Item -ItemType Directory -Path $ToolsDir -Force | Out-Null }
+  foreach ($tf in $SelectedPreset.toolFiles) {
+    $tfSrc = Join-Path $TemplatesDir "tools\$tf"
+    $tfDst = Join-Path $ToolsDir $tf
+    if (Test-Path $tfSrc) {
+      Copy-Item $tfSrc $tfDst -Force
+      Write-Host "  + Deployed Tool: tools/$tf" -ForegroundColor Gray
+    }
+  }
+}
+
+# 4. Setup GitHub Actions Workflows & Templates
+Write-Host "[4/5] Deploying GitHub Workflows & Policy CI..." -ForegroundColor Yellow
 
 $GithubDir = Join-Path $TargetDir ".github"
 $WorkflowsDir = Join-Path $GithubDir "workflows"
@@ -253,11 +268,12 @@ if ($ApiKey -and (Test-Path $GitDir)) {
   }
 }
 
-# 4. Final Summary
-Write-Host "[4/4] Scaffolding Complete!" -ForegroundColor Green
+# 5. Final Summary
+Write-Host "[5/5] Scaffolding Complete!" -ForegroundColor Green
 Write-Host "=================================================" -ForegroundColor Cyan
 Write-Host "✨ Project '$ProjectName' is fully scaffolded!" -ForegroundColor Green
 Write-Host "   - Agent Rules: AGENTS.md, .agent/rules.md, MEMORY.md"
 Write-Host "   - Git Policies: .editorconfig, .gitmessage.txt, commit-msg hook"
+Write-Host "   - Tools: $($SelectedPreset.toolFiles -join ', ')"
 Write-Host "   - GitHub CI: $($SelectedPreset.githubWorkflows -join ', ')"
 Write-Host "=================================================" -ForegroundColor Cyan
