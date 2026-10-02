@@ -57,7 +57,8 @@ Script-List/
 │   ├── sync-github-stars/      # GitHub Star Lists Sync Utility
 │   ├── url-health-checker/     # Concurrent URL availability and HTTP status checker
 │   ├── bannerlord-mod-checker/ # Mount & Blade II Bannerlord localization checker
-│   └── project-scaffold/       # Project scaffolding and engineering standard initializer
+│   ├── project-scaffold/       # Project scaffolding and engineering standard initializer
+│   └── slide-deck-auditor/     # Presentation layout & semantic linter (dead space, letterbox, color semantics)
 ├── data/                       # Data verification & extraction
 │   ├── homework-submission-analyzer/ # Homework submission analysis utility
 │   └── image-text-verifier/    # Questionnaire image to CSV verification tool
@@ -103,6 +104,7 @@ Practical script tools categorized by function:
 - **URL Health Checker** ([automation/url-health-checker/](automation/url-health-checker/)) - High-performance concurrent URL availability and HTTP status verification in Python & PowerShell. → [Details](automation/url-health-checker/README.md)
 - **Bannerlord Mod Localization Checker** ([automation/bannerlord-mod-checker/](automation/bannerlord-mod-checker/)) - Inspect localization status across all Mount & Blade II game modules. → [Details](automation/bannerlord-mod-checker/README.md)
 - **Project Scaffolding System** ([automation/project-scaffold/](automation/project-scaffold/)) - Automated engineering standards, git hooks, and three-stage security CI covering PR gates, post-merge validation, SBOM, DefectDojo, Dependency-Track, Greenbone, Faraday, and Wazuh. → [Details](automation/project-scaffold/README.md) · [Security CI](automation/project-scaffold/SECURITY-CI.md)
+- **Slide Deck Auditor** ([automation/slide-deck-auditor/](automation/slide-deck-auditor/)) - Automated static analysis tool for presentations and cards, eliminating dead-space voids, letterbox borders, inverted defense colors, and AI fluff. → [Details](automation/slide-deck-auditor/README.md)
 
 ### 📊 Data & Verification
 - **Homework Submission Analyzer** ([data/homework-submission-analyzer/](data/homework-submission-analyzer/)) - A Node.js utility for eeclass assignments that automatically parses PDF certificates, matches names, and generates a CSV report. → [Details](data/homework-submission-analyzer/README.md)

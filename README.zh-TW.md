@@ -51,7 +51,8 @@ Script-List/
 │   ├── sync-github-stars/      # GitHub 收藏清單自動歸類與同步工具
 │   ├── url-health-checker/     # 網址連線可用性與 HTTP 狀態碼批次檢驗工具
 │   ├── bannerlord-mod-checker/ # 騎馬與砍殺 2 模組漢化語系檢查工具
-│   └── project-scaffold/       # 工程規範與 CI/CD 一鍵腳手架
+│   ├── project-scaffold/       # 工程規範與 CI/CD 一鍵腳手架
+│   └── slide-deck-auditor/     # 投影片排版與語意自動審查工具 (防死空間/黑邊/倒置用色)
 ├── data/                       # 資料驗證與提取
 │   ├── homework-submission-analyzer/ # 學生作業繳交狀態自動統計工具
 │   └── image-text-verifier/    # 問卷影像辨識與 CSV 校對修正工具
@@ -97,6 +98,7 @@ Script-List/
 - **網址存活與狀態碼檢測工具** ([automation/url-health-checker/](automation/url-health-checker/)) - 高併發檢測 URL 連線狀態、轉址與 HTTP Code 的 Python & PowerShell 工具。 → [詳細說明](automation/url-health-checker/README.zh-TW.md)
 - **騎馬與砍殺 2 模組漢化語系檢查工具** ([automation/bannerlord-mod-checker/](automation/bannerlord-mod-checker/)) - 自動掃描 Bannerlord Modules 目錄，檢測各 Mod 是否具備中文本地化檔案。 → [詳細說明](automation/bannerlord-mod-checker/README.zh-TW.md)
 - **工程規範一鍵腳手架** ([automation/project-scaffold/](automation/project-scaffold/)) - 一鍵裝配 Agent/Git 規範與三層安全 CI，涵蓋 PR Gate、Merge 後驗證、SBOM、DefectDojo、Dependency-Track、Greenbone、Faraday 與 Wazuh。 → [詳細說明](automation/project-scaffold/README.zh-TW.md) · [安全 CI 架構](automation/project-scaffold/SECURITY-CI.zh-TW.md)
+- **投影片排版與語意自動審查工具** ([automation/slide-deck-auditor/](automation/slide-deck-auditor/)) - 專門檢測投影片與 UI 卡片的死空間（電梯井陷阱）、黑邊無效截圖、資安紅色語意倒置與空泛 AI 宣傳詞的靜態審查 CLI。 → [詳細說明](automation/slide-deck-auditor/README.zh-TW.md)
 
 ### 📊 資料驗證與提取
 - **學生作業狀態統計工具** ([data/homework-submission-analyzer/](data/homework-submission-analyzer/)) - 專為 eeclass 作業包設計，能自動解析 PDF 證書、比對姓名並輸出 CSV 統計報表的 Node.js 腳本。 → [詳細說明](data/homework-submission-analyzer/README.zh-TW.md)
