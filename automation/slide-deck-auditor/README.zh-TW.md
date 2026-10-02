@@ -98,3 +98,13 @@ python slide_deck_auditor.py -c my-rules.json src/
 ```bash
 python -m unittest discover -s tests -p "test_*.py"
 ```
+
+---
+
+## 🔗 方法學與工程規範連結
+
+`slide-deck-auditor` 是 **「資安實戰教材三位一體研發生命週期（Triangular Pedagogy Lifecycle）」** 的官方 **Phase 4 自動化品質防護閘門**。
+
+有關完整的四大研發階段、英雄視覺放大法、實體裁切標準與反模式禁區，請參見：
+- [`workflow_lab-deck-engineering.md`](../../../Method-List/resources/agent-rules/workflow_lab-deck-engineering.md)
+

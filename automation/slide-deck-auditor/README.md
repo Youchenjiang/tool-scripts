@@ -93,3 +93,13 @@ Run the built-in test suite:
 ```bash
 python -m unittest discover -s tests -p "test_*.py"
 ```
+
+---
+
+## 🔗 Engineering Standard & Workflow
+
+`slide-deck-auditor` serves as the official **Phase 4 Automated Quality Gate** for the **Triangular Pedagogy Lifecycle** (Cybersecurity Lab Deck & Handout Engineering).
+
+For the end-to-end pedagogy lifecycle, hero element amplification, physical crop asset standards, and anti-pattern documentation, refer to:
+- [`workflow_lab-deck-engineering.md`](../../../Method-List/resources/agent-rules/workflow_lab-deck-engineering.md)
+
