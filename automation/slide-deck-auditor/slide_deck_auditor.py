@@ -174,8 +174,22 @@ class SlideDeckAuditor:
     # Rule Checkers (Scaffold implementations)
     # -----------------------------------------------------------------------
 
+    def _is_suppressed(self, line_no: int, rule_id: str, lines: List[str]) -> bool:
+        """Checks if a rule is suppressed via comment on current line or preceding line."""
+        check_indices = [line_no - 1]
+        if line_no - 2 >= 0:
+            check_indices.append(line_no - 2)
+            
+        for idx in check_indices:
+            if idx < len(lines):
+                line = lines[idx]
+                if "slide-audit-ignore" in line:
+                    if f"slide-audit-ignore: {rule_id}" in line or "slide-audit-ignore: all" in line:
+                        return True
+        return False
+
     def _find_style_blocks(self, content: str) -> List[Tuple[int, str]]:
-        """Finds inline style objects style={{ ... }} or CSS declaration blocks { ... }."""
+        """Finds inline style objects style={{ ... }}, CSS blocks { ... }, or className='...'."""
         blocks: List[Tuple[int, str]] = []
         # Pattern for style={{ ... }}
         for match in re.finditer(r"style=\{\{([\s\S]*?)\}\}", content):
@@ -188,6 +202,12 @@ class SlideDeckAuditor:
             start = match.start(1)
             line_no = content.count("\n", 0, start) + 1
             blocks.append((line_no, match.group(1)))
+
+        # Pattern for Tailwind / utility class strings
+        for match in re.finditer(r"(?:className|class)=['\"]([^'\"]*?(?:flex|bg-|object-)[^'\"]*?)['\"]", content):
+            start = match.start(1)
+            line_no = content.count("\n", 0, start) + 1
+            blocks.append((line_no, match.group(1)))
             
         return blocks
 
@@ -195,8 +215,10 @@ class SlideDeckAuditor:
         """Flags column flex containers combined with space-between in the same style block."""
         blocks = self._find_style_blocks(content)
         for line_no, block in blocks:
-            has_column = bool(re.search(r"flexDirection:\s*['\"]column['\"]|flex-col|flex-direction:\s*column", block))
-            has_space_between = bool(re.search(r"justifyContent:\s*['\"]space-between['\"]|justify-between|justify-content:\s*space-between", block))
+            if self._is_suppressed(line_no, "elevator_shaft", lines):
+                continue
+            has_column = bool(re.search(r"flexDirection:\s*['\"]column['\"]|\bflex-col\b|flex-direction:\s*column", block))
+            has_space_between = bool(re.search(r"justifyContent:\s*['\"]space-between['\"]|\bjustify-between\b|justify-content:\s*space-between", block))
             
             if has_column and has_space_between:
                 snippet = lines[line_no - 1].strip() if line_no <= len(lines) else ""
@@ -216,8 +238,10 @@ class SlideDeckAuditor:
         """Flags black background wrapper around images with objectFit contain causing letterboxing."""
         blocks = self._find_style_blocks(content)
         for line_no, block in blocks:
-            has_black_bg = bool(re.search(r"background:\s*['\"]#(?:000|000000)['\"]|background:\s*['\"]black['\"]|bg-black|background-color:\s*black", block))
-            has_contain = bool(re.search(r"objectFit:\s*['\"]contain['\"]|object-contain|object-fit:\s*contain", block))
+            if self._is_suppressed(line_no, "letterboxing_void", lines):
+                continue
+            has_black_bg = bool(re.search(r"background:\s*['\"]#(?:000|000000)['\"]|background:\s*['\"]black['\"]|\bbg-black\b|background-color:\s*black", block))
+            has_contain = bool(re.search(r"objectFit:\s*['\"]contain['\"]|\bobject-contain\b|object-fit:\s*contain", block))
             
             if has_black_bg and has_contain:
                 snippet = lines[line_no - 1].strip() if line_no <= len(lines) else ""
@@ -248,6 +272,8 @@ class SlideDeckAuditor:
                 defense_block_start = idx
 
             if in_defense_block:
+                if self._is_suppressed(idx, "semantic_color_inversion", lines):
+                    continue
                 if any(re.search(pat, line) for pat in danger_patterns):
                     self.issues.append(
                         Issue(
@@ -268,6 +294,8 @@ class SlideDeckAuditor:
         """Flags empty AI marketing fluff phrases."""
         keywords = self.config.data.get("ai_fluff_keywords", [])
         for idx, line in enumerate(lines, start=1):
+            if self._is_suppressed(idx, "ai_fluff", lines):
+                continue
             # Skip comments or imports
             clean_line = line.strip()
             if clean_line.startswith("//") or clean_line.startswith("/*") or clean_line.startswith("*"):
@@ -288,9 +316,10 @@ class SlideDeckAuditor:
 
     def _check_typography_floor(self, file_path: Path, content: str, lines: List[str]) -> None:
         """Warns if font sizes drop below readable floor for 1080p decks."""
-        # Simple regex checking fontSize under minimums (e.g. fontSize: 16)
         pattern = re.compile(r"fontSize:\s*(\d{1,2})\b")
         for idx, line in enumerate(lines, start=1):
+            if self._is_suppressed(idx, "typography_floor", lines):
+                continue
             for match in pattern.finditer(line):
                 size = int(match.group(1))
                 if size < 18:
