@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "name": "slide-deck-auditor",
+  "version": "1.0.0",
+  "description": "Configuration schema for slide-deck-auditor rules and thresholds",
+  "rules": {
+    "elevator_shaft": {
+      "enabled": true,
+      "severity": "ERROR",
+      "description": "Flags column flex containers combining space-between with low content density causing dead space voids."
+    },
+    "letterboxing_void": {
+      "enabled": true,
+      "severity": "ERROR",
+      "description": "Flags image containers with black backgrounds and objectFit contain causing severe letterboxing borders."
+    },
+    "semantic_color_inversion": {
+      "enabled": true,
+      "severity": "ERROR",
+      "description": "Flags defense or mitigation sections using attack/danger red accent colors."
+    },
+    "ai_fluff": {
+      "enabled": true,
+      "severity": "WARN",
+      "description": "Detects empty AI buzzwords, dramatic metaphors, and non-technical filler phrases."
+    },
+    "typography_floor": {
+      "enabled": true,
+      "severity": "WARN",
+      "description": "Warns on text sizes falling below presentation projection standards (titles < 32px, body < 22px)."
+    }
+  },
+  "ai_fluff_keywords": [
+    "科學驗證法則",
+    "親眼見證",
+    "驚人心智模型",
+    "破案地圖",
+    "震撼發現",
+    "史詩級",
+    "革命性突破",
+    "不言而喻",
+    "顯而易見",
+    "眾所周知",
+    "奇蹟般",
+    "不可思議",
+    "Game Changer",
+    "Mind Blowing"
+  ],
+  "defense_keywords": [
+    "防禦",
+    "修復",
+    "加固",
+    "縱深防禦",
+    "mitigation",
+    "defense",
+    "remediation",
+    "hardening",
+    "patch"
+  ],
+  "danger_color_patterns": [
+    "c\\.accent",
+    "color:\\s*['\"]red['\"]",
+    "border:\\s*['\"][^'\"]*red",
+    "#ef4444",
+    "#dc2626",
+    "#b91c1c",
+    "#f87171"
+  ],
+  "typography_thresholds": {
+    "card_title_min_px": 32,
+    "body_text_min_px": 22,
+    "code_font_min_px": 20
+  }
+}
