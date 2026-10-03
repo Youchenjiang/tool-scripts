@@ -150,6 +150,19 @@ jobs:
               if (!/^##\s+(How to Verify|Verification)/mi.test(prBody)) {
                 bodyIssues.push("Missing required section heading `## How to Verify` or `## Verification`.");
               }
+
+              // Check for corrupted escaped inline code artifacts (e.g. \npm test\ instead of `npm test`)
+              const escapedArtifactPattern = /\\([a-zA-Z0-9_./#:@<>()'" -]+)\\/;
+              if (escapedArtifactPattern.test(prBody)) {
+                const matched = prBody.match(escapedArtifactPattern);
+                bodyIssues.push(`PR body contains corrupted escaped inline code artifacts ("${matched[0]}" instead of \`${matched[1]}\`). Use backticks for code and paths.`);
+              }
+
+              // Check for unmatched backticks across the entire PR body
+              const backtickCount = (prBody.match(/`/g) || []).length;
+              if (backtickCount % 2 !== 0) {
+                bodyIssues.push(`PR body has an unmatched backtick (total: ${backtickCount}). Ensure all code spans are closed.`);
+              }
             }
 
             if (bodyIssues.length > 0) {
