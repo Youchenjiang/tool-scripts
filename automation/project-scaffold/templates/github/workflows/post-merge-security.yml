@@ -1,24 +1,31 @@
 # ==============================================================================
-# 🔐 Post-Merge Staging Security Validation
+# 🔐 Post-Deploy Staging Security Validation (CD 部署後安全驗證)
 #
 # 【生命週期】
-# Post-Merge Security：只在程式進入 main / master 後自動啟動部署層安全驗證。
+# Post-Deploy Security：在 CD 流程（Deploy / CD）成功完成後觸發部署層安全驗證。
+# 避免與 CD 同步並行導致時序衝突、掃描到舊版本或伺服器重啟中斷。
 #
 # 【定位】
-# 在程式進入 main / master 後執行部署後安全驗證。此 workflow 不取代 PR gate；
-# CodeQL、TruffleHog 與 policy 仍應在 PR 階段先執行。
+# 在新版程式成功部署至 Staging 環境後執行 DAST 與主機端驗證。
+# 靜態檢測（CodeQL、TruffleHog、policy）仍嚴格於 PR 階段執行。
 #
-# 【啟用條件】
-# Repository Variable `STAGING_URL` 有設定時才執行 Web DAST。
-# 未配置任何外部平台時，workflow 會安全跳過相對應的 integration。
+# 【啟用條件與額度保護】
+# 1. 僅在 CD 成功（conclusion == 'success'）或人工手動觸發時啟動。
+# 2. 未配置 `STAGING_URL` 或目標主機時，工作流於數秒內安全跳過，杜絕 Runner 額度浪費。
 # ==============================================================================
 
-name: Post-Merge Security
+name: Post-Deploy Security
 
 on:
-  push:
-    branches: [main, master]
+  workflow_run:
+    workflows: ["Deploy", "Deploy to Staging", "Continuous Deployment", "CD"]
+    types: [completed]
   workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target Staging URL override (e.g. https://staging.example.com)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -27,20 +34,27 @@ permissions:
 jobs:
   staging-readiness:
     name: Check staging readiness
+    # 僅在 CD 成功或手動觸發時執行
+    if: ${{ (github.event_name == 'workflow_dispatch') || (github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.config.outputs.enabled }}
+      target_url: ${{ steps.config.outputs.target_url }}
     env:
-      STAGING_URL: ${{ vars.STAGING_URL }}
+      STAGING_URL: ${{ github.event.inputs.target_url || vars.STAGING_URL }}
 
     steps:
       - name: Check staging configuration
         id: config
         shell: bash
         run: |
-          if [[ -n "${STAGING_URL:-}" ]]; then
+          TARGET="${STAGING_URL:-}"
+          if [[ -n "${TARGET}" ]]; then
             echo "enabled=true" >> "${GITHUB_OUTPUT}"
+            echo "target_url=${TARGET}" >> "${GITHUB_OUTPUT}"
           else
             echo "enabled=false" >> "${GITHUB_OUTPUT}"
-            echo "::notice::Post-merge DAST skipped. Configure STAGING_URL to enable staging scans."
+            echo "::notice::Post-deploy DAST skipped. Configure STAGING_URL in Repository Variables to enable staging scans."
           fi
 
       - name: Wait for staging to become reachable
@@ -48,24 +62,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          TARGET="${{ steps.config.outputs.target_url }}"
 
-          for attempt in {1..20}; do
-            if curl --fail --silent --show-error --max-time 15 "${STAGING_URL}" > /dev/null; then
-              echo "Staging endpoint is reachable."
+          # 輕量快速探測（最多等待約 100 秒，避免長時間卡住 Runner）
+          for attempt in {1..10}; do
+            if curl --fail --silent --show-error --max-time 10 "${TARGET}" > /dev/null; then
+              echo "Staging endpoint is reachable (${TARGET})."
               exit 0
             fi
 
-            echo "Staging is not ready yet (attempt ${attempt}/20)."
-            sleep 15
+            echo "Waiting for Staging to be ready (attempt ${attempt}/10)..."
+            sleep 10
           done
 
-          echo "::error::Staging endpoint did not become reachable within 5 minutes."
+          echo "::error::Staging endpoint (${TARGET}) did not become reachable within 100 seconds."
           exit 1
 
   zap:
     name: ZAP baseline scan
     needs: staging-readiness
-    if: ${{ vars.STAGING_URL != '' && needs.staging-readiness.result == 'success' }}
+    if: ${{ needs.staging-readiness.outputs.enabled == 'true' && needs.staging-readiness.result == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -75,7 +91,7 @@ jobs:
       - name: Run ZAP baseline scan
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          target: ${{ vars.STAGING_URL }}
+          target: ${{ needs.staging-readiness.outputs.target_url }}
           allow_issue_writing: false
           fail_action: false
           artifact_name: zap-post-merge
@@ -90,8 +106,8 @@ jobs:
       artifact_name: zap-post-merge
       report_path: report_xml.xml
       scan_type: ZAP Scan
-      test_title: Post-Merge ZAP Scan
-      engagement_name: Post-Merge Security
+      test_title: Post-Deploy ZAP Scan
+      engagement_name: Post-Deploy Security
     secrets: inherit
 
   faraday-zap:
@@ -107,9 +123,9 @@ jobs:
   openvas:
     name: Greenbone OpenVAS scan
     needs: staging-readiness
-    if: ${{ needs.staging-readiness.result == 'success' }}
+    if: ${{ needs.staging-readiness.outputs.enabled == 'true' && needs.staging-readiness.result == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 25
     env:
       OPENVAS_HOST: ${{ vars.OPENVAS_HOST }}
       OPENVAS_TASK_ID: ${{ vars.OPENVAS_TASK_ID }}
@@ -132,7 +148,7 @@ jobs:
             echo "enabled=true" >> "${GITHUB_OUTPUT}"
           else
             echo "enabled=false" >> "${GITHUB_OUTPUT}"
-            echo "::notice::Greenbone scan skipped. Configure OPENVAS_HOST, OPENVAS_TASK_ID and the required credentials to enable it."
+            echo "::notice::Greenbone scan skipped. Configure OPENVAS_HOST, OPENVAS_TASK_ID and credentials to enable it."
           fi
 
       - name: Install Greenbone gvm-tools
@@ -178,14 +194,15 @@ jobs:
           echo "Greenbone report ID: ${report_id}"
 
           completed=false
-          for attempt in {1..120}; do
+          # 輪詢限制縮減為最多 20 分鐘 (40次 * 30秒)，防止長時空等耗盡配額
+          for attempt in {1..40}; do
             task_response="$("${gvm[@]}" --xml "<get_tasks task_id=\"${OPENVAS_TASK_ID}\"/>")"
             task_status="$(
               printf '%s' "${task_response}" |
-                python -c 'import sys, xml.etree.ElementTree as ET; root=ET.fromstring(sys.stdin.read()); print(root.findtext(".//task/status") or "")'
+              python -c 'import sys, xml.etree.ElementTree as ET; root=ET.fromstring(sys.stdin.read()); print(root.findtext(".//task/status") or "")'
             )"
 
-            echo "Greenbone task status: ${task_status:-unknown} (poll ${attempt}/120)"
+            echo "Greenbone task status: ${task_status:-unknown} (poll ${attempt}/40)"
 
             case "${task_status}" in
               Done)
@@ -202,7 +219,7 @@ jobs:
           done
 
           if [[ "${completed}" != "true" ]]; then
-            echo "::error::Greenbone task did not finish within 60 minutes."
+            echo "::error::Greenbone task did not finish within 20 minutes."
             exit 1
           fi
 
@@ -227,8 +244,8 @@ jobs:
       artifact_name: openvas-post-merge
       report_path: openvas-report.xml
       scan_type: OpenVAS Parser v2
-      test_title: Post-Merge OpenVAS Scan
-      engagement_name: Post-Merge Security
+      test_title: Post-Deploy OpenVAS Scan
+      engagement_name: Post-Deploy Security
     secrets: inherit
 
   faraday-openvas:
@@ -244,6 +261,6 @@ jobs:
   wazuh-health:
     name: Verify Wazuh runtime monitoring
     needs: staging-readiness
-    if: ${{ needs.staging-readiness.result == 'success' }}
+    if: ${{ needs.staging-readiness.outputs.enabled == 'true' && needs.staging-readiness.result == 'success' }}
     uses: ./.github/workflows/wazuh-health.yml
     secrets: inherit
