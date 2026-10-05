@@ -3,7 +3,7 @@
 本工具為新專案或既有專案提供**一鍵自動化裝配**：
 - **Agent Rules**（授權三階網關、除錯防暴力、MEMORY 協議、Conventional Commits、平台防禦）
 - **Git 規範與 Hook**（`.gitignore`、`.gitmessage.txt`、`.editorconfig`、`commit-msg` 驗證鉤子）
-- **GitHub Actions CI/CD**（PR Gate、CycloneDX SBOM、Dependency-Track、DefectDojo、Greenbone/OpenVAS、Faraday、Wazuh、PR-Agent）
+- **GitHub Actions CI/CD**（PR Gate、CycloneDX SBOM、Dependency-Track、DefectDojo、Greenbone/OpenVAS、Faraday、Wazuh、PR-Agent、Nuclei）
 - **協作模板**（`pull_request_template.md`、`dependabot.yml`、`SECURITY.md`）
 
 ---
@@ -64,7 +64,7 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 | :--- | :--- | :--- |
 | **`strict-linting`** | 嚴格代碼規範 | 部署 `eslint.config.mjs`，內建 TypeScript 嚴格規則、SonarCloud S3358 巢狀三元運算式防禦 (`no-nested-ternary`)、變數命名長度規範 (`id-length`)、物件非空斷言防禦 (`no-non-null-assertion`)。 |
 | **`chained-prs`** | 鏈式 PR 工作流 | 部署 `chained-prs.md` 規則，規範滾動 Rebase（Rolling Rebase）技巧、分支推動決策樹（普通 append vs force-with-lease）、GitHub 倉儲設定（關閉 squash merge、Rulesets 配置）。 |
-| **`sec-enterprise`** | 企業級資安平台對接 | 部署完整 Post-Merge 安全驗證工作流（Dependency-Track, DefectDojo, Faraday, Wazuh, post-merge-security）。適合企業正式環境使用。 |
+| **`sec-enterprise`** | 企業級資安平台對接 | 部署完整 Post-Deploy 與排程安全驗證工作流（Dependency-Track, DefectDojo, Faraday, Wazuh, Nuclei, post-merge-security）。適合企業正式環境使用。 |
 
 ### 3. 自動化 Git Hook 生命週期 (npm prepare)
 - 當目標專案包含 `package.json` 時，腳手架會自動於 `scripts` 中注入 `"prepare": "node scripts/install-hooks.mjs"`。
@@ -103,15 +103,15 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 
 ---
 
-## 🛡️ 安全 CI 架構：PR Gate → Post-Merge → Runtime
+## 🛡️ 安全 CI 架構：PR Gate → Post-Deploy → Runtime & Jitter Schedule
 
 安全流程依生命週期分成三層。完整設計、平台設定與導入順序請見 [Security CI Architecture](SECURITY-CI.md)。
 
 | 階段 | 自動執行內容 | 定位 |
 | :--- | :--- | :--- |
 | **PR Gate** | Policy、TruffleHog、CodeQL、SBOM；research preset 另有 PR-Agent | 合併前找出程式碼、Secret、規範與供應鏈問題 |
-| **Post-Merge Security** | Dependency-Track、Staging readiness、ZAP、OpenVAS、DefectDojo、Faraday | main/master 更新後驗證正式 SBOM 與部署環境 |
-| **Runtime Monitoring** | Wazuh 24/7；CI 驗證 Agent health | 確認部署後端點監控持續在線 |
+| **Post-Deploy Security** | Dependency-Track、Staging readiness、ZAP、OpenVAS、DefectDojo、Faraday | CD 部署成功後觸發 (`workflow_run`)，驗證正式 SBOM 與部署環境（Zero-Waste 守衛） |
+| **Runtime & Scheduled Audit** | Nuclei、CodeQL 定期巡檢（哈希錯峰 Jitter 排程）；Wazuh 24/7 Agent 監控 | 部署後端點與輕量 CVE 巡檢持續在線，避免多專案併發撞牆與額度耗盡 |
 
 PR 階段的 Enforcement 不是全部相同：
 
@@ -139,7 +139,7 @@ PR 階段的 Enforcement 不是全部相同：
 * **容錯處理**：分開處理 `pull_request`（比對 base_ref）與 `push` 事件，徹底解決新分支首次推送時引發的自我比對崩潰問題。
 
 ### 3. `codeql.yml` (SAST 靜態代碼安全分析)
-* **觸發時機**：每次推送到主要分支 (main/master)、PR 到主要分支、以及**每週一上午定期巡檢**。
+* **觸發時機**：每次推送到主要分支 (main/master)、PR 到主要分支、以及**每週哈希錯峰排程 (Weekly Hash Jitter)**。
 * **分析範圍**：支援 `javascript-typescript` 與 `python`，深度分析 SQL Injection、Command Injection、XSS 等語意資料流漏洞。
 * **容錯處理**：加上語言容錯（`continue-on-error: true`），若專案僅包含其中一種語言，不會造成整個工作流失敗。
 
@@ -169,17 +169,24 @@ PR 階段的 Enforcement 不是全部相同：
 * **流程**：向 Wazuh Server API 取得 JWT，再查詢 `GET /agents`。
 * **自簽憑證**：僅在必要時設定 `WAZUH_TLS_INSECURE=true`。
 
-### 9. `post-merge-security.yml` (Merge 後安全驗證)
-* **觸發時機**：程式 Push / Merge 進 `main` 或 `master`，也可手動執行。
-* **Staging Gate**：若有 `STAGING_URL`，最多等待 5 分鐘確認部署端點可連線，再開始動態掃描。
+### 9. `post-merge-security.yml` (CD 部署後動態安全驗證)
+* **觸發時機**：CD 部署完成事件 (`workflow_run` on completion of Deploy/CD)，或手動按需觸發 (`workflow_dispatch`)。
+* **Zero-Waste 額度守衛**：若未配置 `STAGING_URL`，秒級判定並優雅跳過，不白白佔用 Runner 額度。
+* **Staging Gate**：最多等待 5 分鐘確認部署端點可連線，再開始動態掃描。
 * **Web DAST**：對 Staging 執行 ZAP Baseline，報告同時可送 DefectDojo 與 Faraday。
-* **Infrastructure Scan**：若 Greenbone 設定完整，透過 GMP over SSH 啟動既有 OpenVAS task、等待完成並保存 XML，之後同時送 DefectDojo 與 Faraday。
+* **Infrastructure Scan**：若 Greenbone 設定完整，透過 GMP over SSH 啟動既有 OpenVAS task、等待完成並保存 XML，之後同時送 DefectDojo 與 Faraday。輪詢上限限縮至 25 分鐘，避免卡死 Runner。
 * **Runtime Check**：最後呼叫 Wazuh health workflow，確認部署環境 Agent 仍在線。
 
 ### 10. `pr_agent.yml` (AI 自動代碼審查)
 * **觸發時機**：PR 建立或留言互動。
 * **配置需求**：需在 Repo Secrets 設置 `OPENAI_KEY` 或 `SILICONFLOW_API_KEY`。
 * **韌性防護**：若未配置 Secret 會輸出 GitHub Notice 並優雅跳過；設有 `continue-on-error: true`，第三方 AI API 服務超時或停機時**絕不阻擋**正常代碼合併。
+
+### 11. `nuclei-scan.yml` (輕量 CVE 與安全性設定巡檢)
+* **觸發時機**：**每月哈希錯峰排程 (Hash-based Jitter Schedule)** 或手動執行 (`workflow_dispatch`)。
+* **錯峰排程 (Jitter) 機制**：`init-project.ps1` 依據專案名稱哈希自動注入獨立的每月執行日（1..28）、時（1..4 UTC）、分（0..58），徹底杜絕多專案在同日同時段併發衝擊 Runner 額度與目標伺服器 (Self-DDoS)。
+* **極速掃描與額度保護**：鎖定 `critical,high` 與 `cve,misconfig` 標籤，單次掃描約 40 秒，消耗額度極低。
+* **警示整合**：掃描結果自動輸出為 SARIF 格式並上傳至 GitHub Code Scanning Alerts。
 
 ### 外部安全平台設定
 
