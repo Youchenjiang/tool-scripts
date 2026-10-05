@@ -1,0 +1,88 @@
+# ==============================================================================
+# 🎯 Nuclei Vulnerability Assessment (輕量級靶向弱點與配置巡檢)
+#
+# 【生命週期】
+# 1. 週期性巡檢 (Schedule)：按專案專屬錯峰排程 (Hash-based Jitter) 定期拉取最新 CVE 模板巡檢。
+# 2. CD 部署連動 (workflow_run)：CD 部署成功後快速執行特徵驗證 (約 30~60 秒)。
+# 3. 手動測試 (workflow_dispatch)：支援隨時在 GitHub Actions 頁面指定 URL 即時掃描。
+#
+# 【定位】
+# 輕量、低噪聲、高效能 DAST 工具。替代/補充肥大慢速的 ZAP 全量爬蟲。
+# 掃描結果自動產生標準 SARIF 報告，直接整合進 GitHub Repository -> Security Alert 面板。
+#
+# 【額度保護機制】
+# 1. 未配置目標網址 (SCAN_TARGET_URL / STAGING_URL) 時，數秒內安全退出，消耗 0 浪費。
+# 2. 嚴格限縮掃描嚴重等級為 critical, high，杜絕無謂的泛雜訊與掃描超時。
+# ==============================================================================
+
+name: Nuclei Vulnerability Scan
+
+on:
+  schedule:
+    # /* CRON_PLACEHOLDER_START */
+    - cron: '23 3 15 * *'
+    # /* CRON_PLACEHOLDER_END */
+  workflow_run:
+    workflows: ["Deploy", "Deploy to Staging", "Continuous Deployment", "CD"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL to scan (optional override)'
+        required: false
+        default: ''
+      severity:
+        description: 'Vulnerability severity levels to filter'
+        required: false
+        default: 'critical,high'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  nuclei-scan:
+    name: Run Nuclei targeted scan
+    if: ${{ (github.event_name == 'schedule') || (github.event_name == 'workflow_dispatch') || (github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    env:
+      INPUT_TARGET: ${{ github.event.inputs.target_url }}
+      INPUT_SEVERITY: ${{ github.event.inputs.severity || 'critical,high' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine scan target
+        id: target
+        shell: bash
+        run: |
+          TARGET="${INPUT_TARGET:-}"
+          if [[ -z "${TARGET}" ]]; then
+            TARGET="${{ vars.SCAN_TARGET_URL || vars.STAGING_URL }}"
+          fi
+
+          if [[ -n "${TARGET}" ]]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+            echo "url=${TARGET}" >> "${GITHUB_OUTPUT}"
+            echo "Target URL resolved: ${TARGET}"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Nuclei scan skipped. Configure SCAN_TARGET_URL or STAGING_URL in Repository Variables."
+          fi
+
+      - name: Execute Nuclei Security Scan
+        if: ${{ steps.target.outputs.enabled == 'true' }}
+        uses: projectdiscovery/nuclei-action@v5.0.0
+        with:
+          target: ${{ steps.target.outputs.url }}
+          flags: "-severity ${{ env.INPUT_SEVERITY }} -tags cve,misconfig -retries 1 -timeout 5"
+          output: "nuclei.sarif"
+
+      - name: Upload Nuclei SARIF to GitHub Security Alerts
+        if: ${{ steps.target.outputs.enabled == 'true' && always() }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: nuclei.sarif
+          category: nuclei-dast
