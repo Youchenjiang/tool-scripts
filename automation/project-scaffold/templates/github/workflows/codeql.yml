@@ -30,7 +30,9 @@ on:
   pull_request:
     branches: [main, master]
   schedule:
+    # /* CRON_PLACEHOLDER_START */
     - cron: '0 6 * * 1'
+    # /* CRON_PLACEHOLDER_END */
   workflow_dispatch:
 
 jobs:

@@ -127,11 +127,22 @@ if (-not $ProjectName) {
   $ProjectName = Split-Path -Leaf $TargetDir
 }
 
+# Calculate stable project-specific hash-based jitter cron schedule
+# Prevents concurrent spike / Self-DDoS across multiple scaffolded repositories
+$projectHash = [Math]::Abs($ProjectName.GetHashCode())
+$jitterMonthDay = ($projectHash % 28) + 1
+$jitterHour = ($projectHash % 4) + 1
+$jitterMinute = $projectHash % 59
+$ProjectMonthlyCron = "$jitterMinute $jitterHour $jitterMonthDay * *"
+$jitterWeekDay = $projectHash % 7
+$ProjectWeeklyCron = "$jitterMinute $jitterHour * * $jitterWeekDay"
+
 Write-Host ""
 Write-Host "Target Directory : $TargetDir" -ForegroundColor Cyan
 Write-Host "Project Name     : $ProjectName" -ForegroundColor Cyan
 Write-Host "Archetype        : $Archetype ($($SelectedArchetype.name))" -ForegroundColor Green
 Write-Host "Active Features  : $(if ($ActiveFeatures.Count -gt 0) { $ActiveFeatures -join ', ' } else { '(None)' })" -ForegroundColor Yellow
+Write-Host "Jitter Schedules : Monthly ($ProjectMonthlyCron), Weekly ($ProjectWeeklyCron)" -ForegroundColor DarkCyan
 Write-Host "-------------------------------------------------"
 
 # Step 1: Assemble Agent Rules
@@ -345,22 +356,40 @@ foreach ($wf in $AllWorkflows) {
   $wfSrc = Join-Path $TemplatesDir "github\workflows\$wf"
   $wfDst = Join-Path $WorkflowsDir $wf
   if (Test-Path $wfSrc) {
+    $wfContent = Get-Content $wfSrc -Raw -Encoding UTF8
+    $customized = $false
+
+    # 1. Dynamic scopes injection for policy.yml
     if ($wf -eq "policy.yml" -and $SelectedArchetype.defaultScopes) {
-      # Inject archetype-specific scopes into policy.yml
-      $policyContent = Get-Content $wfSrc -Raw -Encoding UTF8
       $formattedScopes = "/* SCOPES_PLACEHOLDER_START */`n"
       foreach ($s in $SelectedArchetype.defaultScopes) {
         $formattedScopes += "              `"$s`",`n"
       }
       $formattedScopes += "              /* SCOPES_PLACEHOLDER_END */"
 
-      $policyContent = [System.Text.RegularExpressions.Regex]::Replace(
-        $policyContent,
+      $wfContent = [System.Text.RegularExpressions.Regex]::Replace(
+        $wfContent,
         '/\*\s*SCOPES_PLACEHOLDER_START\s*\*/[\s\S]*?/\*\s*SCOPES_PLACEHOLDER_END\s*\*/',
         $formattedScopes
       )
-      [System.IO.File]::WriteAllText($wfDst, $policyContent, [System.Text.Encoding]::UTF8)
-      Write-Host "  + Deployed Workflow: .github/workflows/$wf (Tailored Scopes: $($SelectedArchetype.defaultScopes.Count))" -ForegroundColor Green
+      $customized = $true
+    }
+
+    # 2. Hash-based Jitter Cron injection for scheduled workflows
+    if ($wfContent -match 'CRON_PLACEHOLDER_START') {
+      $assignedCron = if ($wf -eq "codeql.yml") { $ProjectWeeklyCron } else { $ProjectMonthlyCron }
+      $formattedCron = "# /* CRON_PLACEHOLDER_START */`n    - cron: '$assignedCron'`n    # /* CRON_PLACEHOLDER_END */"
+      $wfContent = [System.Text.RegularExpressions.Regex]::Replace(
+        $wfContent,
+        '#\s*/\*\s*CRON_PLACEHOLDER_START\s*\*/[\s\S]*?#\s*/\*\s*CRON_PLACEHOLDER_END\s*\*/',
+        $formattedCron
+      )
+      $customized = $true
+    }
+
+    if ($customized) {
+      [System.IO.File]::WriteAllText($wfDst, $wfContent, [System.Text.Encoding]::UTF8)
+      Write-Host "  + Deployed Workflow: .github/workflows/$wf (Tailored / Jitter Configured)" -ForegroundColor Green
     } else {
       Copy-Item $wfSrc $wfDst -Force
       Write-Host "  + Deployed Workflow: .github/workflows/$wf" -ForegroundColor Gray
@@ -410,5 +439,6 @@ Write-Host "   - Features : $(if ($ActiveFeatures.Count -gt 0) { $ActiveFeatures
 Write-Host "   - Scopes   : $($SelectedArchetype.defaultScopes -join ', ')"
 Write-Host "   - Rules    : AGENTS.md, .agent/rules.md, MEMORY.md"
 Write-Host "   - Tools    : $(if ($SelectedArchetype.toolFiles) { $SelectedArchetype.toolFiles -join ', ' } else { 'None' })"
+Write-Host "   - Jitter   : Monthly ($ProjectMonthlyCron), Weekly ($ProjectWeeklyCron)"
 Write-Host "   - Workflows: $($AllWorkflows -join ', ')"
 Write-Host "=================================================" -ForegroundColor Cyan

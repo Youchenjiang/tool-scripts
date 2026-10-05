@@ -173,6 +173,7 @@
         "policy.yml",
         "trufflehog.yml",
         "codeql.yml",
+        "nuclei-scan.yml",
         "pr_agent.yml",
         "sbom.yml"
       ],
@@ -245,8 +246,9 @@
     },
     "sec-enterprise": {
       "name": "Enterprise Security Platform Integration",
-      "description": "整合外部資安平台工作流 (DefectDojo, Faraday, Wazuh, ZAP, Post-merge security)",
+      "description": "整合外部資安平台工作流 (DefectDojo, Faraday, Wazuh, ZAP, Nuclei, Post-deploy security)",
       "githubWorkflows": [
+        "nuclei-scan.yml",
         "defectdojo-upload.yml",
         "faraday-upload.yml",
         "wazuh-health.yml",
