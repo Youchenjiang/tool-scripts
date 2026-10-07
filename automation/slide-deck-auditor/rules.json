@@ -1,13 +1,23 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "name": "slide-deck-auditor",
-  "version": "1.0.0",
-  "description": "Configuration schema for slide-deck-auditor rules and thresholds",
+  "version": "2.1.0",
+  "description": "Strict automated acceptance rules and thresholds for slide deck engineering standards",
   "rules": {
+    "bottom_deadspace_void": {
+      "enabled": true,
+      "severity": "ERROR",
+      "description": "Flags hardcoded short container heights (< 620px) or short card grids that leave a massive (>200px) dead space void at the bottom of the 1080p canvas."
+    },
+    "typography_floor": {
+      "enabled": true,
+      "severity": "ERROR",
+      "description": "Enforces 1080p projection typography floor with three tiers: (1) eyebrow/footer metadata tags: 18~24px; (2) slide body text: >= 30px; (3) card titles: >= 36px. Different tiers apply to different UI zones."
+    },
     "elevator_shaft": {
       "enabled": true,
       "severity": "ERROR",
-      "description": "Flags column flex containers combining space-between with low content density causing dead space voids."
+      "description": "Flags column flex containers combining space-between with low content density causing dead space voids. Also flags marginTop: 'auto' that pushes content to the bottom, creating mid-card voids when content is sparse."
     },
     "letterboxing_void": {
       "enabled": true,
@@ -21,19 +31,58 @@
     },
     "ai_fluff": {
       "enabled": true,
-      "severity": "WARN",
-      "description": "Detects empty AI buzzwords, dramatic metaphors, and non-technical filler phrases."
+      "severity": "ERROR",
+      "description": "Flags empty AI marketing buzzwords, theatrical slogans, preachy metaphors, and non-technical filler phrases."
     },
-    "typography_floor": {
+    "deck_integrity": {
       "enabled": true,
-      "severity": "WARN",
-      "description": "Warns on text sizes falling below presentation projection standards (titles < 32px, body < 22px)."
+      "severity": "ERROR",
+      "description": "Ensures slide deck exports default array of pages and provides matching speaker notes for every page."
+    },
+    "information_density": {
+      "enabled": true,
+      "severity": "ERROR",
+      "description": "Enforces 1080p slide deck information density ceiling to prevent content bloat (Rule 6). Limits nested micro-boxes per card (max 3), multi-column card micro-boxes (max 1), total boxes per slide (max 6), per-slide character count (max 500 chars), and multi-column card text count (max 160 chars)."
+    },
+    "vertical_overflow": {
+      "enabled": true,
+      "severity": "ERROR",
+      "description": "Flags stacked containers (e.g. top banner card stacked with multi-column card grids) that exceed the 1080p canvas available viewport (>680px), colliding with the running footer."
+    },
+    "code_wrapping_defect": {
+      "enabled": true,
+      "severity": "ERROR",
+      "description": "Flags wordBreak: 'break-all' applied to code blocks in multi-column cards that tears code keywords across lines."
+    },
+    "eyebrow_character_ceiling": {
+      "enabled": true,
+      "severity": "ERROR",
+      "description": "Enforces header eyebrow badge quality rules: (1) must not contain phaseTag; (2) must not contain time ranges (e.g. 00:00 - 03:00); (3) must not contain colloquial slang (e.g. 幹嘛); (4) must not use sentence-ending punctuation; (5) character count <= 16; (6) font size must be within 18~24px range. Eyebrows are wayfinding metadata, not slide titles."
     }
+  },
+  "typography_thresholds": {
+    "absolute_min_px": 30,
+    "body_text_min_px": 30,
+    "code_font_min_px": 30,
+    "card_title_min_px": 36,
+    "eyebrow_min_px": 18,
+    "eyebrow_max_px": 24
+  },
+  "density_thresholds": {
+    "max_slide_chars": 500,
+    "max_multicol_card_chars": 160,
+    "max_nested_boxes_per_card": 3,
+    "max_nested_boxes_per_multicol_card": 1,
+    "max_boxes_per_slide": 6
+  },
+  "deadspace_thresholds": {
+    "min_content_height_px": 620
   },
   "ai_fluff_keywords": [
     "科學驗證法則",
+    "科學驗證",
     "親眼見證",
-    "驚人心智模型",
+    "心智模型",
     "破案地圖",
     "震撼發現",
     "史詩級",
@@ -44,7 +93,30 @@
     "奇蹟般",
     "不可思議",
     "Game Changer",
-    "Mind Blowing"
+    "Mind Blowing",
+    "臨床聽診",
+    "封包透視",
+    "客觀證據鏈",
+    "不可辯駁",
+    "客觀物理",
+    "截然不同",
+    "解剖視野",
+    "透明明信片",
+    "加密鐵幕",
+    "拼圖地獄",
+    "不可偽造",
+    "工程師心法",
+    "人機分工新公式",
+    "過關了嗎",
+    "看清真相",
+    "數位水管",
+    "洋蔥切片",
+    "神仙打架",
+    "一目了然的真相",
+    "揭開神秘面紗",
+    "驚人反轉",
+    "驚心動魄",
+    "絕不說謊"
   ],
   "defense_keywords": [
     "防禦",
@@ -65,10 +137,5 @@
     "#dc2626",
     "#b91c1c",
     "#f87171"
-  ],
-  "typography_thresholds": {
-    "card_title_min_px": 32,
-    "body_text_min_px": 22,
-    "code_font_min_px": 20
-  }
+  ]
 }
