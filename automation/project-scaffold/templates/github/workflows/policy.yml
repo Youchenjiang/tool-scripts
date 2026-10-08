@@ -158,6 +158,14 @@ jobs:
                 bodyIssues.push(`PR body contains corrupted escaped inline code artifacts ("${matched[0]}" instead of \`${matched[1]}\`). Use backticks for code and paths.`);
               }
 
+              // Check for broken or trailing escape backslashes on checklist items
+              const checklistLines = prBody.split("\n").map((line) => line.trim()).filter((line) => /^[-*+]\s+\[[ xX]\]/.test(line));
+              for (const rawLine of checklistLines) {
+                if (/(?:^|[^\\])\\[\s\S]*$/.test(rawLine) && (/\\$/.test(rawLine) || /^[-*+]\s+\[[ xX]\]\s*\\/.test(rawLine))) {
+                  bodyIssues.push(`Checklist item contains invalid or escaped backslashes: "${rawLine}".`);
+                }
+              }
+
               // Check for unmatched backticks across the entire PR body
               const backtickCount = (prBody.match(/`/g) || []).length;
               if (backtickCount % 2 !== 0) {
