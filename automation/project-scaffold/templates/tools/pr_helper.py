@@ -130,6 +130,25 @@ def categorize_commits(commits):
     return categories
 
 
+def _format_category_changes(descs, max_items=4):
+    unique_descs = list(dict.fromkeys(descs))
+    lines = [f"   - {d}" for d in unique_descs[:max_items]]
+    if len(unique_descs) > max_items:
+        lines.append(f"   - ... and {len(unique_descs) - max_items} additional atomic refinement(s)")
+    return lines
+
+
+def _format_categorized_changes(commits):
+    categories = categorize_commits(commits)
+    changes_lines = []
+    idx = 1
+    for (ctype, scope), descs in sorted(categories.items()):
+        changes_lines.append(f"{idx}. **{ctype.upper()} ({scope})**:")
+        changes_lines.extend(_format_category_changes(descs))
+        idx += 1
+    return "\n".join(changes_lines)
+
+
 def build_pr_body(commits, custom_summary=None, custom_changes=None):
     summary_text = custom_summary or (
         f"This pull request incorporates {len(commits)} atomic commit(s) delivering updates "
@@ -139,22 +158,7 @@ def build_pr_body(commits, custom_summary=None, custom_changes=None):
     if custom_changes and custom_changes.strip():
         changes_body = custom_changes.strip()
     else:
-        categories = categorize_commits(commits)
-        changes_lines = []
-        idx = 1
-        for (ctype, scope), descs in sorted(categories.items()):
-            header = f"{idx}. **{ctype.upper()} ({scope})**:"
-            changes_lines.append(header)
-            unique_descs = list(dict.fromkeys(descs))
-            if len(unique_descs) > 4:
-                for d in unique_descs[:4]:
-                    changes_lines.append(f"   - {d}")
-                changes_lines.append(f"   - ... and {len(unique_descs) - 4} additional atomic refinement(s)")
-            else:
-                for d in unique_descs:
-                    changes_lines.append(f"   - {d}")
-            idx += 1
-        changes_body = "\n".join(changes_lines)
+        changes_body = _format_categorized_changes(commits)
 
     verification_items = [
         "- [x] Conventional commits audit passes: `python tools/lint_commits.py`",
