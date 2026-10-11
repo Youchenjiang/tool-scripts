@@ -200,13 +200,14 @@ class TestBuildPrBody(unittest.TestCase):
         self.assertIn(custom_changes, body)
         self.assertNotIn("1. **FEAT (fluent)**:", body)
 
-    def test_key_changes_synthesis_for_large_commits(self):
+    def test_key_changes_never_dumps_raw_commit_subjects(self):
         sample_commits = [
             (f"sha{i}", f"docs(docs): documentation item {i}")
             for i in range(10)
         ]
         body = pr_helper.build_pr_body(sample_commits)
-        self.assertIn("... and 6 additional atomic refinement(s)", body)
+        self.assertIn("1. **DOCS (docs)**: 10 atomic refinement(s)", body)
+        self.assertNotIn("documentation item 0", body)
 
 
 class TestSecurityGate(unittest.TestCase):
@@ -215,6 +216,20 @@ class TestSecurityGate(unittest.TestCase):
     def test_merge_subcommand_strictly_forbidden(self):
         with self.assertRaises(SystemExit) as ctx:
             pr_helper.handle_merge(None)
+        self.assertEqual(ctx.exception.code, 1)
+
+    def test_create_requires_custom_changes(self):
+        class DummyArgs:
+            base = "main"
+            skip_checks = True
+            changes_file = None
+            changes = None
+            title = "feat(core): test pr"
+            label = "documentation"
+            summary = None
+
+        with self.assertRaises(SystemExit) as ctx:
+            pr_helper.handle_create(DummyArgs())
         self.assertEqual(ctx.exception.code, 1)
 
 

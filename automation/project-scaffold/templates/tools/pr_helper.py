@@ -130,23 +130,27 @@ def categorize_commits(commits):
     return categories
 
 
-def _format_category_changes(descs, max_items=4):
-    unique_descs = list(dict.fromkeys(descs))
-    lines = [f"   - {d}" for d in unique_descs[:max_items]]
-    if len(unique_descs) > max_items:
-        lines.append(f"   - ... and {len(unique_descs) - max_items} additional atomic refinement(s)")
-    return lines
-
-
 def _format_categorized_changes(commits):
     categories = categorize_commits(commits)
     changes_lines = []
     idx = 1
     for (ctype, scope), descs in sorted(categories.items()):
-        changes_lines.append(f"{idx}. **{ctype.upper()} ({scope})**:")
-        changes_lines.extend(_format_category_changes(descs))
+        changes_lines.append(f"{idx}. **{ctype.upper()} ({scope})**: {len(descs)} atomic refinement(s)")
         idx += 1
     return "\n".join(changes_lines)
+
+
+def resolve_custom_changes(changes_file=None, changes_text=None):
+    if changes_text and changes_text.strip():
+        return changes_text.strip()
+    if changes_file:
+        safe_changes_path = get_safe_path(changes_file)
+        if os.path.exists(safe_changes_path):
+            with open(safe_changes_path, "r", encoding="utf-8") as f:
+                return f.read().strip()
+        print(f"❌ 找不到指定的 Changes 檔案: {safe_changes_path}")
+        sys.exit(1)
+    return None
 
 
 def build_pr_body(commits, custom_summary=None, custom_changes=None):
@@ -233,15 +237,10 @@ def handle_generate(args):
         print(f"❌ 在 {args.base}..HEAD 之間找不到任何提交紀錄。")
         sys.exit(1)
 
-    custom_changes = None
-    if getattr(args, "changes_file", None):
-        safe_changes_path = get_safe_path(args.changes_file)
-        if os.path.exists(safe_changes_path):
-            with open(safe_changes_path, "r", encoding="utf-8") as f:
-                custom_changes = f.read().strip()
-        else:
-            print(f"❌ 找不到指定的 Changes 檔案: {safe_changes_path}")
-            sys.exit(1)
+    custom_changes = resolve_custom_changes(
+        changes_file=getattr(args, "changes_file", None),
+        changes_text=getattr(args, "changes", None)
+    )
 
     body = build_pr_body(commits, custom_summary=args.summary, custom_changes=custom_changes)
     safe_out = get_safe_path(args.output)
@@ -320,15 +319,17 @@ def handle_create(args):
     if not args.skip_checks:
         run_local_preflight()
 
-    custom_changes = None
-    if getattr(args, "changes_file", None):
-        safe_changes_path = get_safe_path(args.changes_file)
-        if os.path.exists(safe_changes_path):
-            with open(safe_changes_path, "r", encoding="utf-8") as f:
-                custom_changes = f.read().strip()
-        else:
-            print(f"❌ 找不到指定的 Changes 檔案: {safe_changes_path}")
-            sys.exit(1)
+    custom_changes = resolve_custom_changes(
+        changes_file=getattr(args, "changes_file", None),
+        changes_text=getattr(args, "changes", None)
+    )
+    if not custom_changes:
+        print("=" * 75)
+        print("❌ [QUALITY GATE VIOLATION] 建立 PR 時必須提供架構層級之變更說明！")
+        print("🛑 請使用 --changes-file <path> 或 --changes \"<text>\" 提供 Key Changes。")
+        print("📌 嚴禁直接將原始 Git Commit 提交主旨傾印 (dump) 至 PR Body 中！")
+        print("=" * 75)
+        sys.exit(1)
 
     body_content = build_pr_body(commits, custom_summary=args.summary, custom_changes=custom_changes)
     lint_errors = lint_pr_content(body_content)
@@ -385,6 +386,7 @@ def main():
     gen_parser.add_argument("--base", default=DEFAULT_BASE_REF, help=f"比較之基準分支 (預設 {DEFAULT_BASE_REF})")
     gen_parser.add_argument("--summary", default=None, help="自訂 Summary 描述")
     gen_parser.add_argument("--changes-file", default=None, help="指定自訂 Key Changes Markdown 檔案路徑")
+    gen_parser.add_argument("--changes", default=None, help="指定自訂 Key Changes Markdown 內文字串")
     gen_parser.add_argument("-o", "--output", default="PR_BODY.md", help="輸出檔案路徑 (預設 PR_BODY.md)")
 
     # 2. lint
@@ -400,6 +402,7 @@ def main():
     create_parser.add_argument("--label", default="documentation", help="指定 PR 標籤 (預設 documentation)")
     create_parser.add_argument("--summary", default=None, help="自訂 Summary 描述")
     create_parser.add_argument("--changes-file", default=None, help="指定自訂 Key Changes Markdown 檔案路徑")
+    create_parser.add_argument("--changes", default=None, help="指定自訂 Key Changes Markdown 內文字串")
     create_parser.add_argument("--skip-checks", action="store_true", help="跳過本地 lint 與驗證")
 
     # 4. merge (strictly forbidden security gate)
