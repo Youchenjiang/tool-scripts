@@ -228,8 +228,9 @@ class TestSecurityGate(unittest.TestCase):
             label = "documentation"
             summary = None
 
+        args = DummyArgs()
         with self.assertRaises(SystemExit) as ctx:
-            pr_helper.handle_create(DummyArgs())
+            pr_helper.handle_create(args)
         self.assertEqual(ctx.exception.code, 1)
 
 
