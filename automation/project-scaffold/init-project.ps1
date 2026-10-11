@@ -318,6 +318,16 @@ if ($SelectedArchetype.toolFiles) {
       Write-Host "  + Deployed Tool: tools/$tf" -ForegroundColor Gray
     }
   }
+
+  $TestTemplateDir = Join-Path $TemplatesDir "tests"
+  if (Test-Path $TestTemplateDir) {
+    $TestsDir = Join-Path $TargetDir "tests"
+    if (-not (Test-Path $TestsDir)) { New-Item -ItemType Directory -Path $TestsDir -Force | Out-Null }
+    Get-ChildItem $TestTemplateDir -File | ForEach-Object {
+      Copy-Item $_.FullName (Join-Path $TestsDir $_.Name) -Force
+      Write-Host "  + Deployed Test: tests/$($_.Name)" -ForegroundColor Gray
+    }
+  }
 }
 
 if ($ActiveFeatures -contains "strict-linting") {

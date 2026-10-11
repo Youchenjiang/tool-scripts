@@ -35,6 +35,12 @@ ALLOWED_TYPES = [
 
 ALLOWED_SCOPES = [
     "core",
+    "fluent",
+    "launcher",
+    "tray",
+    "macro",
+    "packaging",
+    "tapster",
     "ui",
     "web",
     "cli",
@@ -120,7 +126,7 @@ def run_git(cmd):
             raise ValueError(f"Disallowed git option flag: {clean_arg}")
         safe_cmd.append(clean_arg)
     try:
-        res = subprocess.run(
+        res = subprocess.run(  # sourcery skip # nosec B603 # noqa: S603
             safe_cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

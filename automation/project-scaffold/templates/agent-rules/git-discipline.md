@@ -39,3 +39,8 @@ or
 - **Bypass Shell String Escaping**: Never pass raw markdown text directly via CLI string arguments (e.g. `gh pr create --body "..."`). Always write the PR body to a temporary or standard file and pass `--body-file <path>` to eliminate Windows/PowerShell escape stripping and markdown truncation.
 - **Atomic Label Assignment**: Always pass `--label` during the initial `gh pr create` invocation to avoid race conditions with GitHub Actions policy workflows triggering on the `opened` event.
 - **Use Dedicated PR Helper**: Prefer using `python tools/pr_helper.py create` or equivalent local tools to validate PR structure and submit safely.
+
+### 6. Pull Request Merge Authority (Absolute Human-Only Gate)
+- **STRICT AGENT BAN ON MERGES**: The AI agent must **NEVER** run `gh pr merge`, call merge APIs, or merge commits into `main` / `master` / protected branches.
+- **Agent Lifecycle End**: Once a PR is opened, review feedback is resolved, and CI checks pass, the agent's work on the PR is **COMPLETE**. The agent must report the status to the user and await the user's manual merge.
+- **No Blanket Exemption**: Blanket permissions for branch commits and pushes (`git commit`, `git push`) strictly exclude PR merges. Merging to `main` is an irreversible product baseline decision that exclusively belongs to the repository owner.
