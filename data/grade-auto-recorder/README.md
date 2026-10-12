@@ -3,10 +3,10 @@
 本目錄用於管理學生名冊與成績登記。
 
 ## 學生總數與班級組成（最新）
-- **總人數**：68 人
+- **總人數**：67 人（已排除退選之劉**同學）
 - **班別組成**：
   - `114483` 系列：1 人（114483005 陳**）
-  - `115423` 系列（碩班）：63 人
+  - `115423` 系列（碩班）：62 人
   - `115483` 系列（博一）：4 人
 
 ---
@@ -26,41 +26,48 @@
 
 ## 專案結構與個資隔離設計 (Data Isolation)
 
-本專案採「代碼與數據完全分離」設計：
+本專案採「代碼與數據完全分離」與「模組化架構」設計：
 - **`data/`（完全受 `.gitignore` 隔離）**：存放所有真實學生名冊（`roster.csv`）與歷次成績登記檔案（`grade_*.csv`、`grade_*.xlsx`），確保絕對不會被意外 Commit 或 Push 到 GitHub。
 - **`data.example/`**：提供脫敏的範例名冊（`roster.example.csv`），供專案開源或跨環境測試。
-- **根目錄**：僅保留純代碼（`grade_recorder.py`、`export_excel.py`）與說明文件。
+- **模組化程式碼與測試**：核心邏輯分拆為獨立子模組，並附帶完整單元測試。
 
 ```text
-Grade/
-├── data/                  # [已 Git 忽略] 真實名冊與各次成績 (.csv, .xlsx)
-├── data.example/          # 脫敏名冊範例 (供測試)
-├── grade_recorder.py      # 成績登記與衝突比對主程式
-├── export_excel.py        # 美化版 Excel 批次導出模組
-├── generate_xlsx.bat      # 雙擊一鍵轉檔批次檔
-├── README.md              # 系統手冊
-├── DESIGN_AND_ROADMAP.md  # 系統架構規劃
-└── .gitignore             # 隔離 data/ 目錄
+grade-auto-recorder/
+├── data/                    # [已 Git 忽略] 真實名冊與各次成績 (.csv, .xlsx)
+├── data.example/            # 脫敏名冊範例 (供測試)
+├── grade_recorder/          # 模組化核心套件
+│   ├── __init__.py          # 套件入口與匯出宣告
+│   ├── models.py            # Student & Roster 資料模型
+│   ├── parser.py            # 多欄剪貼簿與文字解析器
+│   ├── engine.py            # 防呆仲裁與超額防護純函數引擎
+│   ├── exporter.py          # CSV 與美化版 Excel (openpyxl) 匯出器
+│   └── cli.py               # 命令列互動選單與流程控制
+├── tests/                   # 單元測試套件
+│   ├── test_parser.py       # 解析器測試
+│   ├── test_engine.py       # 仲裁與防呆引擎測試
+│   └── test_exporter.py     # 檔案導出與 Excel 測試
+├── run.py                   # 推薦一鍵啟動入口
+├── grade_recorder.py        # 向後相容轉發入口
+├── README.md                # 系統使用說明
+└── DESIGN_AND_ROADMAP.md    # 系統架構設計規範
 ```
 
 ---
 
-## 自動化登記指令碼
-本目錄提供 [`grade_recorder.py`](file:///c:/Users/g1014/Documents/GitHub/Youchen/Grade/grade_recorder.py)：
-- **自動對應 `data/`**：預設自動讀取 `data/roster.csv`，每次作業自動產出獨立檔案至 `data/grade_YYYYMMDD.xlsx`。
-- **一人多次提交/超額防呆警報**：若單一學生或重複號碼組提交次數超額，立即跳出醒目警報，絕不默默覆蓋。
-- **支援多欄複製貼上**：直接支援 Excel 複製的 `A+`、`A`、`A-` 多欄格式。
-- **支援快捷標記**：支援 `1博 A+`、`1碩 A` 快捷輸入，直接精準配對免確認。
+## 執行方式與自動化測試
 
-### 執行方式
+### 1. 執行成績登記
+建議使用標準啟動入口：
 ```powershell
-python grade_recorder.py
+python run.py
 ```
-若需手動將 `data/` 下所有 CSV 批次轉為 Excel：
+（亦支援舊有習慣 `python grade_recorder.py`，內部將自動轉發至模組入口）
+
+### 2. 執行單元自動化測試
+可在本目錄直接執行單元測試套件：
 ```powershell
-python export_excel.py
+python -m unittest discover -s tests
 ```
-或直接在資料夾中雙擊 [`generate_xlsx.bat`](file:///c:/Users/g1014/Documents/GitHub/Youchen/Grade/generate_xlsx.bat)。
 
 ---
 
