@@ -54,6 +54,7 @@ Script-List/
 │   ├── project-scaffold/       # 工程規範與 CI/CD 一鍵腳手架
 │   └── slide-deck-auditor/     # 投影片排版與語意自動審查工具 (防死空間/黑邊/倒置用色)
 ├── data/                       # 資料驗證與提取
+│   ├── grade-auto-recorder/    # 學生成績登記、學號衝突消解與美化 Excel 導出工具
 │   ├── homework-submission-analyzer/ # 學生作業繳交狀態自動統計工具
 │   └── image-text-verifier/    # 問卷影像辨識與 CSV 校對修正工具
 ├── media/                      # 圖片、PDF 與文件處理
@@ -101,6 +102,7 @@ Script-List/
 - **投影片排版與語意自動審查工具** ([automation/slide-deck-auditor/](automation/slide-deck-auditor/)) - 專門檢測投影片與 UI 卡片的死空間（電梯井陷阱）、黑邊無效截圖、資安紅色語意倒置與空泛 AI 宣傳詞的靜態審查 CLI。 → [詳細說明](automation/slide-deck-auditor/README.zh-TW.md)
 
 ### 📊 資料驗證與提取
+- **學生成績自動登記與衝突比對工具** ([data/grade-auto-recorder/](data/grade-auto-recorder/)) - 專為助教設計的自動化成績登記工具，支援多欄表格貼上、後兩碼重複自動消解、一人多次提交防呆警報與美化 Excel 報表自動導出。 → [詳細說明](data/grade-auto-recorder/README.md)
 - **學生作業狀態統計工具** ([data/homework-submission-analyzer/](data/homework-submission-analyzer/)) - 專為 eeclass 作業包設計，能自動解析 PDF 證書、比對姓名並輸出 CSV 統計報表的 Node.js 腳本。 → [詳細說明](data/homework-submission-analyzer/README.zh-TW.md)
 - **問卷影像辨識與校對工具** ([data/image-text-verifier/](data/image-text-verifier/)) - 用於將實體問卷掃描圖自動辨識，並與現有 CSV 資料自動比對、偵測風險與修正的工具。 → [詳細說明](data/image-text-verifier/README.zh-TW.md)
 

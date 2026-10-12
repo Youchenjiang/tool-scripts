@@ -60,6 +60,7 @@ Script-List/
 │   ├── project-scaffold/       # Project scaffolding and engineering standard initializer
 │   └── slide-deck-auditor/     # Presentation layout & semantic linter (dead space, letterbox, color semantics)
 ├── data/                       # Data verification & extraction
+│   ├── grade-auto-recorder/    # Student grading, suffix conflict resolver & Excel exporter
 │   ├── homework-submission-analyzer/ # Homework submission analysis utility
 │   └── image-text-verifier/    # Questionnaire image to CSV verification tool
 ├── media/                      # Media & Document converters
@@ -107,6 +108,7 @@ Practical script tools categorized by function:
 - **Slide Deck Auditor** ([automation/slide-deck-auditor/](automation/slide-deck-auditor/)) - Automated static analysis tool for presentations and cards, eliminating dead-space voids, letterbox borders, inverted defense colors, and AI fluff. → [Details](automation/slide-deck-auditor/README.md)
 
 ### 📊 Data & Verification
+- **Student Grade Auto-Recorder** ([data/grade-auto-recorder/](data/grade-auto-recorder/)) - Automated student grading assistant supporting multi-column paste, smart last-two-digit conflict resolution, over-quota sanity check, and styled Excel report generation. → [Details](data/grade-auto-recorder/README.md)
 - **Homework Submission Analyzer** ([data/homework-submission-analyzer/](data/homework-submission-analyzer/)) - A Node.js utility for eeclass assignments that automatically parses PDF certificates, matches names, and generates a CSV report. → [Details](data/homework-submission-analyzer/README.md)
 - **Image-Text Verifier** ([data/image-text-verifier/](data/image-text-verifier/)) - Extract answers from scanned questionnaire images and automatically verify/fix them against an existing CSV dataset with targeted risk management. → [Details](data/image-text-verifier/README.md)
 
