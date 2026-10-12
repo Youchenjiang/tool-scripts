@@ -28,3 +28,6 @@ __pycache__/
 **/local.properties
 *.iml
 .idea/
+
+# Teaching / TA tools private data
+**/grade-auto-recorder/data/
