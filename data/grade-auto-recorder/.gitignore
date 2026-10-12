@@ -1,0 +1,12 @@
+# Python 虛擬環境與編譯快取
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# 學生真實個資與成績資料夾 (完全隔離，不納入版本控制)
+data/
+
+# Office 暫存檔案
+~$*.xlsx
+~$*.docx
