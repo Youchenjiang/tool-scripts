@@ -2,8 +2,14 @@
 # -*- coding: utf-8 -*-
 """單元測試 - GradeEngine 核心防呆仲裁測試"""
 
+import sys
 import unittest
 from pathlib import Path
+
+_pkg_root = Path(__file__).resolve().parent.parent
+if str(_pkg_root) not in sys.path:
+    sys.path.insert(0, str(_pkg_root))
+
 from grade_recorder.models import Roster
 from grade_recorder.engine import GradeEngine
 

@@ -2,10 +2,16 @@
 # -*- coding: utf-8 -*-
 """單元測試 - GradeExporter 匯出測試"""
 
+import sys
 import unittest
 import tempfile
 import shutil
 from pathlib import Path
+
+_pkg_root = Path(__file__).resolve().parent.parent
+if str(_pkg_root) not in sys.path:
+    sys.path.insert(0, str(_pkg_root))
+
 from grade_recorder.models import Roster
 from grade_recorder.exporter import GradeExporter
 
