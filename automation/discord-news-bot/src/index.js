@@ -1,12 +1,11 @@
 require('dotenv').config();
 const {
   ActivityType,
-  Client,
   Events,
-  GatewayIntentBits,
   MessageFlags,
 } = require('discord.js');
 const { loadConfig } = require('./config');
+const { createDiscordClient } = require('./discord-client');
 const { createEventInteractionHandler } = require('./event-interactions');
 const { createEventService } = require('./event-service');
 const { createNewsInteractionHandler } = require('./news-interactions');
@@ -21,7 +20,7 @@ const { scheduleRecurringTask } = require('./task-scheduler');
 
 async function main() {
   const config = loadConfig();
-  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+  const client = createDiscordClient();
   const stateStore = createStateStore(config);
   let publisher;
   const eventPublishers = new Map();
