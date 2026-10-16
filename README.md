@@ -58,7 +58,8 @@ Script-List/
 │   ├── url-health-checker/     # Concurrent URL availability and HTTP status checker
 │   ├── bannerlord-mod-checker/ # Mount & Blade II Bannerlord localization checker
 │   ├── project-scaffold/       # Project scaffolding and engineering standard initializer
-│   └── slide-deck-auditor/     # Presentation layout & semantic linter (dead space, letterbox, color semantics)
+│   ├── slide-deck-auditor/     # Presentation layout & semantic linter (dead space, letterbox, color semantics)
+│   └── direct-pdf-printer/     # Low-level Windows CLI direct print tool (bypasses browser OOM)
 ├── data/                       # Data verification & extraction
 │   ├── grade-auto-recorder/    # Student grading, suffix conflict resolver & Excel exporter
 │   ├── homework-submission-analyzer/ # Homework submission analysis utility
@@ -72,7 +73,8 @@ Script-List/
 │   ├── pdf-merger/             # PDF file merging utility
 │   ├── pdf-to-markdown/        # PDF text and metadata to Markdown extractor
 │   ├── photo-splitter/         # Student photo extraction/splitting tool
-│   └── ppt-to-pdf/             # PowerPoint to PDF converter
+│   ├── ppt-to-pdf/             # PowerPoint to PDF converter
+│   └── pdf-contrast-enhancer/  # Scanned PDF handwriting contrast & signature darkener
 ├── security/                   # Security & Analysis tools
 │   ├── android-intent-dast-suite/ # Android Intent Redirection DAST scanner & testbed suite
 │   ├── password-security-checker/ # HIBP breach and strength checker
@@ -106,6 +108,7 @@ Practical script tools categorized by function:
 - **Bannerlord Mod Localization Checker** ([automation/bannerlord-mod-checker/](automation/bannerlord-mod-checker/)) - Inspect localization status across all Mount & Blade II game modules. → [Details](automation/bannerlord-mod-checker/README.md)
 - **Project Scaffolding System** ([automation/project-scaffold/](automation/project-scaffold/)) - Automated engineering standards, git hooks, and three-stage security CI covering PR gates, post-merge validation, SBOM, DefectDojo, Dependency-Track, Greenbone, Faraday, and Wazuh. → [Details](automation/project-scaffold/README.md) · [Security CI](automation/project-scaffold/SECURITY-CI.md)
 - **Slide Deck Auditor** ([automation/slide-deck-auditor/](automation/slide-deck-auditor/)) - Automated static analysis tool for presentations and cards, eliminating dead-space voids, letterbox borders, inverted defense colors, and AI fluff. → [Details](automation/slide-deck-auditor/README.md)
+- **Direct PDF Printer** ([automation/direct-pdf-printer/](automation/direct-pdf-printer/)) - Low-level Windows .NET sequential direct print tool that bypasses Chromium print preview memory crashes and spooler OOM. → [Details](automation/direct-pdf-printer/README.md)
 
 ### 📊 Data & Verification
 - **Student Grade Auto-Recorder** ([data/grade-auto-recorder/](data/grade-auto-recorder/)) - Automated student grading assistant supporting multi-column paste, smart last-two-digit conflict resolution, over-quota sanity check, and styled Excel report generation. → [Details](data/grade-auto-recorder/README.md)
@@ -122,6 +125,7 @@ Practical script tools categorized by function:
 - **Image to PDF** ([media/image-to-pdf/](media/image-to-pdf/)) - Convert a directory of images into a single PDF document. → [Details](media/image-to-pdf/README.md)
 - **PPT to PDF** ([media/ppt-to-pdf/](media/ppt-to-pdf/)) - Batch convert PowerPoint presentations (.pptx) to PDF format. → [Details](media/ppt-to-pdf/README.md)
 - **Photo Splitter** ([media/photo-splitter/](media/photo-splitter/)) - Extract individual student portraits from group photos using face detection and roster mapping. → [Details](media/photo-splitter/README.md)
+- **PDF Contrast Enhancer** ([media/pdf-contrast-enhancer/](media/pdf-contrast-enhancer/)) - Enhance handwritten signatures and text contrast in scanned PDFs with automatic background whitening and gamma curve darkening. → [Details](media/pdf-contrast-enhancer/README.md)
 
 ### 🛡️ Security
 - **Android Intent DAST Suite** ([security/android-intent-dast-suite/](security/android-intent-dast-suite/)) - Dynamic application security testing scanner, automated verification scripts, and companion vulnerable/attacker testbed apps for Android Intent Redirection vulnerabilities. → [Details](security/android-intent-dast-suite/README.md)

@@ -52,7 +52,8 @@ Script-List/
 │   ├── url-health-checker/     # 網址連線可用性與 HTTP 狀態碼批次檢驗工具
 │   ├── bannerlord-mod-checker/ # 騎馬與砍殺 2 模組漢化語系檢查工具
 │   ├── project-scaffold/       # 工程規範與 CI/CD 一鍵腳手架
-│   └── slide-deck-auditor/     # 投影片排版與語意自動審查工具 (防死空間/黑邊/倒置用色)
+│   ├── slide-deck-auditor/     # 投影片排版與語意自動審查工具 (防死空間/黑邊/倒置用色)
+│   └── direct-pdf-printer/     # Windows 底層直接送印工具 (防瀏覽器預覽 OOM 卡死)
 ├── data/                       # 資料驗證與提取
 │   ├── grade-auto-recorder/    # 學生成績登記、學號衝突消解與美化 Excel 導出工具
 │   ├── homework-submission-analyzer/ # 學生作業繳交狀態自動統計工具
@@ -66,7 +67,8 @@ Script-List/
 │   ├── pdf-merger/             # PDF 合併工具
 │   ├── pdf-to-markdown/        # PDF 轉 Markdown 文字與詮釋資料萃取工具
 │   ├── photo-splitter/         # 學生照片自動分割工具
-│   └── ppt-to-pdf/             # PPT 轉 PDF 工具
+│   ├── ppt-to-pdf/             # PPT 轉 PDF 工具
+│   └── pdf-contrast-enhancer/  # PDF 掃描筆跡加深與對比度增強工具 (防黑白列印淡化)
 ├── security/                   # 安全性與分析工具
 │   ├── android-intent-dast-suite/ # Android Intent 重定向 DAST 掃描器與漏洞靶場工具組
 │   ├── password-security-checker/ # 密碼安全檢查工具 (HIBP API)
@@ -100,6 +102,7 @@ Script-List/
 - **騎馬與砍殺 2 模組漢化語系檢查工具** ([automation/bannerlord-mod-checker/](automation/bannerlord-mod-checker/)) - 自動掃描 Bannerlord Modules 目錄，檢測各 Mod 是否具備中文本地化檔案。 → [詳細說明](automation/bannerlord-mod-checker/README.zh-TW.md)
 - **工程規範一鍵腳手架** ([automation/project-scaffold/](automation/project-scaffold/)) - 一鍵裝配 Agent/Git 規範與三層安全 CI，涵蓋 PR Gate、Merge 後驗證、SBOM、DefectDojo、Dependency-Track、Greenbone、Faraday 與 Wazuh。 → [詳細說明](automation/project-scaffold/README.zh-TW.md) · [安全 CI 架構](automation/project-scaffold/SECURITY-CI.zh-TW.md)
 - **投影片排版與語意自動審查工具** ([automation/slide-deck-auditor/](automation/slide-deck-auditor/)) - 專門檢測投影片與 UI 卡片的死空間（電梯井陷阱）、黑邊無效截圖、資安紅色語意倒置與空泛 AI 宣傳詞的靜態審查 CLI。 → [詳細說明](automation/slide-deck-auditor/README.zh-TW.md)
+- **Windows 底層直接送印工具** ([automation/direct-pdf-printer/](automation/direct-pdf-printer/)) - 繞過 Chrome/Edge 瀏覽器預覽行程記憶體溢位問題，使用 Windows .NET 底層逐頁直接送入印表機列印。 → [詳細說明](automation/direct-pdf-printer/README.zh-TW.md)
 
 ### 📊 資料驗證與提取
 - **學生成績自動登記與衝突比對工具** ([data/grade-auto-recorder/](data/grade-auto-recorder/)) - 專為助教設計的自動化成績登記工具，支援多欄表格貼上、後兩碼重複自動消解、一人多次提交防呆警報與美化 Excel 報表自動導出。 → [詳細說明](data/grade-auto-recorder/README.md)
@@ -116,6 +119,7 @@ Script-List/
 - **圖片轉 PDF 工具** ([media/image-to-pdf/](media/image-to-pdf/)) - 將指定目錄中的所有圖片自動合併為一個 PDF 文件。 → [詳細說明](media/image-to-pdf/README.md)
 - **PPT 轉 PDF 工具** ([media/ppt-to-pdf/](media/ppt-to-pdf/)) - 批次將 PowerPoint 簡報 (.pptx) 轉換為 PDF 格式。 → [詳細說明](media/ppt-to-pdf/README.md)
 - **學生照片分割工具** ([media/photo-splitter/](media/photo-splitter/)) - 使用人臉偵測技術與名單映射，從團體照中自動提取個人肖像。 → [詳細說明](media/photo-splitter/README.md)
+- **PDF 筆跡加深與對比度增強工具** ([media/pdf-contrast-enhancer/](media/pdf-contrast-enhancer/)) - 針對手寫簽名、藍色原子筆與淺灰筆跡執行自動白點漂白與伽馬加深，解決黑白雷射印表機半色調淡化問題。 → [詳細說明](media/pdf-contrast-enhancer/README.zh-TW.md)
 
 ### 🛡️ 安全性工具
 - **Android Intent 重定向 DAST 掃描與測試套件** ([security/android-intent-dast-suite/](security/android-intent-dast-suite/)) - 提供 Android Intent 重定向動態掃描器（DAST）、自動化漏洞利用與修復驗證腳本，以及配套的 Vulnerable/Attacker 測試 App 靶場。 → [詳細說明](security/android-intent-dast-suite/README.md)
