@@ -248,16 +248,17 @@ foreach ($gf in $SelectedArchetype.gitFiles) {
 
 # Setup Git Hook if .git repository exists
 $GitDir = Join-Path $TargetDir ".git"
-$HookSrc = Join-Path $TemplatesDir "git\hooks\commit-msg"
+$HookDirSrc = Join-Path $TemplatesDir "git\hooks"
 
 if (Test-Path $GitDir) {
   $HooksDir = Join-Path $GitDir "hooks"
   if (-not (Test-Path $HooksDir)) { New-Item -ItemType Directory -Path $HooksDir -Force | Out-Null }
   
-  $HookDst = Join-Path $HooksDir "commit-msg"
-  if (Test-Path $HookSrc) {
-    Copy-Item $HookSrc $HookDst -Force
-    Write-Host "  + Installed: .git/hooks/commit-msg" -ForegroundColor Green
+  if (Test-Path $HookDirSrc) {
+    Get-ChildItem $HookDirSrc -File | ForEach-Object {
+      Copy-Item $_.FullName (Join-Path $HooksDir $_.Name) -Force
+      Write-Host "  + Installed: .git/hooks/$($_.Name)" -ForegroundColor Green
+    }
   }
 
   try {
@@ -273,16 +274,18 @@ if (Test-Path $GitDir) {
 }
 
 # Setup version-controlled scripts/hooks/ for npm prepare lifecycle
-if (Test-Path $HookSrc) {
+if (Test-Path $HookDirSrc) {
   $TargetScriptsDir = Join-Path $TargetDir "scripts"
   $TargetScriptsHooksDir = Join-Path $TargetScriptsDir "hooks"
   if (-not (Test-Path $TargetScriptsHooksDir)) { New-Item -ItemType Directory -Path $TargetScriptsHooksDir -Force | Out-Null }
-  Copy-Item $HookSrc (Join-Path $TargetScriptsHooksDir "commit-msg") -Force
+  Get-ChildItem $HookDirSrc -File | ForEach-Object {
+    Copy-Item $_.FullName (Join-Path $TargetScriptsHooksDir $_.Name) -Force
+  }
   
   $installHooksSrc = Join-Path $TemplatesDir "git\scripts\install-hooks.mjs"
   if (Test-Path $installHooksSrc) {
     Copy-Item $installHooksSrc (Join-Path $TargetScriptsDir "install-hooks.mjs") -Force
-    Write-Host "  + Deployed: scripts/install-hooks.mjs & scripts/hooks/commit-msg" -ForegroundColor Gray
+    Write-Host "  + Deployed: scripts/install-hooks.mjs & scripts/hooks/*" -ForegroundColor Gray
   }
 
   # If package.json exists, inject "prepare": "node scripts/install-hooks.mjs"

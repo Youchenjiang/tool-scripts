@@ -28,7 +28,8 @@
         ".gitignore",
         ".gitmessage.txt",
         ".editorconfig",
-        "hooks/commit-msg"
+        "hooks/commit-msg",
+        "hooks/pre-push"
       ],
       "githubWorkflows": [
         "policy.yml",
@@ -42,7 +43,18 @@
       ],
       "toolFiles": [
         "lint_commits.py",
-        "pr_helper.py"
+        "pr_helper.py",
+        "branch_policy.py",
+        "process_guard.py",
+        "gh_guard.py",
+        "sonar_audit.py",
+        "pr_audit.py",
+        "pr_reports.py",
+        "pr_verification.py",
+        "pr_preflight.py",
+        "pr_publication.py",
+        "pr_creation.py",
+        "pr_tool.py"
       ],
       "recommendedFeatures": [
         "strict-linting",
@@ -74,7 +86,8 @@
         ".gitignore",
         ".gitmessage.txt",
         ".editorconfig",
-        "hooks/commit-msg"
+        "hooks/commit-msg",
+        "hooks/pre-push"
       ],
       "githubWorkflows": [
         "policy.yml",
@@ -89,7 +102,18 @@
       ],
       "toolFiles": [
         "lint_commits.py",
-        "pr_helper.py"
+        "pr_helper.py",
+        "branch_policy.py",
+        "process_guard.py",
+        "gh_guard.py",
+        "sonar_audit.py",
+        "pr_audit.py",
+        "pr_reports.py",
+        "pr_verification.py",
+        "pr_preflight.py",
+        "pr_publication.py",
+        "pr_creation.py",
+        "pr_tool.py"
       ],
       "recommendedFeatures": [
         "strict-linting"
@@ -121,7 +145,8 @@
         ".gitignore",
         ".gitmessage.txt",
         ".editorconfig",
-        "hooks/commit-msg"
+        "hooks/commit-msg",
+        "hooks/pre-push"
       ],
       "githubWorkflows": [
         "policy.yml",
@@ -136,7 +161,18 @@
       ],
       "toolFiles": [
         "lint_commits.py",
-        "pr_helper.py"
+        "pr_helper.py",
+        "branch_policy.py",
+        "process_guard.py",
+        "gh_guard.py",
+        "sonar_audit.py",
+        "pr_audit.py",
+        "pr_reports.py",
+        "pr_verification.py",
+        "pr_preflight.py",
+        "pr_publication.py",
+        "pr_creation.py",
+        "pr_tool.py"
       ],
       "recommendedFeatures": [
         "chained-prs"
@@ -167,7 +203,8 @@
         ".gitmessage.txt",
         ".editorconfig",
         ".pr_agent.toml",
-        "hooks/commit-msg"
+        "hooks/commit-msg",
+        "hooks/pre-push"
       ],
       "githubWorkflows": [
         "policy.yml",
@@ -183,7 +220,18 @@
       ],
       "toolFiles": [
         "lint_commits.py",
-        "pr_helper.py"
+        "pr_helper.py",
+        "branch_policy.py",
+        "process_guard.py",
+        "gh_guard.py",
+        "sonar_audit.py",
+        "pr_audit.py",
+        "pr_reports.py",
+        "pr_verification.py",
+        "pr_preflight.py",
+        "pr_publication.py",
+        "pr_creation.py",
+        "pr_tool.py"
       ],
       "recommendedFeatures": []
     },
@@ -207,7 +255,8 @@
         ".gitignore",
         ".gitmessage.txt",
         ".editorconfig",
-        "hooks/commit-msg"
+        "hooks/commit-msg",
+        "hooks/pre-push"
       ],
       "githubWorkflows": [
         "policy.yml"
@@ -218,7 +267,18 @@
       ],
       "toolFiles": [
         "lint_commits.py",
-        "pr_helper.py"
+        "pr_helper.py",
+        "branch_policy.py",
+        "process_guard.py",
+        "gh_guard.py",
+        "sonar_audit.py",
+        "pr_audit.py",
+        "pr_reports.py",
+        "pr_verification.py",
+        "pr_preflight.py",
+        "pr_publication.py",
+        "pr_creation.py",
+        "pr_tool.py"
       ],
       "recommendedFeatures": []
     }

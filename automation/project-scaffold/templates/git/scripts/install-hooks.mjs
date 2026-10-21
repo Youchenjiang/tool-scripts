@@ -23,7 +23,7 @@ const sourceHooksDir = join(root, "scripts", "hooks");
 
 if (existsSync(sourceHooksDir)) {
   mkdirSync(hooksDir, { recursive: true });
-  const hookNames = ["commit-msg", "pre-commit"];
+  const hookNames = ["commit-msg", "pre-commit", "pre-push"];
 
   for (const name of hookNames) {
     const source = join(sourceHooksDir, name);
