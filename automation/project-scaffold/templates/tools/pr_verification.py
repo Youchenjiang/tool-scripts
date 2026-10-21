@@ -11,6 +11,25 @@ REQUIRED = {"PR and commit policy", "PR governance script tests", "DeepSource: P
             "Publish CLI (NativeAOT)", "Publish Shell Extension (NativeAOT)",
             "Publish ClickraLauncher (NativeAOT)"}
 
+TAPSTRUM_REQUIRED = {
+    "Build Solution & Packaging Pipelines",
+    "CodeQL Security Scan (csharp)",
+    "PR and Commit Policy Validation",
+    "SonarCloud",
+    "SonarCloud Code Analysis",
+    "TruffleHog Secrets Scan",
+}
+
+
+def resolve_required_checks(repo=""):
+    import os
+    env_req = os.environ.get("PR_REQUIRED_CHECKS")
+    if env_req:
+        return {item.strip() for item in env_req.split(",") if item.strip()}
+    if "tapstrum" in repo.lower() or "tapster" in repo.lower():
+        return set(TAPSTRUM_REQUIRED)
+    return set(REQUIRED)
+
 
 def _classify_checks(checks, required):
     """Group provider statuses and require all mandatory checks."""
@@ -49,14 +68,15 @@ def _pr_problems(pr, remote_sha):
     return problems
 
 
-def _required_checks(files):
+def _required_checks(files, repo=""):
     if files is not None and not isinstance(files, list):
         raise RuntimeError("invalid changed-file inventory")
-    required = set(REQUIRED)
+    required = set(resolve_required_checks(repo))
     if files and any(file.get("path", "").startswith("src/") or
                      file.get("path") == ".github/workflows/dependency-security-scan.yml"
                      for file in files):
-        required.add("NuGet Dependency Vulnerability Scan")
+        if not ("tapstrum" in repo.lower() or "tapster" in repo.lower()):
+            required.add("NuGet Dependency Vulnerability Scan")
     return required
 
 
@@ -97,7 +117,8 @@ def summarize(pr, report, *, remote_sha):
     checks = pr.get("statusCheckRollup")
     if not isinstance(head, str) or len(head) != 40 or not isinstance(checks, list):
         raise RuntimeError("missing verified PR HEAD or CI rollup")
-    required = _required_checks(pr.get("files"))
+    repo_hint = pr.get("url") or ""
+    required = _required_checks(pr.get("files"), repo=repo_hint)
     groups = _classify_checks(checks, required)
     count = report["counts"]["unresolved"]
     sonar_count = report["sonar"]["total"]

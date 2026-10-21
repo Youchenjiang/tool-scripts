@@ -27,6 +27,23 @@ from pr_reports import fetch_report
 SONAR_HOST_DEFAULT = "https://sonarcloud.io"
 
 
+def resolve_sonar_project(repo):
+    override = os.environ.get("SONAR_PROJECT_KEY")
+    if override:
+        return override
+    for candidate in (Path(".sonarcloud.properties"), Path(__file__).resolve().parents[1] / ".sonarcloud.properties"):
+        if candidate.is_file():
+            try:
+                for line in candidate.read_text(encoding="utf-8").splitlines():
+                    if line.startswith("sonar.projectKey="):
+                        return line.split("=", 1)[1].strip()
+            except Exception:
+                pass
+    if repo.lower() in {"youchenjiang/tapstrum", "youchenjiang/tapster"}:
+        return "Youchenjiang_Tapster"
+    return repo.replace("/", "_")
+
+
 def safe_terminal(value):
     """Render untrusted GitHub fields without terminal control sequences."""
     return re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", str(value))
@@ -310,7 +327,7 @@ def audit(repo, number, run=command, as_json=False, include_sonar=False):
     result = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
     if include_sonar:
         result["sonar"] = sonar_inventory(
-            os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
+            resolve_sonar_project(repo),
             number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
             token=os.environ.get("SONAR_TOKEN"))
     if as_json:
@@ -410,7 +427,7 @@ def _execute_action(args, run):
 
 
 def _show_sonar(args, repo, number):
-    data = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
+    data = sonar_inventory(resolve_sonar_project(repo),
                            number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
                            token=os.environ.get("SONAR_TOKEN"))
     if args.json:
@@ -422,11 +439,11 @@ def _show_sonar(args, repo, number):
 def _verify_pr(run, repo, number):
     pr = inspect(repo, number, run)
     report = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
-    report["sonar"] = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
+    report["sonar"] = sonar_inventory(resolve_sonar_project(repo),
                                       number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
                                       token=os.environ.get("SONAR_TOKEN"))
     report["sonar_quality"] = quality_metrics(
-        os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"), number,
+        resolve_sonar_project(repo), number,
         base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
         token=os.environ.get("SONAR_TOKEN"))
     remote = (remote_head(pr.get("headRefName", ""))
