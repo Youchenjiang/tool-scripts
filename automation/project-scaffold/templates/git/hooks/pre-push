@@ -35,8 +35,12 @@ if [ -n "$push_updates" ]; then
       refs/heads/*)
         case "$remote_ref" in
           refs/heads/main|refs/heads/master)
-            echo "[pre-push] ERROR: pushing directly to main/master is prohibited." >&2
-            exit 1 ;;
+            is_direct_push=$(git config --bool --get repo.directPush 2>/dev/null || echo "false")
+            if [ "$is_direct_push" != "true" ] && [ "${ALLOW_DIRECT_PUSH:-false}" != "true" ]; then
+              echo "[pre-push] ERROR: pushing directly to main/master is prohibited." >&2
+              exit 1
+            fi
+            ;;
         esac
         if [ "$local_oid" = "0000000000000000000000000000000000000000" ]; then
           echo "[pre-push] ERROR: branch deletion requires separate authorization." >&2
@@ -72,6 +76,11 @@ fi
 
 BODY_FILE="${PR_BODY_FILE:-${CLICKRA_PR_BODY_FILE:-}}"
 if [ -z "$BODY_FILE" ]; then
+  is_direct_push=$(git config --bool --get repo.directPush 2>/dev/null || echo "false")
+  if [ "$is_direct_push" = "true" ] || [ "${ALLOW_DIRECT_PUSH:-false}" = "true" ]; then
+    echo "[pre-push] Direct trunk push allowed: skipping PR body preflight check."
+    exit 0
+  fi
   echo "[pre-push] ERROR: set CLICKRA_PR_BODY_FILE to the finalized PR body draft path." >&2
   exit 1
 fi
