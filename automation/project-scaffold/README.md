@@ -56,6 +56,7 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 | **`backend-api`** | `api`, `server`, `service` | Node/Express, Nest, FastAPI, Go 服務 | `api, auth, db, models, routes, test, docs, ci, deps, spec, rules, setup, quality, sec` | Backend Guidelines | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
 | **`desktop-app`** | `desktop`, `winui`, `wpf` | Windows, C#, .NET, WinUI, Electron | `app, ui, winui, core, test, docs, ci, deps, spec, rules, setup, quality, release` | .NET Hygiene, Store Release | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
 | **`sec-research`** | `research`, `security`, `lab` | AI 論文, 漏洞分析, PoC 實驗 | `agent, audit, rules, poc, exp, test, docs, ci, deps, spec, setup, quality, sec` | PR-Agent, Security Audit rules | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
+| **`script-tool`** | `script`, `scripts`, `tools` | 腳本庫 / 個人工具集 / Monorepo (如 tool-scripts) | `automation, data, media, text, security, ai, core, cli, test, docs, ci, deps, setup, catalog` | 免開 PR、主幹原子推送規範 (`direct-trunk.md`)、`repo.directPush` 設定 | `lint_commits.py` |
 | **`minimal`** | `tool`, `script`, `cli` | 輕量腳本, 小型命令列工具 | `core, cli, test, docs, ci, deps, setup` | 僅核心 Commit 規範與 policy.yml | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
 
 ### 2. 可選擴充模組 (Modular Features / Add-ons)
@@ -63,6 +64,7 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 | Feature | 模組名稱 | 功用與配置內容 |
 | :--- | :--- | :--- |
 | **`strict-linting`** | 嚴格代碼規範 | 部署 `eslint.config.mjs`，內建 TypeScript 嚴格規則、SonarCloud S3358 巢狀三元運算式防禦 (`no-nested-ternary`)、變數命名長度規範 (`id-length`)、物件非空斷言防禦 (`no-non-null-assertion`)。 |
+| **`direct-push`** | 免 PR 主幹原子推送 | 適用於無需開 PR 的腳本庫、筆記庫或工具庫。自動切換 Agent Rules 為主幹推送規範 (`direct-trunk.md`)，並設定 `git config repo.directPush true` 允許直推 `main`，Policy CI 同步支援 push 事件。 |
 | **`chained-prs`** | 鏈式 PR 工作流 | 部署 `chained-prs.md` 規則，規範滾動 Rebase（Rolling Rebase）技巧、分支推動決策樹（普通 append vs force-with-lease）、GitHub 倉儲設定（關閉 squash merge、Rulesets 配置）。 |
 | **`sec-enterprise`** | 企業級資安平台對接 | 部署完整 Post-Deploy 與排程安全驗證工作流（Dependency-Track, DefectDojo, Faraday, Wazuh, Nuclei, post-merge-security）。適合企業正式環境使用。 |
 
