@@ -68,15 +68,18 @@ def _pr_problems(pr, remote_sha):
     return problems
 
 
-def _required_checks(files, repo=""):
+def _required_checks(files, repo="", author=""):
     if files is not None and not isinstance(files, list):
         raise RuntimeError("invalid changed-file inventory")
     required = set(resolve_required_checks(repo))
-    if files and any(file.get("path", "").startswith("src/") or
-                     file.get("path") == ".github/workflows/dependency-security-scan.yml"
-                     for file in files):
-        if not ("tapstrum" in repo.lower() or "tapster" in repo.lower()):
-            required.add("NuGet Dependency Vulnerability Scan")
+    if author.lower() in {"dependabot", "dependabot[bot]"}:
+        required.discard("PR and Commit Policy Validation")
+        required.discard("PR and commit policy")
+    if (files and not ("tapstrum" in repo.lower() or "tapster" in repo.lower()) and
+            any(file.get("path", "").startswith("src/") or
+                file.get("path") == ".github/workflows/dependency-security-scan.yml"
+                for file in files)):
+        required.add("NuGet Dependency Vulnerability Scan")
     return required
 
 
@@ -118,7 +121,9 @@ def summarize(pr, report, *, remote_sha):
     if not isinstance(head, str) or len(head) != 40 or not isinstance(checks, list):
         raise RuntimeError("missing verified PR HEAD or CI rollup")
     repo_hint = pr.get("url") or ""
-    required = _required_checks(pr.get("files"), repo=repo_hint)
+    author_val = pr.get("author")
+    author = author_val.get("login", "") if isinstance(author_val, dict) else str(author_val or "")
+    required = _required_checks(pr.get("files"), repo=repo_hint, author=author)
     groups = _classify_checks(checks, required)
     count = report["counts"]["unresolved"]
     sonar_count = report["sonar"]["total"]

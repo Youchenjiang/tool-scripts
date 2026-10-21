@@ -10,7 +10,11 @@ from process_guard import invoke
 from branch_policy import validate_branch_name
 
 ALLOWED_TYPES = "feat|fix|refactor|docs|test|chore|style|perf|security"
-ALLOWED_SCOPES = "cli|core|shell|msix|docs|ci|deps|store|agent"
+try:
+    from lint_commits import ALLOWED_SCOPES as _SCOPES_LIST
+    ALLOWED_SCOPES = "|".join(_SCOPES_LIST)
+except Exception:
+    ALLOWED_SCOPES = "cli|core|shell|msix|docs|ci|deps|store|agent|tools|packaging|fluent|build|release"
 SUBJECT = re.compile(rf"^(?:{ALLOWED_TYPES})(?:\((?:{ALLOWED_SCOPES})\))?: [a-z0-9].*$")
 BODY_NUMBER = re.compile(r"1[.)][ \t]+")
 CHECKLIST_SECTION = "## Review Checklist"
