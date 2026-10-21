@@ -52,11 +52,11 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 
 | Archetype | 相容別名 | 適用場景 | 自動注入 CI Scopes | 專屬預載規範 / 設定 | 內建治理工具 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`web-spa`** | `web`, `frontend` | React, Ionic, Vue, Vite, SPA 前端專案 | `app, ui, style, render, sim, test, docs, ci, deps, spec, rules, setup, quality` | Web Guidelines、`eslint.config.mjs`、npm prepare hook | `lint_commits.py`, `pr_helper.py` |
-| **`backend-api`** | `api`, `server`, `service` | Node/Express, Nest, FastAPI, Go 服務 | `api, auth, db, models, routes, test, docs, ci, deps, spec, rules, setup, quality, sec` | Backend Guidelines | `lint_commits.py`, `pr_helper.py` |
-| **`desktop-app`** | `desktop`, `winui`, `wpf` | Windows, C#, .NET, WinUI, Electron | `app, ui, winui, core, test, docs, ci, deps, spec, rules, setup, quality, release` | .NET Hygiene, Store Release | `lint_commits.py`, `pr_helper.py` |
-| **`sec-research`** | `research`, `security`, `lab` | AI 論文, 漏洞分析, PoC 實驗 | `agent, audit, rules, poc, exp, test, docs, ci, deps, spec, setup, quality, sec` | PR-Agent, Security Audit rules | `lint_commits.py`, `pr_helper.py` |
-| **`minimal`** | `tool`, `script`, `cli` | 輕量腳本, 小型命令列工具 | `core, cli, test, docs, ci, deps, setup` | 僅核心 Commit 規範與 policy.yml | `lint_commits.py`, `pr_helper.py` |
+| **`web-spa`** | `web`, `frontend` | React, Ionic, Vue, Vite, SPA 前端專案 | `app, ui, style, render, sim, test, docs, ci, deps, spec, rules, setup, quality` | Web Guidelines、`eslint.config.mjs`、npm prepare hook | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
+| **`backend-api`** | `api`, `server`, `service` | Node/Express, Nest, FastAPI, Go 服務 | `api, auth, db, models, routes, test, docs, ci, deps, spec, rules, setup, quality, sec` | Backend Guidelines | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
+| **`desktop-app`** | `desktop`, `winui`, `wpf` | Windows, C#, .NET, WinUI, Electron | `app, ui, winui, core, test, docs, ci, deps, spec, rules, setup, quality, release` | .NET Hygiene, Store Release | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
+| **`sec-research`** | `research`, `security`, `lab` | AI 論文, 漏洞分析, PoC 實驗 | `agent, audit, rules, poc, exp, test, docs, ci, deps, spec, setup, quality, sec` | PR-Agent, Security Audit rules | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
+| **`minimal`** | `tool`, `script`, `cli` | 輕量腳本, 小型命令列工具 | `core, cli, test, docs, ci, deps, setup` | 僅核心 Commit 規範與 policy.yml | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
 
 ### 2. 可選擴充模組 (Modular Features / Add-ons)
 
@@ -240,6 +240,24 @@ jobs:
       scan_type: ZAP Scan
     secrets: inherit
 ```
+
+---
+
+## 🛠️ PR 全生命週期治理工具鏈 (PR Lifecycle Toolchain)
+
+腳手架提供開箱即用的 PR 輔助與全生命週期守衛工具（位於目標專案的 `tools/`）：
+
+1. **`pr_tool.py`（一站式 PR 操作中樞）**：
+   - `python tools/pr_tool.py prepare`：飛行前檢查（分支命名合規性、工作區乾淨度、Commit 格式）。
+   - `python tools/pr_tool.py push`：受控推播，嚴格執行 `pre-push` 本地完整門禁。
+   - `python tools/pr_tool.py create`：依據模板安全建立 PR，防止 Windows 引號與字串截斷。
+   - `python tools/pr_tool.py verify`：一鍵聚合查詢 CI 狀態、SonarCloud 品質指標與未解決 Review 討論串。
+   - `python tools/pr_tool.py diagnose`：自動提取失敗 CI 或靜態分析的關鍵日誌。
+   - `python tools/pr_tool.py resolve <ID>`：經授權透過 GraphQL 一鍵解決已修復之 Review 討論串。
+2. **`pr_helper.py`（PR 內容智慧萃取）**：
+   - `python tools/pr_helper.py generate`：自動解析當前分支相對於 `origin/main` 的所有 Commits，萃取並草擬出標準 Markdown PR 內容。
+3. **`branch_policy.py`（分支命名守衛）**：
+   - 強制分支前綴規範（`feat/`, `fix/`, `refactor/` 等）、後綴 2～3 個單字、總長度嚴格 $\le 25$ 字元。
 
 ---
 
