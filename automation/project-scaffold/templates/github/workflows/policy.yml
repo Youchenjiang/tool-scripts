@@ -22,6 +22,8 @@ name: Repository Policy
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, master]
 
 permissions:
   contents: read
@@ -125,72 +127,90 @@ jobs:
               return issues;
             }
 
-            // 1. Check PR Title
-            const prTitle = context.payload.pull_request.title;
-            const titleIssues = checkSubject(prTitle, "PR Title", 72);
-            if (titleIssues.length > 0) {
-              blockers.push({ target: "PR Title", text: prTitle, issues: titleIssues });
-              summaryRows.push(["PR Title", `\`${prTitle}\``, "❌ Failed", titleIssues.join("<br>")]);
-            } else {
-              summaryRows.push(["PR Title", `\`${prTitle}\``, "✅ Passed", "-"]);
-            }
+            const isPR = context.eventName === "pull_request" && Boolean(context.payload.pull_request);
 
-            // 2. Check PR Body Structure (PR Template Parity)
-            const prBody = (context.payload.pull_request.body || "").trim();
-            const bodyIssues = [];
-            if (!prBody) {
-              bodyIssues.push("PR description body must not be empty.");
-            } else {
-              if (!/^##\s+Summary/mi.test(prBody)) {
-                bodyIssues.push("Missing required section heading `## Summary`.");
-              }
-              if (!/^##\s+Key Changes/mi.test(prBody)) {
-                bodyIssues.push("Missing required section heading `## Key Changes`.");
-              }
-              if (!/^##\s+(How to Verify|Verification)/mi.test(prBody)) {
-                bodyIssues.push("Missing required section heading `## How to Verify` or `## Verification`.");
+            if (isPR) {
+              // 1. Check PR Title
+              const prTitle = context.payload.pull_request.title;
+              const titleIssues = checkSubject(prTitle, "PR Title", 72);
+              if (titleIssues.length > 0) {
+                blockers.push({ target: "PR Title", text: prTitle, issues: titleIssues });
+                summaryRows.push(["PR Title", `\`${prTitle}\``, "❌ Failed", titleIssues.join("<br>")]);
+              } else {
+                summaryRows.push(["PR Title", `\`${prTitle}\``, "✅ Passed", "-"]);
               }
 
-              // Check for corrupted escaped inline code artifacts (e.g. \npm test\ instead of `npm test`)
-              const escapedArtifactPattern = /\\([a-zA-Z0-9_./#:@<>()'" -]+)\\/;
-              if (escapedArtifactPattern.test(prBody)) {
-                const matched = prBody.match(escapedArtifactPattern);
-                bodyIssues.push(`PR body contains corrupted escaped inline code artifacts ("${matched[0]}" instead of \`${matched[1]}\`). Use backticks for code and paths.`);
-              }
+              // 2. Check PR Body Structure (PR Template Parity)
+              const prBody = (context.payload.pull_request.body || "").trim();
+              const bodyIssues = [];
+              if (!prBody) {
+                bodyIssues.push("PR description body must not be empty.");
+              } else {
+                if (!/^##\s+Summary/mi.test(prBody)) {
+                  bodyIssues.push("Missing required section heading `## Summary`.");
+                }
+                if (!/^##\s+Key Changes/mi.test(prBody)) {
+                  bodyIssues.push("Missing required section heading `## Key Changes`.");
+                }
+                if (!/^##\s+(How to Verify|Verification)/mi.test(prBody)) {
+                  bodyIssues.push("Missing required section heading `## How to Verify` or `## Verification`.");
+                }
 
-              // Check for broken or trailing escape backslashes on checklist items
-              const checklistLines = prBody.split("\n").map((line) => line.trim()).filter((line) => /^[-*+]\s+\[[ xX]\]/.test(line));
-              for (const rawLine of checklistLines) {
-                if (/(?:^|[^\\])\\[\s\S]*$/.test(rawLine) && (/\\$/.test(rawLine) || /^[-*+]\s+\[[ xX]\]\s*\\/.test(rawLine))) {
-                  bodyIssues.push(`Checklist item contains invalid or escaped backslashes: "${rawLine}".`);
+                // Check for corrupted escaped inline code artifacts (e.g. \npm test\ instead of `npm test`)
+                const escapedArtifactPattern = /\\([a-zA-Z0-9_./#:@<>()'" -]+)\\/;
+                if (escapedArtifactPattern.test(prBody)) {
+                  const matched = prBody.match(escapedArtifactPattern);
+                  bodyIssues.push(`PR body contains corrupted escaped inline code artifacts ("${matched[0]}" instead of \`${matched[1]}\`). Use backticks for code and paths.`);
+                }
+
+                // Check for broken or trailing escape backslashes on checklist items
+                const checklistLines = prBody.split("\n").map((line) => line.trim()).filter((line) => /^[-*+]\s+\[[ xX]\]/.test(line));
+                for (const rawLine of checklistLines) {
+                  if (/(?:^|[^\\])\\[\s\S]*$/.test(rawLine) && (/\\$/.test(rawLine) || /^[-*+]\s+\[[ xX]\]\s*\\/.test(rawLine))) {
+                    bodyIssues.push(`Checklist item contains invalid or escaped backslashes: "${rawLine}".`);
+                  }
+                }
+
+                // Check for unmatched backticks across the entire PR body
+                const backtickCount = (prBody.match(/`/g) || []).length;
+                if (backtickCount % 2 !== 0) {
+                  bodyIssues.push(`PR body has an unmatched backtick (total: ${backtickCount}). Ensure all code spans are closed.`);
                 }
               }
 
-              // Check for unmatched backticks across the entire PR body
-              const backtickCount = (prBody.match(/`/g) || []).length;
-              if (backtickCount % 2 !== 0) {
-                bodyIssues.push(`PR body has an unmatched backtick (total: ${backtickCount}). Ensure all code spans are closed.`);
+              if (bodyIssues.length > 0) {
+                blockers.push({ target: "PR Body", text: "PR Template Sections", issues: bodyIssues });
+                summaryRows.push(["PR Body", "Structure Validation", "❌ Failed", bodyIssues.join("<br>")]);
+              } else {
+                summaryRows.push(["PR Body", "Structure Validation", "✅ Passed", "-"]);
               }
-            }
-
-            if (bodyIssues.length > 0) {
-              blockers.push({ target: "PR Body", text: "PR Template Sections", issues: bodyIssues });
-              summaryRows.push(["PR Body", "Structure Validation", "❌ Failed", bodyIssues.join("<br>")]);
             } else {
-              summaryRows.push(["PR Body", "Structure Validation", "✅ Passed", "-"]);
+              summaryRows.push(["Trunk Push", `\`${context.ref}\``, "ℹ️ Info", "Direct trunk push validated without PR envelope."]);
             }
 
             // 3. Check Commits
-            const commits = await github.paginate(github.rest.pulls.listCommits, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number,
-              per_page: 100,
-            });
+            let commitList = [];
+            if (isPR) {
+              const fetched = await github.paginate(github.rest.pulls.listCommits, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                per_page: 100,
+              });
+              commitList = fetched.map(c => ({
+                shaShort: c.sha.slice(0, 7),
+                message: c.commit.message || "",
+              }));
+            } else if (context.payload.commits && context.payload.commits.length > 0) {
+              commitList = context.payload.commits.map(c => ({
+                shaShort: (c.id || c.sha || "").slice(0, 7),
+                message: c.message || "",
+              }));
+            }
 
-            for (const c of commits) {
-              const shaShort = c.sha.slice(0, 7);
-              const lines = (c.commit.message || "").replace(/\r\n/g, "\n").split("\n");
+            for (const c of commitList) {
+              const shaShort = c.shaShort;
+              const lines = (c.message || "").replace(/\r\n/g, "\n").split("\n");
               const firstLine = lines[0].trim();
               // Ignore merge or fixup commits
               if (/^(Merge|Revert|fixup!|squash!)/.test(firstLine)) {
@@ -214,23 +234,25 @@ jobs:
               }
             }
 
-            // 4. Check Metadata (Warnings only, non-blocking)
-            const pr = context.payload.pull_request;
-            if (!pr.assignees || pr.assignees.length === 0) {
-              try {
-                await github.rest.issues.addAssignees({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: pr.number,
-                  assignees: [pr.user.login],
-                });
-              } catch (err) {
-                warnings.push(`Auto-assign author failed: ${err.message}`);
+            // 4. Check Metadata (Warnings only, non-blocking; PR only)
+            if (isPR) {
+              const pr = context.payload.pull_request;
+              if (!pr.assignees || pr.assignees.length === 0) {
+                try {
+                  await github.rest.issues.addAssignees({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    assignees: [pr.user.login],
+                  });
+                } catch (err) {
+                  warnings.push(`Auto-assign author failed: ${err.message}`);
+                }
               }
-            }
 
-            if (!pr.labels || pr.labels.length === 0) {
-              warnings.push("No labels attached to PR. Please add a relevant scope/type label.");
+              if (!pr.labels || pr.labels.length === 0) {
+                warnings.push("No labels attached to PR. Please add a relevant scope/type label.");
+              }
             }
 
             // 5. Output Summary Table
