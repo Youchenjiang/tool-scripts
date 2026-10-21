@@ -158,26 +158,33 @@ Follow the mandatory rules and engineering constraints outlined below.
 
 $CombinedRules = $RulesHeader
 
-# Add Archetype agent rules
-foreach ($ruleFile in $SelectedArchetype.agentRules) {
+# Assemble and deduplicate rule files
+$AllRuleFiles = [System.Collections.Generic.List[string]]::new()
+foreach ($r in $SelectedArchetype.agentRules) { $AllRuleFiles.Add($r) }
+foreach ($featKey in $ActiveFeatures) {
+  $feat = $Config.features.$featKey
+  if ($feat -and $feat.agentRules) {
+    foreach ($r in $feat.agentRules) {
+      if (-not $AllRuleFiles.Contains($r)) { $AllRuleFiles.Add($r) }
+    }
+  }
+}
+
+# If direct-push is active, replace PR-centric git-discipline.md with direct-trunk.md
+if ($ActiveFeatures -contains "direct-push" -or $Archetype -eq "script-tool") {
+  if ($AllRuleFiles.Contains("git-discipline.md")) {
+    $AllRuleFiles.Remove("git-discipline.md") | Out-Null
+  }
+  if (-not $AllRuleFiles.Contains("direct-trunk.md")) {
+    $AllRuleFiles.Add("direct-trunk.md")
+  }
+}
+
+foreach ($ruleFile in $AllRuleFiles) {
   $rulePath = Join-Path $TemplatesDir "agent-rules\$ruleFile"
   if (Test-Path $rulePath) {
     $content = Get-Content $rulePath -Raw -Encoding UTF8
     $CombinedRules += "`n`n" + $content
-  }
-}
-
-# Add Feature agent rules
-foreach ($featKey in $ActiveFeatures) {
-  $feat = $Config.features.$featKey
-  if ($feat -and $feat.agentRules) {
-    foreach ($ruleFile in $feat.agentRules) {
-      $rulePath = Join-Path $TemplatesDir "agent-rules\$ruleFile"
-      if (Test-Path $rulePath) {
-        $content = Get-Content $rulePath -Raw -Encoding UTF8
-        $CombinedRules += "`n`n" + $content
-      }
-    }
   }
 }
 
@@ -264,6 +271,10 @@ if (Test-Path $GitDir) {
   try {
     Push-Location $TargetDir
     git config commit.template .gitmessage.txt
+    if ($ActiveFeatures -contains "direct-push" -or $Archetype -eq "script-tool") {
+      git config repo.directPush true
+      Write-Host "  + Configured: git config repo.directPush true (Direct Trunk Push Mode)" -ForegroundColor Green
+    }
     Pop-Location
     Write-Host "  + Configured: git config commit.template .gitmessage.txt" -ForegroundColor Green
   } catch {

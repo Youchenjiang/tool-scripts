@@ -281,6 +281,52 @@
         "pr_tool.py"
       ],
       "recommendedFeatures": []
+    },
+    "script-tool": {
+      "name": "Script Repository / Utility Monorepo",
+      "description": "腳本庫 / 個人工具集 / 單元腳本 Monorepo (如 tool-scripts，免開 PR、主幹原子直接推送)",
+      "defaultScopes": [
+        "automation",
+        "data",
+        "media",
+        "text",
+        "security",
+        "ai",
+        "core",
+        "cli",
+        "test",
+        "docs",
+        "ci",
+        "deps",
+        "setup",
+        "catalog"
+      ],
+      "agentRules": [
+        "core.md",
+        "memory-protocol.md",
+        "direct-trunk.md"
+      ],
+      "gitFiles": [
+        ".gitignore",
+        ".gitmessage.txt",
+        ".editorconfig",
+        "hooks/commit-msg"
+      ],
+      "githubWorkflows": [
+        "policy.yml",
+        "trufflehog.yml",
+        "codeql.yml"
+      ],
+      "githubFiles": [
+        "dependabot.yml",
+        "SECURITY.md"
+      ],
+      "toolFiles": [
+        "lint_commits.py"
+      ],
+      "recommendedFeatures": [
+        "direct-push"
+      ]
     }
   },
   "features": {
@@ -315,12 +361,23 @@
         "zap-scan.yml",
         "post-merge-security.yml"
       ]
+    },
+    "direct-push": {
+      "name": "Direct Trunk Push (免 PR 主幹直接推播)",
+      "description": "適用個人腳本庫、工具集與 Monorepo (如 tool-scripts)，免開 PR，以原子化提交直接推送到 main 主幹",
+      "agentRules": [
+        "direct-trunk.md"
+      ]
     }
   },
   "legacyAliases": {
     "desktop": "desktop-app",
     "web": "web-spa",
     "research": "sec-research",
-    "minimal": "minimal"
+    "minimal": "minimal",
+    "script": "script-tool",
+    "scripts": "script-tool",
+    "tools": "script-tool",
+    "tool": "script-tool"
   }
 }
