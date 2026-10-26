@@ -61,6 +61,7 @@ Script-List/
 │   ├── slide-deck-auditor/     # Presentation layout & semantic linter (dead space, letterbox, color semantics)
 │   └── direct-pdf-printer/     # Low-level Windows CLI direct print tool (bypasses browser OOM)
 ├── data/                       # Data verification & extraction
+│   ├── exam-seating-planner/   # Exam seat arrangement & projection seating chart generator
 │   ├── grade-auto-recorder/    # Student grading, suffix conflict resolver & Excel exporter
 │   ├── homework-submission-analyzer/ # Homework submission analysis utility
 │   └── image-text-verifier/    # Questionnaire image to CSV verification tool
@@ -112,6 +113,7 @@ Practical script tools categorized by function:
 - **Direct PDF Printer** ([automation/direct-pdf-printer/](automation/direct-pdf-printer/)) - Low-level Windows .NET sequential direct print tool that bypasses Chromium print preview memory crashes and spooler OOM. → [Details](automation/direct-pdf-printer/README.md)
 
 ### 📊 Data & Verification
+- **Exam Seating Planner** ([data/exam-seating-planner/](data/exam-seating-planner/)) - Arranges exam seats in real room layouts (grid rooms or irregular rooms read from a PowerPoint drawing), with exact seat spacing, required rooms and consecutive-ID separation, then generates projection-ready seating chart slides. → [Details](data/exam-seating-planner/README.md)
 - **Student Grade Auto-Recorder** ([data/grade-auto-recorder/](data/grade-auto-recorder/)) - Automated student grading assistant supporting multi-column paste, smart last-two-digit conflict resolution, over-quota sanity check, and styled Excel report generation. → [Details](data/grade-auto-recorder/README.md)
 - **Homework Submission Analyzer** ([data/homework-submission-analyzer/](data/homework-submission-analyzer/)) - A Node.js utility for eeclass assignments that automatically parses PDF certificates, matches names, and generates a CSV report. → [Details](data/homework-submission-analyzer/README.md)
 - **Image-Text Verifier** ([data/image-text-verifier/](data/image-text-verifier/)) - Extract answers from scanned questionnaire images and automatically verify/fix them against an existing CSV dataset with targeted risk management. → [Details](data/image-text-verifier/README.md)

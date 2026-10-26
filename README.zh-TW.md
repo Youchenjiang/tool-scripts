@@ -55,6 +55,7 @@ Script-List/
 │   ├── slide-deck-auditor/     # 投影片排版與語意自動審查工具 (防死空間/黑邊/倒置用色)
 │   └── direct-pdf-printer/     # Windows 底層直接送印工具 (防瀏覽器預覽 OOM 卡死)
 ├── data/                       # 資料驗證與提取
+│   ├── exam-seating-planner/   # 考場座位安排與投影座位表產生工具
 │   ├── grade-auto-recorder/    # 學生成績登記、學號衝突消解與美化 Excel 導出工具
 │   ├── homework-submission-analyzer/ # 學生作業繳交狀態自動統計工具
 │   └── image-text-verifier/    # 問卷影像辨識與 CSV 校對修正工具
@@ -106,6 +107,7 @@ Script-List/
 - **Windows 底層直接送印工具** ([automation/direct-pdf-printer/](automation/direct-pdf-printer/)) - 繞過 Chrome/Edge 瀏覽器預覽行程記憶體溢位問題，使用 Windows .NET 底層逐頁直接送入印表機列印。 → [詳細說明](automation/direct-pdf-printer/README.zh-TW.md)
 
 ### 📊 資料驗證與提取
+- **考場座位安排工具** ([data/exam-seating-planner/](data/exam-seating-planner/)) - 照實際教室格局（方格教室或從 PowerPoint 平面圖讀取的不規則教室）安排考試座位，精確控制座位間隔、指定教室與學號相鄰隔開，並產生可直接投影的座位表投影片。 → [詳細說明](data/exam-seating-planner/README.zh-TW.md)
 - **學生成績自動登記與衝突比對工具** ([data/grade-auto-recorder/](data/grade-auto-recorder/)) - 專為助教設計的自動化成績登記工具，支援多欄表格貼上、後兩碼重複自動消解、一人多次提交防呆警報與美化 Excel 報表自動導出。 → [詳細說明](data/grade-auto-recorder/README.md)
 - **學生作業狀態統計工具** ([data/homework-submission-analyzer/](data/homework-submission-analyzer/)) - 專為 eeclass 作業包設計，能自動解析 PDF 證書、比對姓名並輸出 CSV 統計報表的 Node.js 腳本。 → [詳細說明](data/homework-submission-analyzer/README.zh-TW.md)
 - **問卷影像辨識與校對工具** ([data/image-text-verifier/](data/image-text-verifier/)) - 用於將實體問卷掃描圖自動辨識，並與現有 CSV 資料自動比對、偵測風險與修正的工具。 → [詳細說明](data/image-text-verifier/README.zh-TW.md)
