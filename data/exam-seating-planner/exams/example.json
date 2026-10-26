@@ -1,0 +1,15 @@
+{
+  "name": "example-midterm",
+  "course": "EXAMPLE101",
+  "roster": "../data.example/roster.example.xlsx",
+  "roster_columns": ["Name", "ID"],
+  "rooms": ["309", "404"],
+  "counts": {},
+  "fixed": {},
+  "rules": {
+    "room": {"404": ["Student 13", "Student 38"]},
+    "id_apart": true
+  },
+  "seed": 1,
+  "output": "../output"
+}
