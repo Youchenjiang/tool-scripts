@@ -77,6 +77,7 @@ Script-List/
 │   ├── cybersec-slide-downloader/ # CYBERSEC 2026 簡報下載器
 │   ├── hacker-news-scraper/    # Hacker News 新聞爬取器
 │   ├── local-https-cert-helper/ # 本地 HTTPS 自簽憑證測試與生成助手
+│   ├── domain-cert-auditor/    # 網域資產與 SSL/TLS 憑證自動化資安稽核工具
 │   └── cylab-challenge-exporter/ # CyLab Security Academy 題目匯出與刷題進度產生器
 └── text/                       # 文字轉換與編碼
     ├── markdown-toolkit/       # Markdown 綜合處理工具箱（TXT/HTML轉檔、代碼提取、目錄生成）
@@ -129,6 +130,7 @@ Script-List/
 - **CYBERSEC 2026 簡報下載器** ([security/cybersec-slide-downloader/](security/cybersec-slide-downloader/)) - 用於從 CYBERSEC 2026 大會 API 爬取與批次下載所有議程簡報的 Node.js 實用工具。 → [詳細說明](security/cybersec-slide-downloader/README.zh-TW.md)
 - **Hacker News 新聞爬取器** ([security/hacker-news-scraper/](security/hacker-news-scraper/)) - 用於自動爬取 `thehackernews.com` 最近三週新聞內文並儲存為 Markdown 的 Node.js 實用工具。 → [詳細說明](security/hacker-news-scraper/README.zh-TW.md)
 - **本地 HTTPS 自簽憑證測試與生成助手** ([security/local-https-cert-helper/](security/local-https-cert-helper/)) - 一鍵生成本地開發用 HTTPS 憑證 (Root CA & Server Cert) 且提供測試伺服器的實用工具。 → [詳細說明](security/local-https-cert-helper/README.zh-TW.md)
+- **網域資產與 SSL/TLS 憑證自動化資安稽核工具** ([security/domain-cert-auditor/](security/domain-cert-auditor/)) - 外部攻擊面管理 (EASM) 與自動化資安稽核工具，被動列舉子網域、即時檢測過期或即將到期憑證、自簽憑證及明文 HTTP 未轉址風險，並導出 Markdown 審計報表。 → [詳細說明](security/domain-cert-auditor/README.zh-TW.md)
 - **CyLab 題目匯出與刷題進度產生器** ([security/cylab-challenge-exporter/](security/cylab-challenge-exporter/)) - 導出 CyLab Security Academy (picoCTF) 全站題目並生成進度勾選清單。 → [詳細說明](security/cylab-challenge-exporter/README.zh-TW.md)
 
 ### 📝 文字轉換與編碼

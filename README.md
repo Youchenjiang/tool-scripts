@@ -83,6 +83,7 @@ Script-List/
 │   ├── cybersec-slide-downloader/ # CYBERSEC 2026 slide downloader
 │   ├── hacker-news-scraper/    # The Hacker News 3-week article scraper & digest builder
 │   ├── local-https-cert-helper/ # Local HTTPS self-signed certificate helper
+│   ├── domain-cert-auditor/    # Automated domain asset and SSL/TLS certificate security auditor
 │   └── cylab-challenge-exporter/ # CyLab Security Academy challenge exporter & checklist generator
 └── text/                       # Text transformation & encoding
     ├── markdown-toolkit/       # Markdown conversion, formatting, code extraction & TOC toolkit
@@ -135,6 +136,7 @@ Practical script tools categorized by function:
 - **CYBERSEC 2026 Slide Downloader** ([security/cybersec-slide-downloader/](security/cybersec-slide-downloader/)) - Node.js utility to fetch and download all presentation slides from the CYBERSEC 2026 conference backend. → [Details](security/cybersec-slide-downloader/README.md)
 - **Hacker News Scraper** ([security/hacker-news-scraper/](security/hacker-news-scraper/)) - Node.js scraper utility to batch download the last 3 weeks of articles from The Hacker News as Markdown. → [Details](security/hacker-news-scraper/README.md)
 - **Local HTTPS Certificate Helper** ([security/local-https-cert-helper/](security/local-https-cert-helper/)) - OpenSSL tool to quickly generate local Root CA and server certificates, with a Node.js test server. → [Details](security/local-https-cert-helper/README.md)
+- **Domain Certificate & Attack Surface Auditor** ([security/domain-cert-auditor/](security/domain-cert-auditor/)) - Automated security audit and external attack surface management (EASM) tool to enumerate subdomains, detect expired or soon-to-expire SSL/TLS certificates, and flag unencrypted plaintext HTTP transmissions. → [Details](security/domain-cert-auditor/README.md)
 - **CyLab Challenge Exporter** ([security/cylab-challenge-exporter/](security/cylab-challenge-exporter/)) - Export all challenges from CyLab Security Academy (picoCTF) and generate progress checklists. → [Details](security/cylab-challenge-exporter/README.md)
 
 ### 📝 Text & Encoding
