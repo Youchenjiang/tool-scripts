@@ -14,6 +14,7 @@ FONT = 'Microsoft JhengHei'
 INK, SUB, LINE, EMPTY = RGBColor(0x1F, 0x1F, 0x1F), RGBColor(0x55, 0x55, 0x55), RGBColor(0x59, 0x59, 0x59), RGBColor(0xBF, 0xBF, 0xBF)
 WHITE, PILLAR = RGBColor(0xFF, 0xFF, 0xFF), RGBColor(0xD0, 0xD0, 0xD0)
 ACCENT, USED, WARN = RGBColor(0xF0, 0xA0, 0x30), RGBColor(0x4A, 0x7B, 0xC8), RGBColor(0xD9, 0x4A, 0x38)
+LABEL_BG = RGBColor(0xDC, 0xE6, 0xF2)                  # behind names that overlap slanted desk outlines
 TITLE_W, TITLE_H, BAND = 320, 54, 62
 
 def text(tf, runs, align=PP_ALIGN.CENTER):
@@ -134,6 +135,8 @@ def draw_room(prs, room, title, subtitle, seat_text=None, style=None, footer=Non
         for i, lines in seat_text.items():
             on_blue = style.get(i) is not None
             tb = slide.shapes.add_textbox(*map(Pt, rects[i]))
+            if not on_blue and room.desks[i]['rot'] % 90:  # label crosses the desk's outline: give it a solid backing
+                tb.fill.solid(); tb.fill.fore_color.rgb = LABEL_BG
             text(tb.text_frame, [(s, npt if role == 'main' else ipt, role == 'main',
                                   WHITE if on_blue else colour[role]) for s, role in lines])
     if footer:
