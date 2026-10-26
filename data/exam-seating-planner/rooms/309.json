@@ -1,0 +1,9 @@
+{
+  "name": "309",
+  "type": "grid",
+  "rows": 8,
+  "blocks": [3, 3, 3],
+  "blocked": [[8, 5]],
+  "blocked_label": "Pillar",
+  "podium": {"side": "top", "block": 2}
+}
