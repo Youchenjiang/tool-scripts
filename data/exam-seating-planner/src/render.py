@@ -1,6 +1,7 @@
 """Draw rooms onto 16:9 slides, each room in its real layout and orientation.
 
 draw_room(prs, room, title, subtitle, seat_text, style) — seat_text: {desk: [(text, role)]}, style: {desk: 'used'|'warn'}
+labels: {'podium': text on the podium, 'blocked': text on blocked cells (default: the room config's label)}
 """
 import math
 from pptx.util import Pt
@@ -104,12 +105,12 @@ def label_size(fit, room, seat_text, cap=24):
     bx, ipt = boxes(7)
     return 7, ipt, dict(bx)
 
-def draw_room(prs, room, title, subtitle, seat_text=None, style=None, footer=None, cap=24):
-    seat_text, style = seat_text or {}, style or {}
+def draw_room(prs, room, title, subtitle, seat_text=None, style=None, footer=None, cap=24, labels=None):
+    seat_text, style, labels = seat_text or {}, style or {}, labels or {}
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     fit, spot = layout(room)
     x, y, w, h = fit.bounds(dict(room.podium, rot=0))
-    text(box(slide, x, y, w, h, fill=ACCENT, line=None).text_frame, [('Podium', 20, True, INK)])
+    text(box(slide, x, y, w, h, fill=ACCENT, line=None).text_frame, [(labels.get('podium', 'Podium'), 20, True, INK)])
     t = slide.shapes.add_textbox(*map(Pt, spot))
     runs = [(title, 28, True, INK)] + ([(subtitle, 13, False, SUB)] if subtitle else [])
     text(t.text_frame, runs, PP_ALIGN.LEFT if spot[0] == M else PP_ALIGN.CENTER)
@@ -118,7 +119,7 @@ def draw_room(prs, room, title, subtitle, seat_text=None, style=None, footer=Non
         w, h = fit.k * d['w'], fit.k * d['h']
         if 'blocked' in d:
             sh = box(slide, cx - w / 2, cy - h / 2, w, h, fill=PILLAR, line=None, rot=d['rot'])
-            text(sh.text_frame, [(d['blocked'], 14, True, SUB)])
+            text(sh.text_frame, [(labels.get('blocked', d['blocked']), 14, True, SUB)])
             continue
         kind = style.get(i)
         if kind:

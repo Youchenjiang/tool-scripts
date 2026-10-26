@@ -38,6 +38,9 @@ def main(config_path):
             fixed[(by_name[name], room.index[code])] = False
     counts = {by_name[n]: c for n, c in cfg.get('counts', {}).items()}
 
+    labels = cfg.get('labels', {})                   # optional wording on the slides
+    title = lambda room: labels.get('rooms', {}).get(room.name, f'Room {room.name}')
+
     chosen = solver.stage1(room_list, len(people), fixed, counts)
     side, diag, front = (solver.pairs(room_list, chosen, k) for k in ('side', 'diag', 'front'))
     print(f'{len(people)} students | ' + ' | '.join(f'{r.name}: {sum(1 for ri, _ in chosen if ri == n)}' for n, r in enumerate(room_list))
@@ -50,7 +53,7 @@ def main(config_path):
         used = {i for rj, i in chosen if rj == ri}
         style = {i: 'warn' if room.nbr[i]['diag'] & used else 'used' for i in used}
         codes = {i: [(room.label[i], 'code')] for i in room.seats}
-        render.draw_room(prs, room, f'Room {room.name}', f'Seat layout preview   {len(used)} students', codes, style, footer, cap=16)
+        render.draw_room(prs, room, title(room), f'Seat layout preview   {len(used)} students', codes, style, footer, cap=16, labels=labels)
     save(prs, base, cfg, 'seat-layout-preview')
 
     if not cfg.get('rules'):
@@ -62,7 +65,7 @@ def main(config_path):
     prs = new_deck()
     for ri, room in enumerate(room_list):
         names = {i: [(people[p]['name'], 'main'), (people[p]['sid'], 'sub')] for (rj, i), p in placed.items() if rj == ri}
-        render.draw_room(prs, room, f'Room {room.name}', '', names)
+        render.draw_room(prs, room, title(room), '', names, labels=labels)
     save(prs, base, cfg, 'seating-chart')
 
 def new_deck():
