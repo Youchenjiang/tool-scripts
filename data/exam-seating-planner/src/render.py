@@ -70,16 +70,13 @@ class Fit:
         return min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)
 
 def layout(room):
-    """Fit the room to the whole slide and put the title in free space at the top; if there is none, keep a band for it."""
+    """Fit the room to the whole slide with the title centred at the top; if the room reaches up there, keep a band for it."""
+    spot = ((W - TITLE_W) / 2, 6, TITLE_W, TITLE_H)
     fit = Fit(room, M)
     taken = [fit.bounds(d) for d in room.desks] + [fit.bounds(dict(room.podium, rot=0))]
-    for x in (M, (W - TITLE_W) / 2, W - M - TITLE_W):
-        spot = (x, 6, TITLE_W, TITLE_H)
-        if not any(hit(spot, t) for t in taken):
-            return fit, spot
-    fit = Fit(room, BAND)                             # no room at the top: keep a band, title left of the podium
-    pod_left = fit.bounds(dict(room.podium, rot=0))[0]
-    return fit, (M, 6, max(TITLE_W, pod_left - M - 10) if pod_left > M + 160 else W - 2 * M, TITLE_H)
+    if any(hit(spot, t) for t in taken):
+        fit = Fit(room, BAND)
+    return fit, spot
 
 def label_size(fit, room, seat_text, cap=24):
     """Largest name size where no two seat labels collide (and, on straight desks, each fits its desk)."""
@@ -114,7 +111,7 @@ def draw_room(prs, room, title, subtitle, seat_text=None, style=None, footer=Non
     text(box(slide, x, y, w, h, fill=ACCENT, line=None).text_frame, [(labels.get('podium', 'Podium'), 20, True, INK)])
     t = slide.shapes.add_textbox(*map(Pt, spot))
     runs = [(title, 28, True, INK)] + ([(subtitle, 13, False, SUB)] if subtitle else [])
-    text(t.text_frame, runs, PP_ALIGN.LEFT if spot[0] == M else PP_ALIGN.CENTER)
+    text(t.text_frame, runs)
     for i, d in enumerate(room.desks):
         cx, cy = fit.centre(d)
         w, h = fit.k * d['w'], fit.k * d['h']
