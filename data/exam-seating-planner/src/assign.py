@@ -2,9 +2,12 @@
 
 Hard rules:
   room     : named students must be in a given room
+  seat     : named students must sit at a given seat ("<room> <code>", e.g. "404 A1-1")
   id_apart : students next to each other in the ID-sorted roster are never "around" each other
              (around = front/back, diagonal, side, or one seat / an aisle away on the same line)
 Everyone else is placed in a seeded shuffle, so the same config always gives the same chart.
+Pinned students are swapped into their seats so the rest of the chart stays put; only if a swap would
+break a rule is the whole room searched again with the pins as constraints.
 check() re-verifies every rule independently of the search.
 """
 import random
@@ -18,9 +21,32 @@ def around(rooms, chosen):
         used.setdefault(ri, set()).add(i)
     return {(ri, i): {(ri, j) for k in AROUND for j in rooms[ri].nbr[i][k] & used[ri]} for ri, i in chosen}
 
+def pinned(rooms, chosen, people, rules):
+    """{person index: (room, desk)} from rules['seat']."""
+    by_name = {p['name']: n for n, p in enumerate(people)}
+    out = {}
+    for name, where in rules.get('seat', {}).items():
+        assert name in by_name, f'{name} is not in the roster'
+        room_name, code = where.split()
+        ri = next(n for n, r in enumerate(rooms) if r.name == room_name)
+        seat = (ri, rooms[ri].index[code])
+        assert seat in chosen, f'{where} is not one of the seats in use'
+        out[by_name[name]] = seat
+    assert len(set(out.values())) == len(out), 'two students are pinned to the same seat'
+    return out
+
 def assign(rooms, chosen, people, rules, seed):
     """Return {(room, desk): person index}; raises if the rules cannot all be met."""
-    rank = {p['sid']: n for n, p in enumerate(people)}            # people are sorted by ID
+    pins = pinned(rooms, chosen, people, rules)
+    placed = search(rooms, chosen, people, rules, seed, {})
+    for p, seat in pins.items():                    # swap pinned students in; everyone else stays put
+        here = next(s for s, q in placed.items() if q == p)
+        placed[here], placed[seat] = placed[seat], p
+    if all(ok for _, ok, _ in check(rooms, chosen, people, rules, placed)):
+        return placed
+    return search(rooms, chosen, people, rules, seed, pins)
+
+def search(rooms, chosen, people, rules, seed, pins):
     by_name = {p['name']: n for n, p in enumerate(people)}
     must = {}
     for room_name, names in rules.get('room', {}).items():
@@ -28,6 +54,7 @@ def assign(rooms, chosen, people, rules, seed):
         for name in names:
             assert name in by_name, f'{name} is not in the roster'
             must[by_name[name]] = ri
+    seat_pin = {s: p for p, s in pins.items()}
     apart = rules.get('id_apart', False)
     near = around(rooms, chosen)
     seats = sorted(chosen, key=lambda s: (s[0], rooms[s[0]].label[s[1]]))
@@ -41,6 +68,8 @@ def assign(rooms, chosen, people, rules, seed):
     placed, taken = {}, set()
     def ok(seat, p):
         if p in must and must[p] != seat[0]:
+            return False
+        if seat_pin.get(seat, p) != p or pins.get(p, seat) != seat:
             return False
         if apart:
             for other in near[seat]:
@@ -82,6 +111,10 @@ def check(rooms, chosen, people, rules, placed):
         for name in names:
             s = seat_of[by_name[name]]
             out.append((f'{name} in room {room_name}', rooms[s[0]].name == room_name, f'{rooms[s[0]].name} {rooms[s[0]].label[s[1]]}'))
+    for name, where in rules.get('seat', {}).items():
+        s = seat_of[by_name[name]]
+        at = f'{rooms[s[0]].name} {rooms[s[0]].label[s[1]]}'
+        out.append((f'{name} at {where}', at == where, at))
     if rules.get('id_apart'):
         bad = []
         for n in range(len(people) - 1):
