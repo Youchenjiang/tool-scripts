@@ -8,7 +8,7 @@ Arranges exam seats and produces a seating chart to project in the exam room. Ro
 
 - **Real room layouts**: rectangular rooms are described as rows and blocks; irregular rooms (e.g. a fan-shaped lecture hall) are read straight from a PowerPoint drawing, nested and rotated groups included
 - **Exact seat spacing**: nobody sits side by side; diagonal neighbours are minimised first (the desk diagonally ahead is visible, the one straight ahead is blocked by its owner); seats closest to the podium are preferred. Solved exactly row by row, not by random search
-- **Seating rules**: required rooms for given students; consecutive student IDs never around each other
+- **Seating rules**: required rooms or exact seats for given students; consecutive student IDs never around each other
 - **Independent rule check**: every rule is re-verified after seating and printed to the terminal
 - **Projection-ready slides**: one 16:9 slide per room in its real orientation, every seat drawn (empty ones lighter) so students can find theirs; names upright and sized to fit
 - **Reproducible**: a seed in the exam config gives the same chart every run
@@ -109,8 +109,10 @@ Both types end up as "a set of desks, each with a position and an angle", and th
   "fixed": {},
   "rules": {
     "room": {"404": ["Student 13", "Student 38"]},
+    "seat": {"Student 13": "404 A1-1"},
     "id_apart": true
   },
+  "labels": {"podium": "Blackboard", "blocked": "Pillar", "rooms": {"309": "Building I 309"}},
   "seed": 1,
   "output": "../output"
 }
@@ -121,7 +123,9 @@ Both types end up as "a set of desks, each with a position and an angle", and th
 - `counts`: fix the head-count of a room, e.g. `{"309": 36}`; omitted rooms are decided by the solver
 - `fixed`: seats that must be used or left empty, by seat code, e.g. `{"309": {"sit": ["B1-2"], "empty": ["B1-1", "B1-3"]}}`
 - `rules.room`: students who must be in a given room
+- `rules.seat`: students who must sit at a given seat, as `"<room> <seat code>"`. They are swapped into place so the rest of the chart stays the same; only if a swap would break a rule is the room searched again
 - `rules.id_apart`: students with consecutive IDs must not sit around each other
+- `labels` (optional): wording on the slides: `podium`, `blocked` (e.g. pillars) and per-room titles under `rooms`; defaults are `Podium`, the room config's `blocked_label` and `Room <name>`
 - `seed`: everyone else is placed in a shuffle seeded by this number; change it for a different arrangement
 
 ## Seat codes
@@ -140,7 +144,7 @@ Neighbours come from geometry: touching desks in the same row are side by side; 
 
 **Stage 2: who sits where** (always met; the program stops with an error if it cannot be)
 
-1. Required rooms (`rules.room`)
+1. Required rooms (`rules.room`) and seats (`rules.seat`)
 2. Consecutive student IDs never around each other (`rules.id_apart`). "Consecutive" means next to each other in the roster sorted by ID; "around" means front/back, diagonal, one empty seat away in the same row, or across an aisle in the same row
 
 ## Notes
