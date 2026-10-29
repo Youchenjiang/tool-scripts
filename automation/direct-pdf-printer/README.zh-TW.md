@@ -13,7 +13,12 @@
 ### 方式 1：拖曳列印（最簡單）
 直接用滑鼠將任意 PDF 檔案**拖曳並放到 `print.bat` 圖示上放開**，即會自動調用預設印表機進行列印。
 
-### 方式 2：命令列執行
+### 方式 2：Python 命令列執行
+```bash
+python direct_print.py "目標文件.pdf"
+```
+
+### 方式 3：PowerShell 命令列執行
 ```powershell
 powershell -ExecutionPolicy Bypass -File direct_print.ps1 -PdfPath "目標文件.pdf"
 ```

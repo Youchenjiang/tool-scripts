@@ -13,7 +13,12 @@ A reliable Windows CLI printing tool designed to bypass Chrome / Edge browser pr
 ### Method 1: Drag & Drop
 Simply **drag and drop any PDF file onto `print.bat`** to immediately dispatch it to your default printer.
 
-### Method 2: PowerShell
+### Method 2: Python CLI
+```bash
+python direct_print.py "path/to/document.pdf"
+```
+
+### Method 3: PowerShell
 ```powershell
 powershell -ExecutionPolicy Bypass -File direct_print.ps1 -PdfPath "path/to/document.pdf"
 ```
