@@ -7,9 +7,9 @@ echo    Windows 底層直接列印工具 (免開瀏覽器，絕不卡死)
 echo ========================================================
 
 if "%~1"=="" (
-    powershell -ExecutionPolicy Bypass -File "%~dp0direct_print.ps1"
+    echo 請將 PDF 檔案拖曳至本批次檔圖示上，或傳入檔案路徑。
 ) else (
-    powershell -ExecutionPolicy Bypass -File "%~dp0direct_print.ps1" -PdfPath "%~1"
+    python "%~dp0direct_print.py" %*
 )
 
 echo.

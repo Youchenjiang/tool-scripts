@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Direct PDF Printer for Windows (底層直接送印工具)
 .DESCRIPTION
@@ -42,7 +42,14 @@ New-Item -ItemType Directory -Path $TempFolder -Force | Out-Null
 
 try {
     Write-Host "[*] 正在透過 PyMuPDF 擷取頁面影像..."
-    $PyCmd = "import pymupdf, sys, os; doc = pymupdf.open(sys.argv[1]); [page.get_pixmap(dpi=200).save(os.path.join(sys.argv[2], f'page_{i+1:03d}.jpg')) for i, page in enumerate(doc)]; print(f'Extracted {len(doc)} pages.')"
+    $PyCmd = @'
+import pymupdf, sys, os
+doc = pymupdf.open(sys.argv[1])
+for i, page in enumerate(doc):
+    pix = page.get_pixmap(dpi=200)
+    pix.save(os.path.join(sys.argv[2], f"page_{i+1:03d}.jpg"))
+print(f"Extracted {len(doc)} pages.")
+'@
     python -c $PyCmd "$PdfPath" "$TempFolder"
 
     $files = Get-ChildItem (Join-Path $TempFolder "page_*.jpg") | Sort-Object Name
