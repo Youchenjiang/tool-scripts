@@ -23,6 +23,7 @@ class GradeEngine:
         3. 後兩碼/三碼數字 (01, 1, 59)
         4. 姓名精確比對
         5. 姓名包含/簡稱 (如 "大明" in "王大明")
+        6. 近似姓名比對 (容許 1 個錯別字，例如 陳祈睿 vs 陳祈叡)
         """
         token = token.strip()
         if not token:
@@ -59,6 +60,17 @@ class GradeEngine:
         partial = [s for s in roster.students if token in s.name]
         if partial:
             return partial, "partial_name"
+
+        # 6. 近似姓名比對 (同長度容許 1 個錯別字，例如 陳祈睿 vs 陳祈叡)
+        if len(token) >= 2:
+            near_matches = []
+            for s in roster.students:
+                if len(s.name) == len(token):
+                    diff = sum(1 for c1, c2 in zip(token, s.name) if c1 != c2)
+                    if diff == 1:
+                        near_matches.append(s)
+            if len(near_matches) == 1:
+                return near_matches, "near_name"
 
         return [], "not_found"
 
