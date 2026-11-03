@@ -1,0 +1,21 @@
+name: ai-project
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+  - defaults
+dependencies:
+  - python=3.14
+  - pip
+  - pytorch>=2.5
+  - torchaudio>=2.5
+  - pytorch-cuda=12.4
+  - pyyaml
+  - pip:
+      - transformers>=4.57.0
+      - accelerate>=1.12.0
+      - modelscope>=1.37.0
+      - soundfile>=0.14.0
+      - av>=19.0.0
+      - opencc-python-reimplemented>=0.1.7
+      - faster-whisper>=1.2.0

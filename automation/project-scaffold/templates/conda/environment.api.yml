@@ -1,0 +1,13 @@
+name: api-service
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.14
+  - pip
+  - pyyaml
+  - pip:
+      - fastapi>=0.140.0
+      - uvicorn>=0.30.0
+      - pydantic>=2.10.0
+      - httpx>=0.28.0

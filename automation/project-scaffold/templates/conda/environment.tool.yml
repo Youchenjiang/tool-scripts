@@ -1,0 +1,12 @@
+name: tool-project
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.14
+  - pip
+  - pyyaml
+  - pip:
+      - rich>=13.8.0
+      - click>=8.3.0
+      - requests>=2.34.0
