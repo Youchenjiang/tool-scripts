@@ -355,6 +355,51 @@ if ($ActiveFeatures -contains "strict-linting") {
   Write-Host "  - Skipped: strict-linting feature not enabled" -ForegroundColor DarkGray
 }
 
+if ($ActiveFeatures -contains "conda-env") {
+  # 1. Deploy env_tool.py
+  $ToolsDir = Join-Path $TargetDir "tools"
+  if (-not (Test-Path $ToolsDir)) { New-Item -ItemType Directory -Path $ToolsDir -Force | Out-Null }
+  $envToolSrc = Join-Path $TemplatesDir "tools\env_tool.py"
+  $envToolDst = Join-Path $ToolsDir "env_tool.py"
+  if (Test-Path $envToolSrc) {
+    Copy-Item $envToolSrc $envToolDst -Force
+    Write-Host "  + Deployed Tool: tools/env_tool.py (Conda/Mamba & Hardware Doctor)" -ForegroundColor Green
+  }
+
+  # 2. Deploy test_env_tool.py
+  $TestsDir = Join-Path $TargetDir "tests"
+  if (-not (Test-Path $TestsDir)) { New-Item -ItemType Directory -Path $TestsDir -Force | Out-Null }
+  $testEnvSrc = Join-Path $TemplatesDir "tests\test_env_tool.py"
+  $testEnvDst = Join-Path $TestsDir "test_env_tool.py"
+  if (Test-Path $testEnvSrc) {
+    Copy-Item $testEnvSrc $testEnvDst -Force
+    Write-Host "  + Deployed Test: tests/test_env_tool.py" -ForegroundColor Gray
+  }
+
+  # 3. Deploy environment.yml tailored to Archetype
+  $targetEnvYaml = Join-Path $TargetDir "environment.yml"
+  if ((-not (Test-Path $targetEnvYaml)) -or $Force) {
+    $templateName = switch ($Archetype) {
+      "sec-research" { "environment.ai.yml" }
+      "backend-api"  { "environment.api.yml" }
+      default        { "environment.tool.yml" }
+    }
+    $templateSrc = Join-Path $TemplatesDir "conda\$templateName"
+    if (Test-Path $templateSrc) {
+      $envContent = Get-Content $templateSrc -Raw -Encoding UTF8
+      # Format environment name with domain prefix and project name
+      $envName = "$Archetype-$ProjectName".ToLower() -replace "[^a-z0-9_-]", "-"
+      $envContent = $envContent -replace "^name:\s*[^\r\n]+", "name: $envName"
+      [System.IO.File]::WriteAllText($targetEnvYaml, $envContent, [System.Text.Encoding]::UTF8)
+      Write-Host "  + Deployed: environment.yml (Profile: $templateName, name: $envName)" -ForegroundColor Green
+    }
+  } else {
+    Write-Host "  - Skipped: environment.yml already exists" -ForegroundColor Gray
+  }
+} else {
+  Write-Host "  - Skipped: conda-env feature not enabled" -ForegroundColor DarkGray
+}
+
 # Step 4: Setup GitHub Actions Workflows & Templates
 Write-Host "[4/5] Deploying GitHub Workflows & Policy CI..." -ForegroundColor Yellow
 
@@ -462,7 +507,8 @@ Write-Host "   - Archetype: $Archetype ($($SelectedArchetype.name))"
 Write-Host "   - Features : $(if ($ActiveFeatures.Count -gt 0) { $ActiveFeatures -join ', ' } else { 'None' })"
 Write-Host "   - Scopes   : $($SelectedArchetype.defaultScopes -join ', ')"
 Write-Host "   - Rules    : AGENTS.md, .agent/rules.md, MEMORY.md"
-Write-Host "   - Tools    : $(if ($SelectedArchetype.toolFiles) { $SelectedArchetype.toolFiles -join ', ' } else { 'None' })"
+Write-Host "   - Tools    : $(if ($SelectedArchetype.toolFiles) { $SelectedArchetype.toolFiles -join ', ' } else { 'None' })$(if ($ActiveFeatures -contains 'conda-env') { ', env_tool.py' })"
+Write-Host "   - Conda    : $(if ($ActiveFeatures -contains 'conda-env') { 'environment.yml deployed (Run: python tools/env_tool.py setup)' } else { 'Disabled' })"
 Write-Host "   - Jitter   : Monthly ($ProjectMonthlyCron), Weekly ($ProjectWeeklyCron)"
 Write-Host "   - Workflows: $($AllWorkflows -join ', ')"
 Write-Host "=================================================" -ForegroundColor Cyan

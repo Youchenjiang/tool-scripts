@@ -67,6 +67,7 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 | **`direct-push`** | 免 PR 主幹原子推送 | 適用於無需開 PR 的腳本庫、筆記庫或工具庫。自動切換 Agent Rules 為主幹推送規範 (`direct-trunk.md`)，並設定 `git config repo.directPush true` 允許直推 `main`，Policy CI 同步支援 push 事件。 |
 | **`chained-prs`** | 鏈式 PR 工作流 | 部署 `chained-prs.md` 規則，規範滾動 Rebase（Rolling Rebase）技巧、分支推動決策樹（普通 append vs force-with-lease）、GitHub 倉儲設定（關閉 squash merge、Rulesets 配置）。 |
 | **`sec-enterprise`** | 企業級資安平台對接 | 部署完整 Post-Deploy 與排程安全驗證工作流（Dependency-Track, DefectDojo, Faraday, Wazuh, Nuclei, post-merge-security）。適合企業正式環境使用。 |
+| **`conda-env`** | Conda/Mamba 環境管理 | 自動生成現代化 `environment.yml`（支援 Python 3.14、PyTorch CUDA、FastAPI、工具模板），注入 `tools/env_tool.py`（提供硬體/GPU/Mamba 診斷、一鍵建立與髒 YAML 清洗）與 `tests/test_env_tool.py`。 |
 
 ### 3. 自動化 Git Hook 生命週期 (npm prepare)
 - 當目標專案包含 `package.json` 時，腳手架會自動於 `scripts` 中注入 `"prepare": "node scripts/install-hooks.mjs"`。

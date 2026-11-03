@@ -116,7 +116,8 @@
         "pr_tool.py"
       ],
       "recommendedFeatures": [
-        "strict-linting"
+        "strict-linting",
+        "conda-env"
       ]
     },
     "desktop-app": {
@@ -233,7 +234,9 @@
         "pr_creation.py",
         "pr_tool.py"
       ],
-      "recommendedFeatures": []
+      "recommendedFeatures": [
+        "conda-env"
+      ]
     },
     "minimal": {
       "name": "Minimal Utility",
@@ -280,7 +283,9 @@
         "pr_creation.py",
         "pr_tool.py"
       ],
-      "recommendedFeatures": []
+      "recommendedFeatures": [
+        "conda-env"
+      ]
     },
     "script-tool": {
       "name": "Script Repository / Utility Monorepo",
@@ -367,6 +372,13 @@
       "description": "適用個人腳本庫、工具集與 Monorepo (如 tool-scripts)，免開 PR，以原子化提交直接推送到 main 主幹",
       "agentRules": [
         "direct-trunk.md"
+      ]
+    },
+    "conda-env": {
+      "name": "Conda / Mamba Environment Manager",
+      "description": "自動產生現代化 environment.yml (Python 3.14 + Mamba/GPU 最佳化) 並注入 env_tool.py 與驗證測試",
+      "agentRules": [
+        "conda-hygiene.md"
       ]
     }
   },
