@@ -77,7 +77,8 @@
 6. [x] 建立「同等級重複號碼自動配對」，次數吻合且等第相同時免打擾自動登記。
 7. [x] 支援動態切換不同課程名冊（CLI 選單模式）。
 8. [x] 重構為高內聚低耦合之模組化套件（models, parser, engine, exporter, cli）。
-9. [x] 建立完整自動化單元測試套件（涵蓋 parser, engine, exporter）。
+9. [x] 建立完整自動化單元測試套件（涵蓋 parser, engine, exporter, cli）。
+10. [x] 擴充完整非互動批次命令列介面（--input, --audit, --resolve, --yes, --json），支援 AI 代理人與腳本管線自動化，無需手寫臨時調用腳本。
 
 ---
 
