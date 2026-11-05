@@ -31,3 +31,7 @@ __pycache__/
 
 # Teaching / TA tools private data
 **/grade-auto-recorder/data/
+
+# TA Course record generated outputs
+*課程紀錄表-全學期.xlsx
+**/ta-course-recorder/output/
