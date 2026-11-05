@@ -1,0 +1,110 @@
+# 課程與 TA 基本設定
+course:
+  semester_title: "115學年度第一學期AI融入課程教學紀錄表"
+  course_name: "電腦網路安全"
+  teacher_name: "陳奕明"
+  ta_name: "蔣侑宸"
+  start_date: "2026-10-09"   # 第 1 頁起始上課日 (Week 5: 2026-10-09)
+  start_time: "14:07"
+  end_time: "16:50"
+  duration_minutes: 163     # 14:07 ~ 16:50 共 163 分鐘
+  total_semester_weeks: 16  # 大學一學期共 16 週，上限絕不超過 Week 16
+
+# 檔案路徑設定
+paths:
+  template_file: "templates/course_record_template.xlsx"
+  output_file: "output/AI輔助教學TA補助計畫課程紀錄表-全學期.xlsx"
+
+# 儲存格座標映射 (Cell Mapping)
+cell_mapping:
+  semester_title: "A1"     # 表格大標題
+  course_name: "B2"        # 課程名稱
+  teacher_name: "H2"       # 授課教師姓名
+  ta_name: "K2"            # 觀課助理姓名
+  date: "B3"               # 觀課日期
+  start_time: "H3"         # 觀課開始時間
+  end_time: "I3"           # 觀課結束時間
+  duration: "K3"           # 課程長度(分鐘)
+  attended_yes: "G4"       # 出席狀態：是
+  attended_no: "G5"        # 出席狀態：否
+  # AI教學內容列起始 (Row 9)；Row 10~13 多餘列已被精簡刪除
+  content_row: 9
+  # 精準拆欄：對齊第 8 列之各表頭
+  col_objective: "A"       # 教學目標
+  col_platform: "B"        # 運用平台
+  col_pre_name: "C"        # 課前：教學活動名稱
+  col_pre_content: "D"     # 課前：教學設計與活動內容
+  col_pre_eval: "E"        # 課前：評量策略
+  col_in_name: "F"         # 課中：教學活動名稱
+  col_in_content: "G"      # 課中：教學設計與活動內容
+  col_in_eval: "H"         # 課中：評量策略
+  col_post_name: "I"       # 課後：教學活動名稱
+  col_post_content: "J"    # 課後：教學設計與活動內容
+  col_post_eval: "K"       # 課後：評量策略
+  reflection: "F10"        # 刪除多餘列後，整體觀察與省思緊接在 Row 10
+
+# 預設通用內容
+default_record:
+  platform: "Antigravity (Gemini 3.8 Flash)\nClaude Code"
+  objective: "網路安全實務探討與 AI 協同攻防演練"
+  pre_class:
+    name: "先備知識預習"
+    content: "閱讀當週教材與實驗指引，使用 AI 釐清核心協定運作機制與潛在攻擊面。"
+    eval: "課前提問檢視"
+  in_class:
+    name: "課堂實作演練"
+    content: "進行資安工具操作與靶機演練，引導學生運用 AI 分析封包及除錯報錯。"
+    eval: "實作進度確認"
+  post_class:
+    name: "實驗檢討與交付"
+    content: "於 eeclass 繳交實驗報告或挑戰 Writeup，總結 AI 協同分析的心得。"
+    eval: "作業成果審查"
+  reflection: "1. 使用方式與過程：課堂引導學生以 AI 作為輔助除錯與分析工具。\n2. 學生反應與狀況：學生能主動詢問實作卡關細節，課堂參與度佳。\n3. 困難與問題：部分同學指令參數不熟，經 AI 解釋後逐步釐清。\n4. 效益與特色：顯著降低基礎環境排錯時間，提升實作流暢度。"
+
+# 每週特定內容
+weeks:
+  5:
+    date: "2026-10-09"
+    is_holiday: true
+    holiday_reason: "國慶日補假停課"
+
+  6:
+    date: "2026-10-16"
+    objective: "熟悉資安 CTF 平台 (Cylab) 操作，掌握各類網路攻擊型態與駭客技術基礎"
+    platform: "Antigravity (Gemini 3.8 Flash)\nClaude Code"
+    pre_class:
+      name: "平台註冊與基礎預習"
+      content: "指引學生以邀請碼加入 Cylab 平台；透過 AI 預習常見 Web / Network 攻擊分類（DoS、Injection、Phishing 等）。"
+      eval: "平台前測概念題"
+    in_class:
+      name: "A2 - Cylab Basic 實務解題"
+      content: "帶領同學練習 Web/Reverse 題目，引導使用精準 Prompt 讓 AI 分析模糊流量與除錯，尋找解題突破口。"
+      eval: "TA 巡視解題進度與後台 Submit 狀況"
+    post_class:
+      name: "A2 作業與 Writeup 總結"
+      content: "要求學生於 eeclass 繳交 A2 Cylab Basic 解題 Writeup，說明解題思路、邏輯與 AI 協同過程。"
+      eval: "Writeup 完整性與原理理解評分"
+    reflection: "1. 使用方式與過程：課堂引導學生運用 Gemini/Claude 分析 Cylab Basic 挑戰題，著重在解讀攻擊封包與邏輯除錯。\n2. 學生反應與狀況：多數同學初次接觸 CTF 平台感到新鮮，在 AI 指引下解出第一題的成就感明顯提升，課堂提問從「答案是什麼」轉變為「攻擊原理為何」。\n3. 困難與問題：部分同學初期過度依賴 AI 直接給 Flag，但 AI 往往因缺乏上下文而出現幻覺。TA 介入引導同學調整提問策略，僅讓 AI 扮演語法與協定說明的輔助角色。\n4. 效益與特色：透過人機協同，學生排除環境報錯的時間縮短 60% 以上，TA 能更聚焦在深入講解駭客技術（Hacker Techniques）的核心防禦觀念。"
+
+  7:
+    date: "2026-10-23"
+    is_holiday: true
+    holiday_reason: "颱風假停課"
+
+  8:
+    date: "2026-10-30"
+    objective: "深入理解進階駭客技術 (APT、Rootkits、MITRE ATT&CK) 並掌握主機滲透實作 (Recon to Shell)"
+    platform: "Antigravity (Gemini 3.8 Flash)\nClaude Code"
+    pre_class:
+      name: "教材研讀與先備框架認識"
+      content: "課前研讀 eeclass 補充講義，利用 AI 整理 MITRE ATT&CK 戰術矩陣架構。"
+      eval: "APT 生命週期理解問答"
+    in_class:
+      name: "A3 - Recon to Shell 滲透實作"
+      content: "講解資訊蒐集 (Recon) 至取得權限 (Shell) 全流程，引導使用 AI 解讀 Nmap 報表並查詢已知 CVE 漏洞細節。"
+      eval: "能否正確辨識攻擊面並建立 Reverse Shell"
+    post_class:
+      name: "A3 實驗報告與個人專題規劃"
+      content: "繳交 A3 - Recon to Shell 實作紀錄，並擬定個人報告主題架構與安全防禦建議。"
+      eval: "實作復現程度與安全防禦建議評量"
+    reflection: "1. 使用方式與過程：引導學生使用 AI 對 MITRE ATT&CK 戰術標籤進行對照，並請 AI 說明逆向取得 Shell 時常見的指令語法差異。\n2. 學生反應與狀況：同學對實際取得 Shell 的攻防實作展現高度興趣，主動嘗試不同 Recon 參數組合，課堂討論氛圍熱烈。\n3. 困難與問題：在網路穿透與監聽端口設置時部分同學遇到防火牆阻擋，AI 給出的建議偶爾過於泛用。TA 現場協助針對實驗室網段設定進行除錯指導。\n4. 效益與特色：AI 快速摘要了大量 APT 攻擊手法與案例，大幅提升高階資安知識的吸收效率，讓有限的課堂時間能專注在核心實戰演練。"
