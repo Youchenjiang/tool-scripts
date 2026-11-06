@@ -122,6 +122,7 @@ Both types end up as "a set of desks, each with a position and an angle", and th
 - `course`: used in the output file names only (never on the slides)
 - `roster_columns`: the roster's column headers for name and student ID
 - `counts`: fix the head-count of a room, e.g. `{"309": 36}`; omitted rooms are decided by the solver
+- `allow_side_by_side` (optional): when there are more students than seats with a gap either side, set `true` to allow side-by-side pairs, at most one per row and as few as possible; without it the program stops and says how many fit
 - `fixed`: seats that must be used or left empty, by seat code, e.g. `{"309": {"sit": ["B1-2"], "empty": ["B1-1", "B1-3"]}}`
 - `rules.room`: students who must be in a given room
 - `rules.seat`: students who must sit at a given seat, as `"<room> <seat code>"`. They are swapped into place so the rest of the chart stays the same; only if a swap would break a rule is the room searched again
@@ -138,7 +139,7 @@ Both types end up as "a set of desks, each with a position and an angle", and th
 
 **Stage 1: which seats are used**
 
-1. Nobody side by side (always met)
+1. Nobody side by side (always met; with `allow_side_by_side`, as few pairs as possible)
 2. As few diagonal neighbours as possible
 3. As close to the podium as possible
 
