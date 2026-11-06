@@ -42,7 +42,8 @@ def main(config_path):
     title = lambda room: labels.get('rooms', {}).get(room.name, f'Room {room.name}')
     render.set_page(cfg.get('page', '16:9'))
 
-    chosen = solver.stage1(room_list, len(people), fixed, counts)
+    allow_side = cfg.get('allow_side_by_side', False)  # more students than gapped seats: allow the fewest side-by-side pairs
+    chosen = solver.stage1(room_list, len(people), fixed, counts, allow_side)
     side, diag, front = (solver.pairs(room_list, chosen, k) for k in ('side', 'diag', 'front'))
     print(f'{len(people)} students | ' + ' | '.join(f'{r.name}: {sum(1 for ri, _ in chosen if ri == n)}' for n, r in enumerate(room_list))
           + f' | side {side} diag {diag} front {front}')
@@ -60,7 +61,7 @@ def main(config_path):
     if not cfg.get('rules'):
         return
     placed = assign.assign(room_list, chosen, people, cfg['rules'], cfg.get('seed', 1))
-    results = assign.check(room_list, chosen, people, cfg['rules'], placed)
+    results = assign.check(room_list, chosen, people, cfg['rules'], placed, allow_side)
     for rule, ok, detail in results:                  # checks stay in the terminal: the chart is shown to students
         print(f'  [{"OK" if ok else "NG"}] {rule}: {detail}')
     prs = new_deck()
