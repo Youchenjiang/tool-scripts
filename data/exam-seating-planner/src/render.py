@@ -78,13 +78,14 @@ class Fit:
         return min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)
 
 def layout(room):
-    """Fit the room to the whole slide with the title centred at the top; if the room reaches up there, keep a band for it."""
+    """Title centred at the top. The room goes below a title band when it reaches the title's spot, or when the band
+    costs no scale (the room is width-bound, e.g. on A4); otherwise it uses the whole slide around the title."""
     spot = ((W - TITLE_W) / 2, 6, TITLE_W, TITLE_H)
-    fit = Fit(room, M)
-    taken = [fit.bounds(d) for d in room.desks] + [fit.bounds(dict(room.podium, rot=0))]
-    if any(hit(spot, t) for t in taken):
-        fit = Fit(room, BAND)
-    return fit, spot
+    full, band = Fit(room, M), Fit(room, BAND)
+    taken = [full.bounds(d) for d in room.desks] + [full.bounds(dict(room.podium, rot=0))]
+    if band.k >= full.k - 1e-9 or any(hit(spot, t) for t in taken):
+        return band, spot
+    return full, spot
 
 def label_size(fit, room, seat_text, cap=24):
     """Largest name size where no two seat labels collide (and, on straight desks, each fits its desk)."""
