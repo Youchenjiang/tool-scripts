@@ -1,4 +1,4 @@
-"""Draw rooms onto 16:9 slides, each room in its real layout and orientation.
+"""Draw rooms onto slides (16:9 by default, or 4:3 / A4 landscape via set_page), each room in its real layout and orientation.
 
 draw_room(prs, room, title, subtitle, seat_text, style) — seat_text: {desk: [(text, role)]}, style: {desk: 'used'|'warn'}
 labels: {'podium': text on the podium, 'blocked': text on blocked cells (default: the room config's label)}
@@ -9,13 +9,21 @@ from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 
-W, H, M = 960, 540, 14
+PAGES = {'16:9': (960, 540), '4:3': (720, 540), 'A4': (841.89, 595.28)}   # pt; A4 = 297 x 210 mm landscape
+W, H = PAGES['16:9']
+M = 14
 FONT = 'Microsoft JhengHei'
 INK, SUB, LINE, EMPTY = RGBColor(0x1F, 0x1F, 0x1F), RGBColor(0x55, 0x55, 0x55), RGBColor(0x59, 0x59, 0x59), RGBColor(0xBF, 0xBF, 0xBF)
 WHITE, PILLAR = RGBColor(0xFF, 0xFF, 0xFF), RGBColor(0xD0, 0xD0, 0xD0)
 ACCENT, USED, WARN = RGBColor(0xF0, 0xA0, 0x30), RGBColor(0x4A, 0x7B, 0xC8), RGBColor(0xD9, 0x4A, 0x38)
 LABEL_BG = RGBColor(0xDC, 0xE6, 0xF2)                  # behind names that overlap slanted desk outlines
 TITLE_W, TITLE_H, BAND = 320, 54, 62
+
+def set_page(name):
+    """Switch the slide size for everything drawn afterwards."""
+    global W, H
+    assert name in PAGES, f'page must be one of {", ".join(PAGES)}'
+    W, H = PAGES[name]
 
 def text(tf, runs, align=PP_ALIGN.CENTER):
     tf.clear(); tf.word_wrap = False

@@ -40,6 +40,7 @@ def main(config_path):
 
     labels = cfg.get('labels', {})                   # optional wording on the slides
     title = lambda room: labels.get('rooms', {}).get(room.name, f'Room {room.name}')
+    render.set_page(cfg.get('page', '16:9'))
 
     chosen = solver.stage1(room_list, len(people), fixed, counts)
     side, diag, front = (solver.pairs(room_list, chosen, k) for k in ('side', 'diag', 'front'))
