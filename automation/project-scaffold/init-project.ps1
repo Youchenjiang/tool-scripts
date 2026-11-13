@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Project Scaffolding Tool for Agent Rules, Git Policies & CI Workflows
 .DESCRIPTION
@@ -472,6 +472,24 @@ foreach ($ghFile in $SelectedArchetype.githubFiles) {
   if (Test-Path $ghSrc) {
     Copy-Item $ghSrc $ghDst -Force
     Write-Host "  + Deployed GitHub Template: .github/$ghFile" -ForegroundColor Gray
+  }
+}
+
+# Deploy Architecture Decision Records (ADR) framework
+$adrSrcDir = Join-Path $TemplatesDir "docs\adr"
+if (Test-Path $adrSrcDir) {
+  $docsDir = Join-Path $TargetDir "docs"
+  $adrDstDir = Join-Path $docsDir "adr"
+  if (-not (Test-Path $adrDstDir)) { New-Item -ItemType Directory -Path $adrDstDir -Force | Out-Null }
+
+  Get-ChildItem $adrSrcDir -File | ForEach-Object {
+    $dstFile = Join-Path $adrDstDir $_.Name
+    if ((-not (Test-Path $dstFile)) -or $Force) {
+      Copy-Item $_.FullName $dstFile -Force
+      Write-Host "  + Deployed ADR: docs/adr/$($_.Name)" -ForegroundColor Green
+    } else {
+      Write-Host "  = Retained ADR: docs/adr/$($_.Name)" -ForegroundColor DarkGray
+    }
   }
 }
 
