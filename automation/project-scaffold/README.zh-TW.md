@@ -1,7 +1,7 @@
 # 🚀 Project Scaffolding System (工程規範一鍵腳手架)
 
 本工具為新專案或既有專案提供**一鍵自動化裝配**：
-- **Agent Rules**（授權三階網關、除錯防暴力、MEMORY 協議、Conventional Commits、平台防禦）
+- **Agent Rules**（授權三階網關、寬進嚴出思考協議 Deliberation Gate、除錯防暴力、MEMORY 協議、Conventional Commits、平台防禦）
 - **Git 規範與 Hook**（`.gitignore`、`.gitmessage.txt`、`.editorconfig`、`commit-msg` 驗證鉤子）
 - **GitHub Actions CI/CD**（PR Gate、CycloneDX SBOM、Dependency-Track、DefectDojo、Greenbone/OpenVAS、Faraday、Wazuh、PR-Agent、Nuclei）
 - **協作模板**（`pull_request_template.md`、`dependabot.yml`、`SECURITY.md`）
