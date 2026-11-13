@@ -1,4 +1,4 @@
-"""Draw rooms onto 16:9 slides, each room in its real layout and orientation.
+"""Draw rooms onto slides (16:9 by default, or 4:3 / A4 landscape via set_page), each room in its real layout and orientation.
 
 draw_room(prs, room, title, subtitle, seat_text, style) — seat_text: {desk: [(text, role)]}, style: {desk: 'used'|'warn'}
 labels: {'podium': text on the podium, 'blocked': text on blocked cells (default: the room config's label)}
@@ -9,13 +9,21 @@ from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 
-W, H, M = 960, 540, 14
+PAGES = {'16:9': (960, 540), '4:3': (720, 540), 'A4': (841.89, 595.28)}   # pt; A4 = 297 x 210 mm landscape
+W, H = PAGES['16:9']
+M = 14
 FONT = 'Microsoft JhengHei'
 INK, SUB, LINE, EMPTY = RGBColor(0x1F, 0x1F, 0x1F), RGBColor(0x55, 0x55, 0x55), RGBColor(0x59, 0x59, 0x59), RGBColor(0xBF, 0xBF, 0xBF)
 WHITE, PILLAR = RGBColor(0xFF, 0xFF, 0xFF), RGBColor(0xD0, 0xD0, 0xD0)
 ACCENT, USED, WARN = RGBColor(0xF0, 0xA0, 0x30), RGBColor(0x4A, 0x7B, 0xC8), RGBColor(0xD9, 0x4A, 0x38)
 LABEL_BG = RGBColor(0xDC, 0xE6, 0xF2)                  # behind names that overlap slanted desk outlines
 TITLE_W, TITLE_H, BAND = 320, 54, 62
+
+def set_page(name):
+    """Switch the slide size for everything drawn afterwards."""
+    global W, H
+    assert name in PAGES, f'page must be one of {", ".join(PAGES)}'
+    W, H = PAGES[name]
 
 def text(tf, runs, align=PP_ALIGN.CENTER):
     tf.clear(); tf.word_wrap = False
@@ -70,38 +78,63 @@ class Fit:
         return min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)
 
 def layout(room):
-    """Fit the room to the whole slide with the title centred at the top; if the room reaches up there, keep a band for it."""
+    """Title centred at the top. The room goes below a title band when it reaches the title's spot, or when the band
+    costs no scale (the room is width-bound, e.g. on A4); otherwise it uses the whole slide around the title."""
     spot = ((W - TITLE_W) / 2, 6, TITLE_W, TITLE_H)
-    fit = Fit(room, M)
-    taken = [fit.bounds(d) for d in room.desks] + [fit.bounds(dict(room.podium, rot=0))]
-    if any(hit(spot, t) for t in taken):
-        fit = Fit(room, BAND)
-    return fit, spot
+    full, band = Fit(room, M), Fit(room, BAND)
+    taken = [full.bounds(d) for d in room.desks] + [full.bounds(dict(room.podium, rot=0))]
+    if band.k >= full.k - 1e-9 or any(hit(spot, t) for t in taken):
+        return band, spot
+    return full, spot
+
+def small(npt):
+    return max(6.5, round(npt * 0.6 * 2) / 2)
 
 def label_size(fit, room, seat_text, cap=24):
-    """Largest name size where no two seat labels collide (and, on straight desks, each fits its desk)."""
-    def boxes(npt):
-        ipt = max(6.5, round(npt * 0.6 * 2) / 2)
-        out = []
-        for i, lines in seat_text.items():
-            cx, cy = fit.centre(room.desks[i])
-            w = max(ems(s) * (npt if role == 'main' else ipt) for s, role in lines) + 1
-            h = sum(npt * 1.2 if role == 'main' else ipt * 1.15 for _, role in lines)
-            out.append((i, (cx - w / 2, cy - h / 2, w, h)))
-        return out, ipt
+    """Largest name size where no two seat labels collide (and, on straight desks, each fits its desk).
+    Students sitting side by side are left out of that: their labels slide apart, away from each other, keeping the
+    same size (shrinking only if sliding is not enough). Returns {desk: name size}, {desk: label rect}."""
     pod = fit.bounds(dict(room.podium, rot=0))
+    def rect(i, npt, shift=0.0, away=None):
+        ipt, lines = small(npt), seat_text[i]
+        cx, cy = fit.centre(room.desks[i])
+        if shift:                                                                  # slide along the line from the partner's desk
+            ax, ay = fit.centre(room.desks[away])
+            n = math.hypot(cx - ax, cy - ay)
+            cx, cy = cx + shift * (cx - ax) / n, cy + shift * (cy - ay) / n
+        w = max(ems(s) * (npt if role == 'main' else ipt) for s, role in lines) + 1
+        h = sum(npt * 1.2 if role == 'main' else ipt * 1.15 for _, role in lines)
+        return cx - w / 2, cy - h / 2, w, h
+    def on_page(b):
+        return not hit(b, pod) and b[0] >= 2 and b[1] >= 2 and b[0] + b[2] <= W - 2 and b[1] + b[3] <= H - 16
+    def fits(i, b):
+        d = room.desks[i]
+        big = (b[2] > 0.92 * fit.k * d['w'] or b[3] > fit.k * d['h']) if d['rot'] % 90 == 0 \
+            else b[2] > 1.5 * fit.k * d['w']                                       # slanted desks: stay near the desk
+        return not big and on_page(b)
+    pair = {i: room.nbr[i]['side'] & set(seat_text) for i in seat_text}
+    size = dict.fromkeys(seat_text, 7)
     for npt in range(cap, 6, -1):
-        bx, ipt = boxes(npt)
-        rects = [b for _, b in bx]
-        clash = any(hit(a, b) for n, a in enumerate(rects) for b in rects[n + 1:]) or any(hit(a, pod) for a in rects)
-        too_big = any((b[2] > 0.92 * fit.k * room.desks[i]['w'] or b[3] > fit.k * room.desks[i]['h'])
-                      if room.desks[i]['rot'] % 90 == 0 else b[2] > 1.5 * fit.k * room.desks[i]['w']   # slanted desks: stay near the desk
-                      for i, b in bx)
-        too_big = too_big or any(b[0] < 2 or b[1] < 2 or b[0] + b[2] > W - 2 or b[1] + b[3] > H - 16 for _, b in bx)
-        if not clash and not too_big:
-            return npt, ipt, dict(bx)
-    bx, ipt = boxes(7)
-    return 7, ipt, dict(bx)
+        rects = {i: rect(i, npt) for i in seat_text}
+        if all(fits(i, b) for i, b in rects.items()) and \
+                not any(hit(rects[i], rects[j]) for i in rects for j in rects if i < j and j not in pair[i]):
+            size = dict.fromkeys(seat_text, npt)
+            break
+    rects = {i: rect(i, size[i]) for i in seat_text}
+    for i, j in sorted((i, j) for i in seat_text for j in pair[i] if i < j):      # side-by-side pairs: slide apart
+        others = [b for q, b in rects.items() if q not in (i, j)]
+        reach = fit.k * max(room.desks[i]['w'], room.desks[j]['w']) / 2
+        def free(npt, t):
+            a, b = rect(i, npt, t, j), rect(j, npt, t, i)
+            gap = (a[0] - 3, a[1] - 3, a[2] + 6, a[3] + 6)                        # keep the two names visibly apart
+            return (a, b) if not hit(gap, b) and on_page(a) and on_page(b) and \
+                not any(hit(a, o) or hit(b, o) for o in others) else None
+        found = next(((npt, ab) for npt in range(size[i], 6, -1)
+                      for t in [s / 2 for s in range(int(2 * reach) + 1)] if (ab := free(npt, t))), None)
+        if found:
+            size[i] = size[j] = found[0]
+            rects[i], rects[j] = found[1]
+    return size, rects
 
 def draw_room(prs, room, title, subtitle, seat_text=None, style=None, footer=None, cap=24, labels=None):
     seat_text, style, labels = seat_text or {}, style or {}, labels or {}
@@ -127,9 +160,10 @@ def draw_room(prs, room, title, subtitle, seat_text=None, style=None, footer=Non
         else:
             box(slide, cx - w / 2, cy - h / 2, w, h, line=EMPTY, lw=1, rot=d['rot'])
     if seat_text:
-        npt, ipt, rects = label_size(fit, room, seat_text, cap)
+        size, rects = label_size(fit, room, seat_text, cap)
         colour = {'main': INK, 'sub': SUB, 'code': SUB}
         for i, lines in seat_text.items():
+            npt, ipt = size[i], small(size[i])
             on_blue = style.get(i) is not None
             tb = slide.shapes.add_textbox(*map(Pt, rects[i]))
             if not on_blue and room.desks[i]['rot'] % 90:  # label crosses the desk's outline: give it a solid backing

@@ -97,14 +97,17 @@ def search(rooms, chosen, people, rules, seed, pins):
     assert go(0), 'no seating satisfies the rules'
     return placed
 
-def check(rooms, chosen, people, rules, placed):
-    """Independent rule check. Returns a list of (rule, ok, detail)."""
+def check(rooms, chosen, people, rules, placed, allow_side=False):
+    """Independent rule check. Returns a list of (rule, ok, detail). With allow_side, side-by-side pairs are only reported."""
     out = []
     near = around(rooms, chosen)
     out.append(('one student per seat, one seat per student', sorted(placed.values()) == list(range(len(people))) and set(placed) == set(chosen),
                 f'{len(placed)} seats / {len(people)} students'))
     side = sum(1 for s in chosen for t in near[s] if s < t and t[1] in rooms[s[0]].nbr[s[1]]['side'])
-    out.append(('nobody side by side', side == 0, f'{side} pairs'))
+    if allow_side:
+        out.append(('side-by-side pairs (allowed, kept to the fewest)', True, f'{side} pairs'))
+    else:
+        out.append(('nobody side by side', side == 0, f'{side} pairs'))
     seat_of = {p: s for s, p in placed.items()}
     by_name = {p['name']: n for n, p in enumerate(people)}
     for room_name, names in rules.get('room', {}).items():

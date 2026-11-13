@@ -10,7 +10,7 @@ Arranges exam seats and produces a seating chart to project in the exam room. Ro
 - **Exact seat spacing**: nobody sits side by side; diagonal neighbours are minimised first (the desk diagonally ahead is visible, the one straight ahead is blocked by its owner); seats closest to the podium are preferred. Solved exactly row by row, not by random search
 - **Seating rules**: required rooms or exact seats for given students; consecutive student IDs never around each other
 - **Independent rule check**: every rule is re-verified after seating and printed to the terminal
-- **Projection-ready slides**: one 16:9 slide per room in its real orientation, every seat drawn (empty ones lighter) so students can find theirs; names upright and sized to fit
+- **Projection- and print-ready slides**: one slide per room (16:9, 4:3 or A4 landscape) in its real orientation, every seat drawn (empty ones lighter) so students can find theirs; names upright and sized to fit
 - **Reproducible**: a seed in the exam config gives the same chart every run
 
 ## Folder structure
@@ -112,6 +112,7 @@ Both types end up as "a set of desks, each with a position and an angle", and th
     "seat": {"Student 13": "404 A1-1"},
     "id_apart": true
   },
+  "page": "A4",
   "labels": {"podium": "Blackboard", "blocked": "Pillar", "rooms": {"309": "Building I 309"}},
   "seed": 1,
   "output": "../output"
@@ -121,10 +122,12 @@ Both types end up as "a set of desks, each with a position and an angle", and th
 - `course`: used in the output file names only (never on the slides)
 - `roster_columns`: the roster's column headers for name and student ID
 - `counts`: fix the head-count of a room, e.g. `{"309": 36}`; omitted rooms are decided by the solver
+- `allow_side_by_side` (optional): when there are more students than seats with a gap either side, set `true` to allow side-by-side pairs, at most one per row and as few as possible; without it the program stops and says how many fit
 - `fixed`: seats that must be used or left empty, by seat code, e.g. `{"309": {"sit": ["B1-2"], "empty": ["B1-1", "B1-3"]}}`
 - `rules.room`: students who must be in a given room
 - `rules.seat`: students who must sit at a given seat, as `"<room> <seat code>"`. They are swapped into place so the rest of the chart stays the same; only if a swap would break a rule is the room searched again
 - `rules.id_apart`: students with consecutive IDs must not sit around each other
+- `page` (optional): slide size, `16:9` (default, widescreen projection), `4:3` or `A4` (297 × 210 mm landscape, prints edge to edge on A4 paper); the room is re-fitted to the page
 - `labels` (optional): wording on the slides: `podium`, `blocked` (e.g. pillars) and per-room titles under `rooms`; defaults are `Podium`, the room config's `blocked_label` and `Room <name>`
 - `seed`: everyone else is placed in a shuffle seeded by this number; change it for a different arrangement
 
@@ -136,7 +139,7 @@ Both types end up as "a set of desks, each with a position and an angle", and th
 
 **Stage 1: which seats are used**
 
-1. Nobody side by side (always met)
+1. Nobody side by side (always met; with `allow_side_by_side`, as few pairs as possible)
 2. As few diagonal neighbours as possible
 3. As close to the podium as possible
 
