@@ -42,8 +42,8 @@
 
 ## 🔖 詳細變更日誌 (Detailed Version Changelog)
 
-### [v6.0.0] - 2026-11-14：寬進嚴出思考協議 (Deliberation Gate)
-> **核心痛點**：AI 容易陷入「微管理陷阱」，使用者過早指定「怎麼做（How）」而扼殺架構空間；AI 預設過度順從，不敢反駁過度設計或陷入 XY Problem。
+### [v6.0.0] - 2026-11-14：寬進嚴出思考協議 (Deliberation Gate) 與 ADR 決策框架
+> **核心痛點**：AI 容易陷入「微管理陷阱」，使用者過早指定「怎麼做（How）」而扼殺架構空間；AI 預設過度順從，不敢反駁過度設計或陷入 XY Problem；此外，重大架構選型缺乏持久化的決策記錄，方案優缺點容易隨工作階段遺失。
 
 * **新增 `deliberation-gate.md` 規範範本** (`templates/agent-rules/deliberation-gate.md`)：
   1. **What & Why over How**：將需求轉化為清晰目標與可測試驗收標準，抽離過度死板的實作步驟。
@@ -51,8 +51,13 @@
   3. **強制前置架構發散（Deliberation Gate）**：非瑣碎變更必須先提出 2~3 種取向的方案（極簡 MVP、穩健擴充、實用取向），並分析複雜度、維護成本與 Trade-off，經人類決策後才動手寫代碼。
   4. **破除 XY Problem**：主動識別使用者提出的代碼 Workaround 背後的根本限制，優先解決真痛點。
   5. **主動反駁權（Challenge Assumptions）**：正式授權 AI 主動質疑過度設計、邏輯矛盾與脆弱架構。
+* **導入新專案 ADR 架構決策記錄框架** (`templates/docs/adr/`)：
+  - 為所有新專案預載標準 ADR 目錄：`docs/adr/README.md`、`template.md` 與種子決策 `0001-record-architecture-decisions.md`。
+  - ADR 範本強制規定必須具備「負面約束紅線」、「2~3 種備選方案優缺點評估」與「最終 Trade-off 妥協代價」。
+  - 與 `deliberation-gate.md` 聯動，要求 Agent 在確認架構方向後主動將方案優缺點分析沉澱至 `docs/adr/`。
+  - `init-project.ps1` 自動裝配 ADR 結構，並於重複執行時安全保留既有決策檔案。
 * **全專案 Archetype 預設裝配**：
-  - 更新 `presets.json`，將 `deliberation-gate.md` 普及至全部 6 種專案雛型（`web-spa`, `backend-api`, `desktop-app`, `sec-research`, `minimal`, `script-tool`）。
+  - 更新 `presets.json`，將 `deliberation-gate.md` 與 ADR 體系普及至全部 6 種專案雛型（`web-spa`, `backend-api`, `desktop-app`, `sec-research`, `minimal`, `script-tool`）。
 
 ---
 

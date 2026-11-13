@@ -5,7 +5,7 @@
 - **Git 規範與 Hook**（`.gitignore`、`.gitmessage.txt`、`.editorconfig`、`commit-msg` 驗證鉤子）
 - **GitHub Actions CI/CD**（PR Gate、CycloneDX SBOM、Dependency-Track、DefectDojo、Greenbone/OpenVAS、Faraday、Wazuh、PR-Agent、Nuclei）
 - **協作模板**（`pull_request_template.md`、`dependabot.yml`、`SECURITY.md`）
-- **架構與演進歷史**（[演進與變更日誌 CHANGELOG.md](CHANGELOG.md)）
+- **架構決策與演進**（[演進與變更日誌 CHANGELOG.md](CHANGELOG.md)、ADR 決策記錄框架 `docs/adr/`）
 
 ---
 
