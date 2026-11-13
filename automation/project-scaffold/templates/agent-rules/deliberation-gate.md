@@ -28,6 +28,7 @@ For any non-trivial feature, architectural redesign, or new dependency introduct
   2. **Option B (Robust / Extensible)**: Best long-term maintainability, testability, and scalability.
   3. **Option C (Pragmatic / Existing Foundation)**: Leveraging existing patterns already in the codebase.
 - **Explicit Trade-off Analysis**: Contrast the options across development complexity, maintenance burden, failure modes, and long-term tech debt.
+- **Persist via ADR (架構決策落盤)**: Once an architectural approach is chosen with the human engineer, document the context, negative constraints, considered options, and trade-off rationale in `docs/adr/XXXX-title.md` (following `docs/adr/template.md`).
 - **Await Decision**: Let the human engineer choose or refine the direction before proceeding to atomic implementation.
 
 ---
