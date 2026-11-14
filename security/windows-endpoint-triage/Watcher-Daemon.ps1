@@ -78,3 +78,55 @@ function Test-AnomalyTriggers {
         Triggers = $triggersFired
     }
 }
+
+$IncidentLogFile = Join-Path $OutputDir "triage_incidents.jsonl"
+$TriageScript = Join-Path $ScriptDir "ThreatHunter-Triage.ps1"
+
+Write-Host "[*] 守護程序開始常駐監控（按 Ctrl+C 可停止）...`n" -ForegroundColor Green
+
+while ($true) {
+    $now = Get-Date
+    $eval = Test-AnomalyTriggers
+
+    $timeStr = $now.ToString("yyyy-MM-dd HH:mm:ss")
+    $cpuDisplay = "$($eval.TotalCpu)%".PadLeft(6)
+    Write-Host "[$timeStr] 系統狀態正常 | CPU: $cpuDisplay | 守護運行中..." -ForegroundColor DarkGray -NoNewline
+    Write-Host "`r" -NoNewline
+
+    if ($eval.Triggers.Count -gt 0) {
+        $secSinceLast = ($now - $LastAlertTime).TotalSeconds
+        if ($secSinceLast -ge $AlertCooldownSec) {
+            Write-Host "`n`n[!] 🚨 偵測到異常觸發條件！" -ForegroundColor Red
+            foreach ($t in $eval.Triggers) {
+                Write-Host "    - $t" -ForegroundColor Yellow
+            }
+
+            Write-Host "[+] 正在自動擷取現場鑑識快照..." -ForegroundColor Cyan
+            $snapshotTimestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+
+            if (Test-Path $TriageScript) {
+                & powershell.exe -ExecutionPolicy Bypass -File $TriageScript -OutputDir $OutputDir
+            } else {
+                Write-Host "[-] 找不到鑑識引擎腳本: $TriageScript" -ForegroundColor Red
+            }
+
+            # 寫入 JSONL 事件紀錄
+            $incidentRecord = [PSCustomObject]@{
+                Timestamp = $timeStr
+                HostName  = $HostName
+                TotalCpu  = $eval.TotalCpu
+                Reasons   = $eval.Triggers
+            } | ConvertTo-Json -Compress
+
+            Add-Content -Path $IncidentLogFile -Value $incidentRecord -Encoding utf8
+            Write-Host "[+] 事件已記錄至黑盒子日誌: $IncidentLogFile" -ForegroundColor Green
+            Write-Host "[*] 進入警報冷卻期 ($AlertCooldownSec 秒)，防範重疊告警...`n" -ForegroundColor DarkYellow
+
+            $script:LastAlertTime = $now
+            $script:HighCpuStreak = 0
+        }
+    }
+
+    Start-Sleep -Seconds $CheckIntervalSec
+}
+
