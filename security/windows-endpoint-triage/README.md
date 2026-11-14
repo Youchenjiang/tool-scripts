@@ -107,29 +107,36 @@ Enables native auditing and state modification across all 3 autostart pillars wi
 3. **Scheduled Tasks**: Audits and manages task scheduler items configured for boot or logon triggers.
 
 ```powershell
-# 1. Audit all autostart items across all 3 categories (with vendor info and validity checks)
+# ==============================================================
+# Method 1: Interactive TUI Menu - Recommended! Just type number
+# ==============================================================
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -i
+# Displays a live numbered menu. Type [number] (e.g. 2) to flip between Enabled and Disabled!
+# Supports /s for filtering, /c for category switching, /inv for invalid items, and Q to quit.
+
+# ==============================================================
+# Method 2: Smart Quick Toggle (Auto-detects category across all 3 pillars)
+# ==============================================================
+# One-shot toggle (flips current state)
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -T "GameViewer"
+
+# Quick disable
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -D "KDService"
+
+# Quick enable
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -E "WSLService"
+
+# ==============================================================
+# Method 3: Audit and Search
+# ==============================================================
+# Audit all autostart items across all 3 categories
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1
 
-# 2. Filter invalid / orphaned startup entries only
+# Filter invalid / orphaned startup entries only
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -InvalidOnly
 
-# 3. Filter by category or search by keyword
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Startup -Search "GameViewer"
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Service -Search "KDService"
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Task -Search "ACC"
-
-# 4. Modify item state (Enable / Disable)
-# Disable a startup registry item (modifies StartupApproved without deleting run key)
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "GameViewer" -TargetCategory Startup
-
-# Disable a Windows service (sets startup type to Disabled and stops service)
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "KDService" -TargetCategory Service
-
-# Disable a scheduled task
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "ACC" -TargetCategory Task
-
-# Re-enable an item
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -EnableName "GameViewer" -TargetCategory Startup
+# Search by keyword
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Search "GameViewer"
 ```
 
 

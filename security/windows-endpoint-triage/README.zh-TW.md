@@ -107,29 +107,36 @@ powershell -ExecutionPolicy Bypass -File .\Get-HistoricalArtifacts.ps1 -EventLoo
 3. **計劃任務 (Scheduled Tasks)**：檢索與管理 Windows 工作排程器中註冊的開機或登入觸發排程。
 
 ```powershell
-# 1. 檢視所有三大類開機自啟項目（附帶官方功能說明、發行廠商與有效性檢查）
+# ==============================================================
+# 方法一：進入互動選單模式 (TUI Menu) - 最推薦！像火絨一樣只需按編號
+# ==============================================================
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -i
+# 終端將直接列出帶有編號的表格，輸入 [編號] (例如 2) 立即切換啟用/禁用！
+# 支援 /s 關鍵字過濾、/c 類別切換、/inv 無效項目過濾、Q 退出。
+
+# ==============================================================
+# 方法二：極簡一鍵指令 (免輸入類別，自動跨三大類別識別並切換)
+# ==============================================================
+# 一鍵切換狀態 (若已啟用則禁用，若已禁用則啟用)
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -T "GameViewer"
+
+# 一鍵禁用指定項目
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -D "KDService"
+
+# 一鍵啟用指定項目
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -E "WSLService"
+
+# ==============================================================
+# 方法三：清單盤點與過濾
+# ==============================================================
+# 檢視所有三大類開機自啟項目（附帶官方功能說明、發行廠商與有效性檢查）
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1
 
-# 2. 僅篩選「該啟動項目無效」（殘留或目標二進位檔案已被刪除之項目）
+# 僅篩選「該啟動項目無效」（殘留或目標二進位檔案已被刪除之項目）
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -InvalidOnly
 
-# 3. 依類別篩選或依關鍵字搜尋（例如查詢遠程工具或服務）
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Startup -Search "GameViewer"
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Service -Search "KDService"
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Task -Search "ACC"
-
-# 4. 原生切換狀態（禁用 / 啟用）
-# 禁用啟動項目 (免刪除註冊表，原生標記為已禁用)
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "GameViewer" -TargetCategory Startup
-
-# 禁用系統服務 (設為 Disabled 並停止服務)
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "KDService" -TargetCategory Service
-
-# 禁用計劃任務
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "ACC" -TargetCategory Task
-
-# 重新啟用指定項目
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -EnableName "GameViewer" -TargetCategory Startup
+# 依關鍵字搜尋
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Search "GameViewer"
 ```
 
 
