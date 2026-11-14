@@ -12,14 +12,17 @@ for _dir in ("tools", "scripts"):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from env_tool import (
-    build_parser,
-    detect_gpu_info,
-    find_conda_executable,
-    find_mamba_executable,
-    sanitize_environment_yaml,
-    update_daemon_scripts,
-)
+try:
+    from env_tool import (
+        build_parser,
+        detect_gpu_info,
+        find_conda_executable,
+        find_mamba_executable,
+        sanitize_environment_yaml,
+        update_daemon_scripts,
+    )
+except ImportError:  # env_tool.py ships only when the conda-env feature is enabled
+    raise unittest.SkipTest("env_tool.py is not part of this project")
 
 
 class TestEnvTool(unittest.TestCase):
