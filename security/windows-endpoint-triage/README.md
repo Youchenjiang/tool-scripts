@@ -107,15 +107,18 @@ Enables native auditing and state modification across all 3 autostart pillars wi
 3. **Scheduled Tasks**: Audits and manages task scheduler items configured for boot or logon triggers.
 
 ```powershell
-# 1. Audit all autostart items across all 3 categories in formatted tables
+# 1. Audit all autostart items across all 3 categories (with vendor info and validity checks)
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1
 
-# 2. Filter by category or search by keyword
+# 2. Filter invalid / orphaned startup entries only
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -InvalidOnly
+
+# 3. Filter by category or search by keyword
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Startup -Search "GameViewer"
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Service -Search "KDService"
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Task -Search "ACC"
 
-# 3. Modify item state (Enable / Disable)
+# 4. Modify item state (Enable / Disable)
 # Disable a startup registry item (modifies StartupApproved without deleting run key)
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "GameViewer" -TargetCategory Startup
 

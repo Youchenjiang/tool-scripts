@@ -107,15 +107,18 @@ powershell -ExecutionPolicy Bypass -File .\Get-HistoricalArtifacts.ps1 -EventLoo
 3. **計劃任務 (Scheduled Tasks)**：檢索與管理 Windows 工作排程器中註冊的開機或登入觸發排程。
 
 ```powershell
-# 1. 檢視所有三大類開機自啟項目（分類表格呈現）
+# 1. 檢視所有三大類開機自啟項目（附帶官方功能說明、發行廠商與有效性檢查）
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1
 
-# 2. 依類別篩選或依關鍵字搜尋（例如查詢遠程工具或服務）
+# 2. 僅篩選「該啟動項目無效」（殘留或目標二進位檔案已被刪除之項目）
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -InvalidOnly
+
+# 3. 依類別篩選或依關鍵字搜尋（例如查詢遠程工具或服務）
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Startup -Search "GameViewer"
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Service -Search "KDService"
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Task -Search "ACC"
 
-# 3. 原生切換狀態（禁用 / 啟用）
+# 4. 原生切換狀態（禁用 / 啟用）
 # 禁用啟動項目 (免刪除註冊表，原生標記為已禁用)
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "GameViewer" -TargetCategory Startup
 
