@@ -38,9 +38,9 @@ Status values: `planned` · `landed` · `blocked` · `rejected`.
 
 | ID | Gap | Clickra source | Target here | Status |
 |---|---|---|---|---|
-| S1 | Read-only git surface for release/version gates | `scripts/process_guard.py` | `templates/tools/process_guard.py` | planned |
-| S2 | Unaddressed top-level review findings are not detected | `scripts/pr_verification.py` | `templates/tools/pr_verification.py` | planned |
-| S3 | New-code duplication ceiling cannot be enforced | `scripts/pr_verification.py` | `templates/tools/pr_verification.py` | planned |
+| S1 | Read-only git surface for release/version gates | `scripts/process_guard.py` | `templates/tools/process_guard.py` | landed |
+| S2 | Unaddressed top-level review findings are not detected | `scripts/pr_verification.py` | `templates/tools/pr_verification.py` | landed |
+| S3 | New-code duplication ceiling cannot be enforced | `scripts/pr_verification.py` | `templates/tools/pr_verification.py` | landed |
 | S4 | Review-checklist prompts and metadata-as-checkbox ban | `scripts/pr_preflight.py` | `templates/tools/pr_preflight.py` | blocked |
 | S5 | Version gate: release-impact paths, tag already released, manifest/changelog/listing sync | `scripts/pr_preflight.py` | `templates/tools/pr_preflight.py` + presets | planned |
 | S6 | Roadmap/spec alignment gate (milestone must exist in `docs/ROADMAP.md`) | `scripts/pr_preflight.py` | `templates/tools/pr_preflight.py` + docs template | planned |
@@ -64,6 +64,19 @@ Three files disagree about the PR body shape:
 
 Adding Clickra's mandatory checklist prompts before unifying these three would fail
 every scaffolded project. Unifying the contract is its own change and must land first.
+
+### Landed in this batch
+
+- **S1** — `process_guard` now permits `tag -l`, `ls-remote --tags` and a
+  `-z --no-renames` name-only diff, including `origin/main...<full commit id>`
+  for a pushed object. Anything else still fails closed.
+- **S2** — `pr_verification.summarize` now rejects review submissions that report
+  blocking findings when they are not addressed. A finding counts as addressed only
+  when the review is not on the current head and the PR body references the reviewer.
+  Parsed findings are returned as `top_level_findings`.
+- **S3** — new-code duplication is reported as before, and enforced only when
+  `PR_MAX_NEW_DUPLICATION` is set (for example `0` for a zero-duplication policy).
+  An unreadable metric fails closed once a ceiling is configured.
 
 ## 3. Reverse protection (scaffold is ahead — do not overwrite)
 
