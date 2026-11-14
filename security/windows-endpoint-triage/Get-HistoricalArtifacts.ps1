@@ -65,3 +65,104 @@ try {
 }
 
 Write-Host "[+] 成功提取 $($DnsRecords.Count) 筆非本地 DNS 解析紀錄。" -ForegroundColor Green
+
+# -------------------------------------------------------------
+# 2. Windows 事件日誌鑑識 (登入來源 IP、暴力破解與新服務)
+# -------------------------------------------------------------
+Write-Host "`n[2/4] 檢索 Windows 事件日誌 (登入來源 IP 與新服務安裝)..." -ForegroundColor Cyan
+$StartTime = (Get-Date).AddDays(-$EventLookbackDays)
+
+$RdpLogons = @()
+$FailedLogons = @()
+$NewServices = @()
+
+# 檢索 Security Log (需要 Administrator 權限)
+if ($IsAdmin) {
+    try {
+        # Event 4624: 成功登入 (重點過濾 LogonType 10 遠端桌面與外部 IP)
+        $logonEvents = Get-WinEvent -FilterHashtable @{
+            LogName   = 'Security'
+            Id        = 4624
+            StartTime = $StartTime
+        } -MaxEvents 300 -ErrorAction SilentlyContinue
+
+        foreach ($evt in $logonEvents) {
+            $xml = [xml]$evt.ToXml()
+            $eventData = @{}
+            foreach ($data in $xml.Event.EventData.Data) {
+                $eventData[$data.Name] = $data.'#text'
+            }
+
+            $logonType = $eventData['LogonType']
+            $srcIp = $eventData['IpAddress']
+            $targetUser = $eventData['TargetUserName']
+
+            # LogonType 10: RemoteInteractive (RDP), 3: Network
+            if ($logonType -in @('10', '3') -and $srcIp -and $srcIp -ne '-' -and $srcIp -ne '127.0.0.1') {
+                $RdpLogons += [PSCustomObject]@{
+                    TimeGenerated = $evt.TimeCreated.ToString("yyyy-MM-dd HH:mm:ss")
+                    TargetUser    = $targetUser
+                    LogonType     = if ($logonType -eq '10') { "RDP 遠端桌面 (10)" } else { "網路登入 (3)" }
+                    SourceIP      = $srcIp
+                    SourcePort    = $eventData['IpPort']
+                    AuthPackage   = $eventData['AuthenticationPackageName']
+                }
+            }
+        }
+
+        # Event 4625: 登入失敗 (暴力破解紀錄)
+        $failedEvents = Get-WinEvent -FilterHashtable @{
+            LogName   = 'Security'
+            Id        = 4625
+            StartTime = $StartTime
+        } -MaxEvents 200 -ErrorAction SilentlyContinue
+
+        foreach ($evt in $failedEvents) {
+            $xml = [xml]$evt.ToXml()
+            $eventData = @{}
+            foreach ($data in $xml.Event.EventData.Data) {
+                $eventData[$data.Name] = $data.'#text'
+            }
+            $FailedLogons += [PSCustomObject]@{
+                TimeGenerated = $evt.TimeCreated.ToString("yyyy-MM-dd HH:mm:ss")
+                TargetUser    = $eventData['TargetUserName']
+                LogonType     = $eventData['LogonType']
+                SourceIP      = $eventData['IpAddress']
+                FailureReason = $eventData['Status']
+            }
+        }
+    } catch {
+        Write-Host "[-] 查詢安全性事件日誌時發生錯誤: $($_.Exception.Message)" -ForegroundColor DarkGray
+    }
+} else {
+    Write-Host "[-] 目前為非管理員權限，無法讀取 Security 事件日誌（4624/4625）。" -ForegroundColor Yellow
+}
+
+# 檢索 System Log: Event 7045 (新安裝之服務)
+try {
+    $serviceEvents = Get-WinEvent -FilterHashtable @{
+        LogName   = 'System'
+        Id        = 7045
+        StartTime = $StartTime
+    } -MaxEvents 100 -ErrorAction SilentlyContinue
+
+    foreach ($evt in $serviceEvents) {
+        $xml = [xml]$evt.ToXml()
+        $eventData = @{}
+        foreach ($data in $xml.Event.EventData.Data) {
+            $eventData[$data.Name] = $data.'#text'
+        }
+        $NewServices += [PSCustomObject]@{
+            TimeGenerated = $evt.TimeCreated.ToString("yyyy-MM-dd HH:mm:ss")
+            ServiceName   = $eventData['ServiceName']
+            ImagePath     = $eventData['ImagePath']
+            ServiceType   = $eventData['ServiceType']
+            AccountName   = $eventData['AccountName']
+        }
+    }
+} catch {
+    Write-Host "[-] 查詢系統服務安裝日誌時發生錯誤: $($_.Exception.Message)" -ForegroundColor DarkGray
+}
+
+Write-Host "[+] 發現 $($RdpLogons.Count) 筆外部登入、$(@($FailedLogons).Count) 筆失敗嘗試、$(@($NewServices).Count) 筆新服務註冊紀錄。" -ForegroundColor Green
+
