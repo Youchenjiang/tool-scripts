@@ -7,6 +7,8 @@
   2. Select optional Features (strict-linting, chained-prs, sec-enterprise)
 .PARAMETER Archetype
   Project core archetype profile (or alias -Preset)
+.PARAMETER Flow
+  Git workflow mode: 'pr' (Pull Request based) or 'direct-push' / 'trunk' (Direct trunk push, no PR).
 .PARAMETER Features
   Optional array of features to enable
 .PARAMETER TargetDir
@@ -27,6 +29,9 @@
 param(
   [Alias('Preset')]
   [string]$Archetype,
+
+  [ValidateSet('pr', 'direct-push', 'trunk')]
+  [string]$Flow,
 
   [string[]]$Features,
 
@@ -92,7 +97,42 @@ if (-not $SelectedArchetype) {
   exit 1
 }
 
-# 2. Resolve Active Features
+# 2. Resolve Git Workflow Mode (PR vs Direct Trunk Push)
+$defaultFlow = if ($SelectedArchetype.flow) {
+  $SelectedArchetype.flow
+} elseif ($SelectedArchetype.recommendedFeatures -contains "direct-push" -or $Archetype -eq "script-tool") {
+  "direct-push"
+} else {
+  "pr"
+}
+
+if (-not $Flow) {
+  # If running in interactive mode (neither Archetype nor Features supplied via CLI)
+  if (-not $PSBoundParameters.ContainsKey('Archetype') -or (-not $Features -and -not $AllFeatures -and -not $NoFeatures)) {
+    Write-Host ""
+    Write-Host "Stage 2: Git Workflow Mode (工作流程模式):" -ForegroundColor Cyan
+    Write-Host "  [1] pr          - Pull Request 流程 (標準分支開發、開 PR、PR 模板與審查門禁)" -ForegroundColor $(if ($defaultFlow -eq 'pr') { "Green" } else { "Gray" })
+    Write-Host "  [2] direct-push - Direct Trunk Push (免開 PR、主幹原子提交直接推送 main)" -ForegroundColor $(if ($defaultFlow -eq 'direct-push') { "Green" } else { "Gray" })
+    Write-Host ""
+    $flowChoice = Read-Host "請選擇工作流程 [1/2, 預設: $(if ($defaultFlow -eq 'pr') { '1' } else { '2' }) ($defaultFlow)]"
+    if ($flowChoice -eq '1' -or $flowChoice -match '^[Pp]') {
+      $Flow = "pr"
+    } elseif ($flowChoice -eq '2' -or $flowChoice -match '^[DdTt]') {
+      $Flow = "direct-push"
+    } elseif ($flowChoice -eq '') {
+      $Flow = $defaultFlow
+    } else {
+      Write-Host "  ! 無效輸入，採用預設: $defaultFlow" -ForegroundColor DarkYellow
+      $Flow = $defaultFlow
+    }
+  } else {
+    $Flow = $defaultFlow
+  }
+}
+
+if ($Flow -eq "trunk") { $Flow = "direct-push" }
+
+# 3. Resolve Active Features
 $ActiveFeatures = @()
 if ($NoFeatures) {
   $ActiveFeatures = @()
@@ -104,9 +144,15 @@ if ($NoFeatures) {
 } else {
   # Default to recommended features for this archetype
   $recommended = @($SelectedArchetype.recommendedFeatures)
+  if ($Flow -eq "direct-push" -and -not ($recommended -contains "direct-push")) {
+    $recommended += "direct-push"
+  }
+  if ($Flow -eq "pr" -and ($recommended -contains "direct-push")) {
+    $recommended = @($recommended | Where-Object { $_ -ne "direct-push" })
+  }
   if ($recommended.Count -gt 0) {
     Write-Host ""
-    Write-Host "Stage 2: Features Configuration:" -ForegroundColor Cyan
+    Write-Host "Stage 3: Features Configuration:" -ForegroundColor Cyan
     Write-Host "Recommended features for ${Archetype}: $($recommended -join ', ')" -ForegroundColor Yellow
     Write-Host "Available features: $($Config.features.PSObject.Properties.Name -join ', ')" -ForegroundColor DarkGray
     $prompt = Read-Host "Enable recommended features? [Y/n] (or enter custom comma-separated list)"
@@ -117,6 +163,20 @@ if ($NoFeatures) {
     } else {
       $ActiveFeatures = $prompt -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
     }
+  }
+}
+
+# Align features with selected flow
+if ($Flow -eq "direct-push") {
+  if (-not ($ActiveFeatures -contains "direct-push")) {
+    $ActiveFeatures += "direct-push"
+  }
+  if ($ActiveFeatures -contains "chained-prs") {
+    $ActiveFeatures = @($ActiveFeatures | Where-Object { $_ -ne "chained-prs" })
+  }
+} elseif ($Flow -eq "pr") {
+  if ($ActiveFeatures -contains "direct-push") {
+    $ActiveFeatures = @($ActiveFeatures | Where-Object { $_ -ne "direct-push" })
   }
 }
 
@@ -152,6 +212,7 @@ Write-Host ""
 Write-Host "Target Directory : $TargetDir" -ForegroundColor Cyan
 Write-Host "Project Name     : $ProjectName" -ForegroundColor Cyan
 Write-Host "Archetype        : $Archetype ($($SelectedArchetype.name))" -ForegroundColor Green
+Write-Host "Workflow Mode    : $Flow $(if ($Flow -eq 'direct-push') { '(免 PR 主幹直接推送)' } else { '(Pull Request 分支審查流程)' })" -ForegroundColor Cyan
 Write-Host "Active Features  : $(if ($ActiveFeatures.Count -gt 0) { $ActiveFeatures -join ', ' } else { '(None)' })" -ForegroundColor Yellow
 Write-Host "Jitter Schedules : Monthly ($ProjectMonthlyCron), Weekly ($ProjectWeeklyCron)" -ForegroundColor DarkCyan
 Write-Host "-------------------------------------------------"
@@ -182,12 +243,19 @@ foreach ($featKey in $ActiveFeatures) {
 }
 
 # If direct-push is active, replace PR-centric git-discipline.md with direct-trunk.md
-if ($ActiveFeatures -contains "direct-push" -or $Archetype -eq "script-tool") {
+if ($Flow -eq "direct-push" -or $ActiveFeatures -contains "direct-push") {
   if ($AllRuleFiles.Contains("git-discipline.md")) {
     $AllRuleFiles.Remove("git-discipline.md") | Out-Null
   }
   if (-not $AllRuleFiles.Contains("direct-trunk.md")) {
     $AllRuleFiles.Add("direct-trunk.md")
+  }
+} else {
+  if ($AllRuleFiles.Contains("direct-trunk.md")) {
+    $AllRuleFiles.Remove("direct-trunk.md") | Out-Null
+  }
+  if (-not $AllRuleFiles.Contains("git-discipline.md")) {
+    $AllRuleFiles.Add("git-discipline.md")
   }
 }
 
@@ -282,9 +350,11 @@ if (Test-Path $GitDir) {
   try {
     Push-Location $TargetDir
     git config commit.template .gitmessage.txt
-    if ($ActiveFeatures -contains "direct-push" -or $Archetype -eq "script-tool") {
+    if ($Flow -eq "direct-push" -or $ActiveFeatures -contains "direct-push") {
       git config repo.directPush true
       Write-Host "  + Configured: git config repo.directPush true (Direct Trunk Push Mode)" -ForegroundColor Green
+    } else {
+      git config --unset repo.directPush 2>$null
     }
     Pop-Location
     Write-Host "  + Configured: git config commit.template .gitmessage.txt" -ForegroundColor Green
@@ -337,10 +407,48 @@ $SkippedTestsNoConda = [System.Collections.Generic.List[string]]::new()
 if ($SelectedArchetype.toolFiles) {
   $ToolsDir = Join-Path $TargetDir "tools"
   if (-not (Test-Path $ToolsDir)) { New-Item -ItemType Directory -Path $ToolsDir -Force | Out-Null }
+
+  $prTools = @(
+    "pr_helper.py", "branch_policy.py", "process_guard.py", "gh_guard.py",
+    "sonar_audit.py", "pr_audit.py", "pr_reports.py", "pr_verification.py",
+    "pr_body_contract.py", "pr_preflight.py", "pr_publication.py", "pr_creation.py", "pr_tool.py"
+  )
+  $toolsToDeploy = [System.Collections.Generic.List[string]]::new()
   foreach ($tf in $SelectedArchetype.toolFiles) {
+    if ($Flow -eq "direct-push" -and $prTools -contains $tf) {
+      continue
+    }
+    $toolsToDeploy.Add($tf)
+  }
+  if ($Flow -eq "pr") {
+    foreach ($pt in $prTools) {
+      if (-not $toolsToDeploy.Contains($pt)) {
+        $toolsToDeploy.Add($pt)
+      }
+    }
+  }
+
+  foreach ($tf in $toolsToDeploy) {
     $tfSrc = Join-Path $TemplatesDir "tools\$tf"
     $tfDst = Join-Path $ToolsDir $tf
     if (Test-Path $tfSrc) {
+      if ($tf -eq "lint_commits.py" -and $SelectedArchetype.defaultScopes) {
+        $pyScopes = "# /* SCOPES_PLACEHOLDER_START */`nALLOWED_SCOPES = [`n"
+        foreach ($s in $SelectedArchetype.defaultScopes) {
+          $pyScopes += "    `"$s`",`n"
+        }
+        $pyScopes += "]`n# /* SCOPES_PLACEHOLDER_END */"
+        $toolContent = Get-Content $tfSrc -Raw -Encoding UTF8
+        $regex = "(?s)#\s*/\*\s*SCOPES_PLACEHOLDER_START\s*\*/.*?#\s*/\*\s*SCOPES_PLACEHOLDER_END\s*\*/"
+        if ($toolContent -match $regex) {
+          $toolContent = $toolContent -replace $regex, $pyScopes
+        } else {
+          $toolContent = $toolContent -replace "(?s)ALLOWED_SCOPES\s*=\s*\[.*?\]", $pyScopes
+        }
+        [System.IO.File]::WriteAllText($tfDst, $toolContent, [System.Text.Encoding]::UTF8)
+        Write-Host "  + Deployed Tool: tools/$tf (Configured with $($SelectedArchetype.defaultScopes.Count) archetype scopes)" -ForegroundColor Green
+        continue
+      }
       Copy-Item $tfSrc $tfDst -Force
       Write-Host "  + Deployed Tool: tools/$tf" -ForegroundColor Gray
     }
@@ -501,7 +609,19 @@ foreach ($wf in $AllWorkflows) {
   }
 }
 
+$githubFilesToDeploy = [System.Collections.Generic.List[string]]::new()
 foreach ($ghFile in $SelectedArchetype.githubFiles) {
+  if ($Flow -eq "direct-push" -and $ghFile -eq "pull_request_template.md") {
+    Write-Host "  - Skipped: pull_request_template.md (direct-push mode)" -ForegroundColor DarkGray
+    continue
+  }
+  $githubFilesToDeploy.Add($ghFile)
+}
+if ($Flow -eq "pr" -and -not $githubFilesToDeploy.Contains("pull_request_template.md")) {
+  $githubFilesToDeploy.Add("pull_request_template.md")
+}
+
+foreach ($ghFile in $githubFilesToDeploy) {
   $ghSrc = Join-Path $TemplatesDir "github\$ghFile"
   $ghDst = Join-Path $GithubDir $ghFile
   if (Test-Path $ghSrc) {

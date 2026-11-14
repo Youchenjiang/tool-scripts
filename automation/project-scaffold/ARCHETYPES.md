@@ -110,18 +110,31 @@
 
 驗證：桌面專案改了發佈相關檔案但沒升版本時被擋；其他五個範本不受影響。
 
-## 四、需要你決定的一件事
+## 四、已定稿的決定：工作流程自主選擇 (Flow Selection)
 
-`tool` 和 `script` 這兩個別名要指向哪個範本：
+原本的爭議是：`tool` / `script` 要偏向「直推 main」還是「走 PR」。
+**已定稿方案**：將工作流程抽成**獨立的一級選項**，不再與範本死綁：
 
-- 選項 A：指向 `script-tool`（程式現在的行為），說明書改成一致。
-- 選項 B：指向 `minimal`（說明書現在的說法），程式改成一致。
+- CLI 新增參數 `-Flow <pr|direct-push|trunk>`。
+- 互動模式在 Stage 1 選完範本後，直接進入 **Stage 2: Git Workflow Mode** 供使用者自選：
+  - `[1] pr`：Pull Request 審查流程（分行開發、開 PR、PR 模板與審查門禁工具）。
+  - `[2] direct-push`：Direct Trunk Push（免開 PR、原子提交直接推 main、自動設定 `repo.directPush true`）。
+- 範本在 `presets.json` 中保留其推薦預設（例如 `script-tool` 預設 `direct-push`，其他預設 `pr`），但使用者擁有最終選擇權。
 
-影響：用 `-Archetype tool` 的人會拿到「直推 main」還是「走 PR」的專案。我傾向 A
-（這兩個字歷史上是給 `tool-scripts` 這類倉庫用的），但這牽涉你的使用習慣，我不代決定。
-決定後才有辦法把說明書與程式一起定稿。
+## 五、進度追蹤
 
-## 五、不在這次範圍
+- [x] **第 0 階段：止血（已完成）**
+  - [x] `lint_commits.py` 分類字改為 placeholder，由 `init-project.ps1` 依範本動態注入，與 `policy.yml` 完全同源。
+  - [x] 徹底清理 `lint_commits.py` 與各範本殘留的舊專案名稱（`tapster`, `fluent`, `ctfd` 等）。
+  - [x] `pr_verification.py` 移除寫死的 `Build Clickra.*` 等專屬 checks，改為通用門禁並支援 `PR_REQUIRED_CHECKS` 環境變數。
+  - [x] 實作 `-Flow` 參數與互動式工作流程選擇（開 PR vs 免開 PR 直推）。
+  - [x] 通過 142 項單元測試全數驗證。
+- [ ] **第 1 階段：把三條軸變成資料**
+- [ ] **第 2 階段：產品 CI**
+- [ ] **第 3 階段：push 前檢查補齊**
+- [ ] **第 4 階段：發佈生命週期**
+
+## 六、不在這次範圍
 
 - 不新增範本，也不為單一範本寫專屬工具分支。
 - 不改 Clickra 本身。
