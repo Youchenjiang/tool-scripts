@@ -74,3 +74,26 @@ powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -StatusTask
 powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -UninstallTask
 ```
 
+---
+
+### C. Retrospective Historical Artifacts Analysis (`Get-HistoricalArtifacts.ps1`)
+
+Enables post-incident investigations even after malicious processes terminate, connections drop, or binaries delete themselves.
+
+```powershell
+# Investigate historical artifacts over the last 7 days (default)
+powershell -ExecutionPolicy Bypass -File .\Get-HistoricalArtifacts.ps1
+
+# Expand lookback window to 30 days and extract 50 recent prefetch records
+powershell -ExecutionPolicy Bypass -File .\Get-HistoricalArtifacts.ps1 -EventLookbackDays 30 -TopPrefetchCount 50 -OutputDir "C:\Forensics"
+```
+
+* Output Artifact: `Historical_Report_<HostName>_<Timestamp>.html`
+* Forensic Coverage:
+  1. **External Inbound Logons & RDP Source IPs** (Event 4624 Logon Auditing)
+  2. **Newly Installed Windows Services** (Event 7045 Service Creation)
+  3. **Windows Prefetch Execution Artifacts** (Evidence of deleted binaries)
+  4. **DNS Client Resolution Cache** (Resolved domains post-disconnection)
+  5. **Persistence Scheduled Tasks** (Tasks running from Temp, Public, or obfuscated scripts)
+
+

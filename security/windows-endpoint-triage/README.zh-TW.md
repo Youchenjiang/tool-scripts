@@ -74,6 +74,29 @@ powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -StatusTask
 powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -UninstallTask
 ```
 
+---
+
+### C. 事後歷史數位跡證倒查模式 (`Get-HistoricalArtifacts.ps1`)
+
+即便異常已經結束、可疑連線已斷開或程式已自我刪除，本模組可直接萃取系統底層之歷史飛行紀錄。
+
+```powershell
+# 倒查過去 7 天的歷史事件與跡證
+powershell -ExecutionPolicy Bypass -File .\Get-HistoricalArtifacts.ps1
+
+# 擴大倒查過去 30 天，並提取最近 50 筆 Prefetch 執行紀錄
+powershell -ExecutionPolicy Bypass -File .\Get-HistoricalArtifacts.ps1 -EventLookbackDays 30 -TopPrefetchCount 50 -OutputDir "C:\Forensics"
+```
+
+* 產出檔案：`Historical_Report_<HostName>_<Timestamp>.html`
+* 倒查重點：
+  1. **外部 RDP / 網路成功登入來源 IP**（Event 4624 登入稽核）
+  2. **新註冊之背景系統服務**（Event 7045，防範開機持久化後門）
+  3. **Prefetch 預讀取執行歷史**（即便惡意程式已從 Temp 刪除，仍記錄其執行時間點）
+  4. **DNS Client 快取歷史**（即便連線中斷，仍記錄解析過之外部網域）
+  5. **可疑排程任務持久化後門**（排查執行於 Temp/Public 或混淆指令之工作排程）
+
+
 
 ## 鑑識報告產出說明
 
