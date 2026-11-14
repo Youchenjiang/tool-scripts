@@ -12,11 +12,61 @@ param(
     [int]$CheckIntervalSec = 10,
     [int]$ConsecutiveHits = 2,
     [int]$AlertCooldownSec = 120,
-    [string]$OutputDir = (Get-Location).Path
+    [string]$OutputDir = (Get-Location).Path,
+    [switch]$InstallTask,
+    [switch]$UninstallTask,
+    [switch]$StatusTask
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'SilentlyContinue'
+
+$TaskName = "EndpointForensicWatcher"
+$ScriptPath = $MyInvocation.MyCommand.Path
+if (-not $ScriptPath) { $ScriptPath = "$((Get-Location).Path)\Watcher-Daemon.ps1" }
+
+# -------------------------------------------------------------
+# 排程任務生命週期管理 (-InstallTask / -UninstallTask / -StatusTask)
+# -------------------------------------------------------------
+if ($InstallTask) {
+    Write-Host "[*] 正在安裝背景常駐排程任務: $TaskName..." -ForegroundColor Cyan
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$ScriptPath`" -OutputDir `"$OutputDir`""
+    $trigger = New-ScheduledTaskTrigger -AtLogOn
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Days 0)
+    
+    try {
+        Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Force -ErrorAction Stop | Out-Null
+        Start-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+        Write-Host "[+] 成功安裝排程任務！該守護程序將在使用者登入時於後台靜默啟動。" -ForegroundColor Green
+    } catch {
+        Write-Host "[-] 安裝排程任務失敗: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "    請確認您是否已使用「系統管理員身分 (Run as Administrator)」執行 PowerShell。" -ForegroundColor Yellow
+    }
+    return
+}
+
+if ($UninstallTask) {
+    Write-Host "[*] 正在移除背景排程任務: $TaskName..." -ForegroundColor Cyan
+    try {
+        Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Stop
+        Write-Host "[+] 成功移除背景排程任務 $TaskName。" -ForegroundColor Green
+    } catch {
+        Write-Host "[-] 移除排程任務失敗: $($_.Exception.Message)" -ForegroundColor Red
+    }
+    return
+}
+
+if ($StatusTask) {
+    $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if ($task) {
+        Write-Host "[+] 排程任務 [$TaskName] 狀態: $($task.State)" -ForegroundColor Green
+    } else {
+        Write-Host "[-] 尚未安裝排程任務 [$TaskName]。" -ForegroundColor Yellow
+    }
+    return
+}
+
 
 $HostName = $env:COMPUTERNAME
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
