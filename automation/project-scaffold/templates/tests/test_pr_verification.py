@@ -155,5 +155,44 @@ class VerificationTests(unittest.TestCase):
         self.assertTrue(any("required checks skipped" in issue for issue in result["problems"]))
 
 
+    def test_unaddressed_top_level_finding_blocks_acceptance(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0},
+                  "reviews": [{"author": "reviewer", "state": "CHANGES_REQUESTED",
+                               "head_relation": "current",
+                               "body": "Blocking issues: broken fallback."}]}
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertFalse(result["ready"])
+        self.assertTrue(any("unaddressed top-level review finding" in problem
+                            for problem in result["problems"]))
+        self.assertFalse(result["top_level_findings"][0]["addressed"])
+
+    def test_addressed_historical_finding_is_recorded_without_blocking(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        pr["body"] = "Addressed @reviewer in commit abc1234."
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0},
+                  "reviews": [{"author": "reviewer", "state": "COMMENTED",
+                               "head_relation": "historical",
+                               "body": "Finding details: stale note."}]}
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertTrue(result["ready"])
+        self.assertTrue(result["top_level_findings"][0]["addressed"])
+
+    def test_review_stating_no_findings_does_not_block(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0},
+                  "reviews": [{"author": "bot", "state": "COMMENTED",
+                               "head_relation": "current",
+                               "body": "No blocking issues found."}]}
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertTrue(result["ready"])
+        self.assertEqual([], result["top_level_findings"])
+
 if __name__ == "__main__":
     unittest.main()
