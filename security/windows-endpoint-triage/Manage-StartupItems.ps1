@@ -7,10 +7,14 @@
       2. 系統服務 (System Services - Win32 服務開機類型與狀態)
       3. 計劃任務 (Scheduled Tasks - 工作排程器開機/登入自啟排程)
     
-    支援三種操作方式：
-      A. 互動選單模式 (-i / -Interactive)：如同火絨一樣，只需輸入編號即可切換啟用/禁用！
-      B. 智慧極簡指令 (-Toggle / -T, -Disable / -D, -Enable / -E)：自動跨三大類別比對名稱，無需輸入長參數！
-      C. 清單列出與搜尋 (-List, -Search, -InvalidOnly)：快速盤點與過濾無效殘留項。
+    支援單項與多項批次操作：
+      A. 互動選單批次模式 (-i / -Interactive)：
+         - 輸入多個編號：如 1, 2, 5 或 1-4
+         - 輸入批次指令：如 d 1,2,5 (批次禁用)、e 1-3 (批次啟用)、d inv (一鍵禁用所有無效項)
+      B. 智慧極簡多項指令 (-Toggle / -T, -Disable / -D, -Enable / -E)：
+         - 支援逗號或陣列傳入多個項目：-D "GameViewer", "KDService", "ACC"
+         - 自動跨三大類別識別，無需指定 Category！
+      C. 一鍵最佳化 (-DisableInvalid)：自動掃描並批次禁用所有無效/殘留啟動項目。
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -26,17 +30,20 @@ param(
 
     [switch]$InvalidOnly,
 
-    # 快捷切換（智慧跨三大類別識別，無需指定 Category）
+    # 快捷切換（支援傳入多個名稱：陣列或逗號分隔）
     [Alias('T')]
-    [string]$Toggle = '',
+    [string[]]$Toggle = @(),
 
     [Alias('D')]
-    [string]$Disable = '',
+    [string[]]$Disable = @(),
 
     [Alias('E')]
-    [string]$Enable = '',
+    [string[]]$Enable = @(),
 
-    # 互動式選單模式（像火絨一樣只需輸入編號即可切換）
+    # 一鍵最佳化：自動禁用所有無效/殘留項 (如同火絨的一鍵最佳化)
+    [switch]$DisableInvalid,
+
+    # 互動式選單模式（支援多選、範圍 1-4、批次指令）
     [Alias('i', 'Menu')]
     [switch]$Interactive,
 
@@ -371,7 +378,8 @@ function Set-StartupState {
                 $reg.Close()
                 Write-Host "[+] 成功更新啟動項目 '$TargetName' 狀態為 [$actionName]！" -ForegroundColor Green
             } catch {
-                Write-Host "[-] 修改啟動項目失敗: $($_.Exception.Message)" -ForegroundColor Red
+                $hint = if ($hive -eq 'LocalMachine' -and -not $IsAdmin) { " (此項目位於本機登錄檔 HKLM，需以系統管理員身分執行以取得寫入權限)" } else { "" }
+                Write-Host "[-] 修改啟動項目失敗: $($_.Exception.Message)$hint" -ForegroundColor Red
             }
         }
 
@@ -419,7 +427,7 @@ function Find-StartupItem {
     $fuzzy = $all | Where-Object { $_.Name -like "*$Query*" -or $_.DisplayName -like "*$Query*" }
     if ($fuzzy.Count -eq 1) { return $fuzzy[0] }
     if ($fuzzy.Count -gt 1) {
-        Write-Host "[!] 找到多個相符項目：" -ForegroundColor Yellow
+        Write-Host "[!] 找到多個相符項目 (查詢: '$Query')：" -ForegroundColor Yellow
         for ($i = 0; $i -lt $fuzzy.Count; $i++) {
             Write-Host "  [$($i + 1)] [$($fuzzy[$i].Category)] $($fuzzy[$i].Name) ($($fuzzy[$i].Status)) - $($fuzzy[$i].Description)"
         }
@@ -447,7 +455,57 @@ function Toggle-ItemStatus ($item) {
 }
 
 # -------------------------------------------------------------
-# 互動式選單模式 (TUI Menu) - 像火絨一樣直接輸入編號切換
+# 輔助：解析多項輸入索引清單 (例如 "1, 2, 5"、"1-4"、"all"、"inv")
+# -------------------------------------------------------------
+function Parse-SelectionIndices {
+    param(
+        [string]$InputString,
+        [array]$ItemList
+    )
+
+    $indices = @()
+    $clean = $InputString.Trim()
+
+    if ($clean -eq 'all' -or $clean -eq 'ALL') {
+        for ($i = 0; $i -lt $ItemList.Count; $i++) { $indices += $i }
+        return $indices
+    }
+
+    if ($clean -eq 'inv' -or $clean -eq 'INV') {
+        for ($i = 0; $i -lt $ItemList.Count; $i++) {
+            if (-not $ItemList[$i].IsValid) { $indices += $i }
+        }
+        return $indices
+    }
+
+    # 以逗號或空白分割 tokens
+    $tokens = $clean -split '[\s,]+'
+    foreach ($tok in $tokens) {
+        if (-not $tok) { continue }
+        # 處理範圍語法 1-4
+        if ($tok -match '^(\d+)\s*-\s*(\d+)$') {
+            $start = [int]$matches[1]
+            $end = [int]$matches[2]
+            if ($start -gt $end) { $tmp = $start; $start = $end; $end = $tmp }
+            for ($k = $start; $k -le $end; $k++) {
+                $idx = $k - 1
+                if ($idx -ge 0 -and $idx -lt $ItemList.Count -and $indices -notcontains $idx) {
+                    $indices += $idx
+                }
+            }
+        } elseif ($tok -match '^\d+$') {
+            $idx = [int]$tok - 1
+            if ($idx -ge 0 -and $idx -lt $ItemList.Count -and $indices -notcontains $idx) {
+                $indices += $idx
+            }
+        }
+    }
+
+    return $indices
+}
+
+# -------------------------------------------------------------
+# 互動式選單模式 (TUI Menu) - 支援單選、多選 (1,2,5 或 1-4) 與批次指令
 # -------------------------------------------------------------
 function Start-InteractiveMenu {
     $currentCategory = 'Startup'
@@ -457,7 +515,7 @@ function Start-InteractiveMenu {
     while ($true) {
         Clear-Host
         Write-Host "==========================================================================================" -ForegroundColor Cyan
-        Write-Host " [Manage-StartupItems] Windows 開機自啟項目互動管理中心 (像火絨一樣直接輸入編號切換) " -ForegroundColor Yellow
+        Write-Host " [Manage-StartupItems] Windows 開機自啟項目互動管理中心 (支援單選、多選與範圍批次) " -ForegroundColor Yellow
         Write-Host "==========================================================================================" -ForegroundColor Cyan
         Write-Host "當前類別: [$currentCategory] | 關鍵字: [$(if($filter){$filter}else{'全部'})] | 僅無效: [$(if($invalidOnly){'是'}else{'否'})] | 身分: $(if($IsAdmin){'系統管理員'}else{'一般使用者'})"
         Write-Host ""
@@ -501,12 +559,11 @@ function Start-InteractiveMenu {
         }
 
         Write-Host ("-" * 96) -ForegroundColor DarkGray
-        Write-Host "【快速指令】" -ForegroundColor Yellow
-        Write-Host "  輸入 [編號] (例如 1)     : 立即切換該項目的 啟用/禁用 狀態"
-        Write-Host "  輸入 [/s 關鍵字] (如 /s uu): 依關鍵字搜尋過濾"
-        Write-Host "  輸入 [/c 類別] (1:啟動, 2:服務, 3:排程, 4:全部) : 切換類別"
-        Write-Host "  輸入 [/inv]              : 切換僅顯示無效項目開關"
-        Write-Host "  輸入 [Q]                 : 離開互動管理中心"
+        Write-Host "【操作指令】" -ForegroundColor Yellow
+        Write-Host "  [多選翻轉] 輸入編號清單 (如 1, 2, 5 或 1-4)    : 同時切換多個項目的 啟用/禁用"
+        Write-Host "  [批次禁用] 輸入 d 1,2,5 或 d 1-4 或 d all / inv : 批次將指定項目設定為 禁用"
+        Write-Host "  [批次啟用] 輸入 e 1,2,5 或 e 1-4 或 e all       : 批次將指定項目設定為 啟用"
+        Write-Host "  [篩選檢視] /s 關鍵字 (過濾) | /c 1-4 (切換類別) | /inv (僅無效項) | Q (退出)"
         Write-Host ""
 
         $inputCmd = Read-Host "請輸入指令或項目編號"
@@ -515,15 +572,6 @@ function Start-InteractiveMenu {
 
         if ($trimmed -eq 'Q' -or $trimmed -eq 'q') {
             break
-        } elseif ($trimmed -match '^\d+$') {
-            $selIdx = [int]$trimmed - 1
-            if ($selIdx -ge 0 -and $selIdx -lt $items.Count) {
-                Toggle-ItemStatus $items[$selIdx]
-                Start-Sleep -Milliseconds 1000
-            } else {
-                Write-Host "[!] 無效的編號！" -ForegroundColor Red
-                Start-Sleep -Milliseconds 800
-            }
         } elseif ($trimmed.StartsWith('/s ') -or $trimmed.StartsWith('/S ')) {
             $filter = $trimmed.Substring(3).Trim()
         } elseif ($trimmed -eq '/s' -or $trimmed -eq '/S') {
@@ -543,43 +591,115 @@ function Start-InteractiveMenu {
             }
         } elseif ($trimmed -eq '/inv' -or $trimmed -eq '/INV') {
             $invalidOnly = -not $invalidOnly
+        } elseif ($trimmed -match '^(d|disable)\s+(.+)$') {
+            # 批次禁用
+            $targetSpec = $matches[2]
+            $selIndices = Parse-SelectionIndices -InputString $targetSpec -ItemList $items
+            if ($selIndices.Count -gt 0) {
+                foreach ($idx in $selIndices) {
+                    $typeMap = @{ '啟動項目' = 'Startup'; '系統服務' = 'Service'; '計劃任務' = 'Task' }
+                    Set-StartupState -TargetName $items[$idx].Name -TargetType $typeMap[$items[$idx].Category] -Enable $false
+                }
+                Start-Sleep -Milliseconds 1200
+            } else {
+                Write-Host "[!] 未選取到任何有效項目！" -ForegroundColor Red
+                Start-Sleep -Milliseconds 800
+            }
+        } elseif ($trimmed -match '^(e|enable)\s+(.+)$') {
+            # 批次啟用
+            $targetSpec = $matches[2]
+            $selIndices = Parse-SelectionIndices -InputString $targetSpec -ItemList $items
+            if ($selIndices.Count -gt 0) {
+                foreach ($idx in $selIndices) {
+                    $typeMap = @{ '啟動項目' = 'Startup'; '系統服務' = 'Service'; '計劃任務' = 'Task' }
+                    Set-StartupState -TargetName $items[$idx].Name -TargetType $typeMap[$items[$idx].Category] -Enable $true
+                }
+                Start-Sleep -Milliseconds 1200
+            } else {
+                Write-Host "[!] 未選取到任何有效項目！" -ForegroundColor Red
+                Start-Sleep -Milliseconds 800
+            }
+        } else {
+            # 預設：數字多選翻轉 (如 1, 2, 5 或 1-4)
+            $selIndices = Parse-SelectionIndices -InputString $trimmed -ItemList $items
+            if ($selIndices.Count -gt 0) {
+                foreach ($idx in $selIndices) {
+                    Toggle-ItemStatus $items[$idx]
+                }
+                Start-Sleep -Milliseconds 1200
+            } else {
+                Write-Host "[!] 無效的指令或編號！" -ForegroundColor Red
+                Start-Sleep -Milliseconds 800
+            }
         }
     }
 }
 
 # -------------------------------------------------------------
-# 模式分流：互動模式 / 快捷切換 / 查詢列出
+# 模式分流：互動模式 / 批次切換 / 查詢列出
 # -------------------------------------------------------------
 if ($Interactive) {
     Start-InteractiveMenu
     return
 }
 
-# 智慧一鍵切換 (-Toggle / -T)
-if ($Toggle) {
-    $item = Find-StartupItem -Query $Toggle
-    if ($item) {
-        Toggle-ItemStatus $item
+# 一鍵清理/禁用所有無效項目 (-DisableInvalid)
+if ($DisableInvalid) {
+    Write-Host "[*] 正在一鍵檢查並批次禁用所有無效/殘留啟動項目..." -ForegroundColor Cyan
+    $all = @()
+    $all += Get-RegistryAndFolderStartupItems
+    $all += Get-SystemServicesStartup
+    $all += Get-ScheduledTasksStartup
+    $invalids = $all | Where-Object { $_.IsValid -eq $false -and $_.Status -ne "已禁用" }
+    
+    if ($invalids.Count -eq 0) {
+        Write-Host "[+] 系統非常乾淨！沒有發現啟用中的無效殘留項。" -ForegroundColor Green
+        return
+    }
+
+    Write-Host "[!] 發現 $($invalids.Count) 個啟用中的無效殘留項，開始批次禁用：" -ForegroundColor Yellow
+    foreach ($inv in $invalids) {
+        $typeMap = @{ '啟動項目' = 'Startup'; '系統服務' = 'Service'; '計劃任務' = 'Task' }
+        Set-StartupState -TargetName $inv.Name -TargetType $typeMap[$inv.Category] -Enable $false
+    }
+    Write-Host "[+] 批次最佳化完成！" -ForegroundColor Green
+    return
+}
+
+# 智慧一鍵/多項切換 (-Toggle / -T)
+if ($Toggle.Count -gt 0) {
+    $targets = $Toggle | ForEach-Object { $_.Split(',') } | Where-Object { $_.Trim() } | ForEach-Object { $_.Trim() }
+    foreach ($tgt in $targets) {
+        $item = Find-StartupItem -Query $tgt
+        if ($item) {
+            Toggle-ItemStatus $item
+        }
     }
     return
 }
 
-# 智慧禁用 (-Disable / -D)
-if ($Disable) {
-    $item = Find-StartupItem -Query $Disable
-    if ($item) {
-        $typeMap = @{ '啟動項目' = 'Startup'; '系統服務' = 'Service'; '計劃任務' = 'Task' }
-        Set-StartupState -TargetName $item.Name -TargetType $typeMap[$item.Category] -Enable $false
+# 智慧一鍵/多項禁用 (-Disable / -D)
+if ($Disable.Count -gt 0) {
+    $targets = $Disable | ForEach-Object { $_.Split(',') } | Where-Object { $_.Trim() } | ForEach-Object { $_.Trim() }
+    foreach ($tgt in $targets) {
+        $item = Find-StartupItem -Query $tgt
+        if ($item) {
+            $typeMap = @{ '啟動項目' = 'Startup'; '系統服務' = 'Service'; '計劃任務' = 'Task' }
+            Set-StartupState -TargetName $item.Name -TargetType $typeMap[$item.Category] -Enable $false
+        }
     }
     return
 }
 
-# 智慧啟用 (-Enable / -E)
-if ($Enable) {
-    $item = Find-StartupItem -Query $Enable
-    if ($item) {
-        $typeMap = @{ '啟動項目' = 'Startup'; '系統服務' = 'Service'; '計劃任務' = 'Task' }
-        Set-StartupState -TargetName $item.Name -TargetType $typeMap[$item.Category] -Enable $true
+# 智慧一鍵/多項啟用 (-Enable / -E)
+if ($Enable.Count -gt 0) {
+    $targets = $Enable | ForEach-Object { $_.Split(',') } | Where-Object { $_.Trim() } | ForEach-Object { $_.Trim() }
+    foreach ($tgt in $targets) {
+        $item = Find-StartupItem -Query $tgt
+        if ($item) {
+            $typeMap = @{ '啟動項目' = 'Startup'; '系統服務' = 'Service'; '計劃任務' = 'Task' }
+            Set-StartupState -TargetName $item.Name -TargetType $typeMap[$item.Category] -Enable $true
+        }
     }
     return
 }
@@ -646,7 +766,7 @@ foreach ($g in $grouped) {
 
 Write-Host ""
 Write-Host "【極簡操作指令】" -ForegroundColor Yellow
-Write-Host "  進入互動選單模式 (只需按編號切換): .\Manage-StartupItems.ps1 -i" -ForegroundColor Cyan
-Write-Host "  一鍵切換狀態 (免輸入類別):          .\Manage-StartupItems.ps1 -T 'GameViewer'"
-Write-Host "  一鍵禁用項目 (免輸入類別):          .\Manage-StartupItems.ps1 -D 'GameViewer'"
-Write-Host "  一鍵啟用項目 (免輸入類別):          .\Manage-StartupItems.ps1 -E 'GameViewer'"
+Write-Host "  進入互動選單模式 (支援多選/範圍/編號): .\Manage-StartupItems.ps1 -i" -ForegroundColor Cyan
+Write-Host "  批次切換狀態 (支援逗號或多參數):       .\Manage-StartupItems.ps1 -T 'GameViewer', 'GoogleDriveFS'"
+Write-Host "  批次禁用項目 (支援逗號或多參數):       .\Manage-StartupItems.ps1 -D 'GameViewer,KDService,ACC'"
+Write-Host "  一鍵最佳化所有無效殘留項:              .\Manage-StartupItems.ps1 -DisableInvalid"
