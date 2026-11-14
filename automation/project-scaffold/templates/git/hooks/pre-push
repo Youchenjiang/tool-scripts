@@ -74,31 +74,56 @@ elif [ "$#" -ge 2 ]; then
   exit 1
 fi
 
-BODY_FILE="${PR_BODY_FILE:-${CLICKRA_PR_BODY_FILE:-}}"
-if [ -z "$BODY_FILE" ]; then
-  is_direct_push=$(git config --bool --get repo.directPush 2>/dev/null || echo "false")
-  if [ "$is_direct_push" = "true" ] || [ "${ALLOW_DIRECT_PUSH:-false}" = "true" ]; then
-    echo "[pre-push] Direct trunk push allowed: skipping PR body preflight check."
-    exit 0
+# Step 1: PR Preflight check (if in PR workflow)
+is_direct_push=$(git config --bool --get repo.directPush 2>/dev/null || echo "false")
+if [ "$is_direct_push" != "true" ] && [ "${ALLOW_DIRECT_PUSH:-false}" != "true" ]; then
+  BODY_FILE="${PR_BODY_FILE:-${CLICKRA_PR_BODY_FILE:-}}"
+  if [ -z "$BODY_FILE" ]; then
+    echo "[pre-push] ERROR: set PR_BODY_FILE (or CLICKRA_PR_BODY_FILE) to the finalized PR body draft path." >&2
+    exit 1
   fi
-  echo "[pre-push] ERROR: set CLICKRA_PR_BODY_FILE to the finalized PR body draft path." >&2
-  exit 1
-fi
 
-PREFLIGHT_SCRIPT=""
-if [ -f "tools/pr_preflight.py" ]; then
-  PREFLIGHT_SCRIPT="tools/pr_preflight.py"
-elif [ -f "scripts/pr_preflight.py" ]; then
-  PREFLIGHT_SCRIPT="scripts/pr_preflight.py"
-fi
-
-if [ -n "$PREFLIGHT_SCRIPT" ]; then
-  if [ -n "$push_args" ]; then
-    set -- $push_args
-    python "$PREFLIGHT_SCRIPT" --check --body-file "$BODY_FILE" --push-ref "$1" --push-oid "$2" $initial_push_flag
-  else
-    python "$PREFLIGHT_SCRIPT" --check --body-file "$BODY_FILE"
+  PREFLIGHT_SCRIPT=""
+  if [ -f "tools/pr_preflight.py" ]; then
+    PREFLIGHT_SCRIPT="tools/pr_preflight.py"
+  elif [ -f "scripts/pr_preflight.py" ]; then
+    PREFLIGHT_SCRIPT="scripts/pr_preflight.py"
   fi
+
+  if [ -n "$PREFLIGHT_SCRIPT" ]; then
+    if [ -n "$push_args" ]; then
+      set -- $push_args
+      python "$PREFLIGHT_SCRIPT" --check --body-file "$BODY_FILE" --push-ref "$1" --push-oid "$2" $initial_push_flag
+    else
+      python "$PREFLIGHT_SCRIPT" --check --body-file "$BODY_FILE"
+    fi
+  fi
+else
+  echo "[pre-push] Direct trunk push mode: skipping PR body preflight check."
 fi
 
-echo "All pre-push PR checks passed."
+# Step 2: Conventional Commits check
+LINT_SCRIPT=""
+if [ -f "tools/lint_commits.py" ]; then
+  LINT_SCRIPT="tools/lint_commits.py"
+elif [ -f "scripts/lint_commits.py" ]; then
+  LINT_SCRIPT="scripts/lint_commits.py"
+fi
+if [ -n "$LINT_SCRIPT" ]; then
+  echo "[pre-push] Linting commits..."
+  python "$LINT_SCRIPT"
+fi
+
+# Step 3: Project test and build verification (from tools/project.json)
+BUILD_RUNNER=""
+if [ -f "tools/build_runner.py" ]; then
+  BUILD_RUNNER="tools/build_runner.py"
+elif [ -f "scripts/build_runner.py" ]; then
+  BUILD_RUNNER="scripts/build_runner.py"
+fi
+if [ -n "$BUILD_RUNNER" ]; then
+  echo "[pre-push] Running project tests and build verification..."
+  python "$BUILD_RUNNER"
+fi
+
+echo "[pre-push] All pre-push checks passed."

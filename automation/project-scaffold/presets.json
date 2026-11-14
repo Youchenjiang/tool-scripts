@@ -56,6 +56,7 @@
       ],
       "toolFiles": [
         "lint_commits.py",
+        "build_runner.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -129,6 +130,7 @@
       ],
       "toolFiles": [
         "lint_commits.py",
+        "build_runner.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -205,6 +207,7 @@
       ],
       "toolFiles": [
         "lint_commits.py",
+        "build_runner.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -278,6 +281,7 @@
       ],
       "toolFiles": [
         "lint_commits.py",
+        "build_runner.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -341,6 +345,7 @@
       ],
       "toolFiles": [
         "lint_commits.py",
+        "build_runner.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -399,7 +404,8 @@
         ".gitignore",
         ".gitmessage.txt",
         ".editorconfig",
-        "hooks/commit-msg"
+        "hooks/commit-msg",
+        "hooks/pre-push"
       ],
       "githubWorkflows": [
         "ci.yml",
@@ -412,7 +418,8 @@
         "SECURITY.md"
       ],
       "toolFiles": [
-        "lint_commits.py"
+        "lint_commits.py",
+        "build_runner.py"
       ],
       "recommendedFeatures": [
         "direct-push"

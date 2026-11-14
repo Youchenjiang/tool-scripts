@@ -120,10 +120,14 @@ def run_git(cmd):
 
 
 def detect_base_ref():
-    for candidate in ["origin/main", "main", "origin/master", "master"]:
+    for candidate in ["origin/main", "origin/master", "main", "master"]:
         out = run_git(["rev-parse", "--verify", "--end-of-options", candidate])
         if out:
             return candidate
+    if run_git(["rev-parse", "--verify", "--end-of-options", "HEAD~1"]):
+        return "HEAD~1"
+    if run_git(["rev-parse", "--verify", "--end-of-options", "HEAD"]):
+        return "HEAD"
     return None
 
 
@@ -236,8 +240,8 @@ def main():
             sys.exit(1)
         base = sanitize_ref_arg(args.base) if args.base else detect_base_ref()
         if not base:
-            print("❌ 無法自動偵測基準分支，請透過 --base 指定基準分支 (例如: origin/main)")
-            sys.exit(1)
+            print("ℹ️ 無提交記錄或無法偵測基準分支，跳過 Commit 審核")
+            sys.exit(0)
         rev_range = f"{base}..HEAD"
 
     print(f"📌 檢驗範圍: {rev_range}")

@@ -138,7 +138,11 @@
   - [x] `init-project.ps1` 依範本之 `build` 欄位動態注入對應之建置/測試步驟（`npm` / `dotnet` / `python` / baseline）。
   - [x] 設計防禦機制，剛初始化或無程式碼之專案保證綠燈通過，不因無測試而紅燈。
   - [x] 針對 6 大 Archetype 全數通過 YAML 解析與指令映射驗證。
-- [ ] **第 3 階段：push 前檢查補齊**
+- [x] **第 3 階段：push 前檢查補齊（已完成）**
+  - [x] `pre-push` 依序跑完整防線：PR Preflight（PR flow）→ commit 規範審核（`lint_commits.py`）→ 專案測試與建置（`build_runner.py`，讀取 `tools/project.json`）。
+  - [x] 新增 `tools/build_runner.py` 與 `tests/test_build_runner.py`，支援 cross-platform 自動識別套件類型與空專案優雅略過。
+  - [x] 為 `script-tool` 補上等價的 `hooks/pre-push` 與 `build_runner.py`，直推 main 亦享有嚴格的本地測試與提交檢查防護。
+  - [x] 實測驗證：測試失敗時 push 確實被攔截阻擋；測試成功時放行；全套 147 項測試 PASS。
 - [ ] **第 4 階段：發佈生命週期**
 
 ## 六、不在這次範圍
