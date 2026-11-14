@@ -30,25 +30,50 @@
 
 ## 使用方式
 
-### 1. 基本鑑識掃描（自動生成 HTML 報告於當前目錄）
+### A. 即時手動鑑識模式 (`ThreatHunter-Triage.ps1`)
 
-以系統管理員身分開啟 PowerShell，切換至工具目錄後執行：
+適用於當前操作中的端點應急現場快速調查。
 
 ```powershell
+# 基本掃描（自動生成 HTML 報告於當前目錄）
 powershell -ExecutionPolicy Bypass -File .\ThreatHunter-Triage.ps1
-```
 
-### 2. 指定報告輸出目錄
-
-```powershell
+# 指定報告輸出目錄
 powershell -ExecutionPolicy Bypass -File .\ThreatHunter-Triage.ps1 -OutputDir "C:\Forensics"
-```
 
-### 3. 僅終端輸出（不產出 HTML 檔案）
-
-```powershell
+# 僅終端輸出（不產出 HTML 檔案）
 powershell -ExecutionPolicy Bypass -File .\ThreatHunter-Triage.ps1 -NoHtml
 ```
+
+---
+
+### B. 常駐守護與自動快照模式 (`Watcher-Daemon.ps1`)
+
+使用者**不需要在發生異常當下衝過去手動按**。守護程序常駐於背景輪詢，一旦 CPU 飆高或出現穿透工具，**立即自動拍下鑑識快照**並記錄於 `triage_incidents.jsonl` 黑盒子日誌。
+
+#### 1. 前景終端執行（附帶即時監控狀態列）
+
+```powershell
+# 以預設條件常駐監控 (CPU > 85% 且連續 2 次超標，或偵測到未知外聯穿透工具)
+powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1
+
+# 自訂門檻：每 5 秒檢查一次、CPU > 80% 觸發、冷卻期 60 秒
+powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -CheckIntervalSec 5 -CpuThreshold 80 -AlertCooldownSec 60 -OutputDir "C:\Forensics"
+```
+
+#### 2. 安裝為 Windows 背景排程任務（開機/登入時自動靜默常駐）
+
+```powershell
+# 安裝並立即啟動背景排程 (需要系統管理員權限)
+powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -InstallTask -OutputDir "C:\Forensics"
+
+# 查看排程運行狀態
+powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -StatusTask
+
+# 停止並移除背景排程
+powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -UninstallTask
+```
+
 
 ## 鑑識報告產出說明
 

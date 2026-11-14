@@ -30,20 +30,47 @@ A native Windows emergency forensic triage script designed for Incident Response
 
 ## Usage
 
-### 1. Basic Triage (Generates HTML Report in Current Directory)
+### A. Manual On-Demand Triage (`ThreatHunter-Triage.ps1`)
+
+Ideal for immediate, on-scene incident investigation.
 
 ```powershell
+# Basic triage scan (outputs HTML report to current directory)
 powershell -ExecutionPolicy Bypass -File .\ThreatHunter-Triage.ps1
-```
 
-### 2. Custom Output Directory
-
-```powershell
+# Output to custom directory
 powershell -ExecutionPolicy Bypass -File .\ThreatHunter-Triage.ps1 -OutputDir "C:\Forensics"
-```
 
-### 3. Terminal Only (Suppress HTML Generation)
-
-```powershell
+# Terminal only (suppress HTML generation)
 powershell -ExecutionPolicy Bypass -File .\ThreatHunter-Triage.ps1 -NoHtml
 ```
+
+---
+
+### B. Automated Watcher Daemon (`Watcher-Daemon.ps1`)
+
+Eliminates the need for physical presence during anomalies. Continuously monitors system health in the background and automatically takes forensic snapshots upon high-CPU incidents or suspicious outbound tunneling.
+
+#### 1. Interactive Foreground Monitoring
+
+```powershell
+# Default monitoring (CPU > 85% for 2 consecutive hits or detected remote tools)
+powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1
+
+# Custom thresholds: 5-second interval, 80% CPU threshold, 60-second cooldown
+powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -CheckIntervalSec 5 -CpuThreshold 80 -AlertCooldownSec 60 -OutputDir "C:\Forensics"
+```
+
+#### 2. Background Windows Scheduled Task Deployment (Silent Autostart)
+
+```powershell
+# Install and start silent background scheduled task (Requires Administrator)
+powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -InstallTask -OutputDir "C:\Forensics"
+
+# Check background task execution state
+powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -StatusTask
+
+# Stop and uninstall scheduled task
+powershell -ExecutionPolicy Bypass -File .\Watcher-Daemon.ps1 -UninstallTask
+```
+
