@@ -322,6 +322,8 @@ if (Test-Path $HookDirSrc) {
 
 # Step 3: Setup Engineering Tools & Code Quality
 Write-Host "[3/5] Configuring Engineering Tools & Linter..." -ForegroundColor Yellow
+$SkippedTestsNotShipped = [System.Collections.Generic.List[string]]::new()
+$SkippedTestsNoConda = [System.Collections.Generic.List[string]]::new()
 if ($SelectedArchetype.toolFiles) {
   $ToolsDir = Join-Path $TargetDir "tools"
   if (-not (Test-Path $ToolsDir)) { New-Item -ItemType Directory -Path $ToolsDir -Force | Out-Null }
@@ -341,8 +343,12 @@ if ($SelectedArchetype.toolFiles) {
     Get-ChildItem $TestTemplateDir -File | ForEach-Object {
       # A test only belongs here if the tool it exercises was deployed.
       $testModule = ($_.Name -replace '^test_', '') -replace '\.py$', ''
-      if (-not (Test-Path (Join-Path $ToolsDir "$testModule.py"))) {
-        Write-Host "  - Skipped Test: tests/$($_.Name) (tools/$testModule.py not deployed)" -ForegroundColor DarkGray
+      # env_tool.py is deployed after this loop, so consult the feature, not the file.
+      $toolDeployed = (Test-Path (Join-Path $ToolsDir "$testModule.py")) -or
+                      ($testModule -eq "env_tool" -and $ActiveFeatures -contains "conda-env")
+      if (-not $toolDeployed) {
+        if ($testModule -eq "env_tool") { $SkippedTestsNoConda.Add($_.Name) }
+        else { $SkippedTestsNotShipped.Add($_.Name) }
         return
       }
       Copy-Item $_.FullName (Join-Path $TestsDir $_.Name) -Force
@@ -546,6 +552,19 @@ Write-Host "   - Scopes   : $($SelectedArchetype.defaultScopes -join ', ')"
 Write-Host "   - Rules    : AGENTS.md, .agent/rules.md, MEMORY.md"
 Write-Host "   - Tools    : $(if ($SelectedArchetype.toolFiles) { $SelectedArchetype.toolFiles -join ', ' } else { 'None' })$(if ($ActiveFeatures -contains 'conda-env') { ', env_tool.py' })"
 Write-Host "   - Conda    : $(if ($ActiveFeatures -contains 'conda-env') { 'environment.yml deployed (Run: python tools/env_tool.py setup)' } else { 'Disabled' })"
+$skippedTotal = $SkippedTestsNotShipped.Count + $SkippedTestsNoConda.Count
+$skippedText = "all deployed"
+if ($skippedTotal -gt 0) {
+  $skippedReasons = @()
+  if ($SkippedTestsNotShipped.Count -gt 0) {
+    $skippedReasons += "$($SkippedTestsNotShipped.Count) for tools this archetype does not ship"
+  }
+  if ($SkippedTestsNoConda.Count -gt 0) {
+    $skippedReasons += "$($SkippedTestsNoConda.Count) for conda-env (feature disabled)"
+  }
+  $skippedText = "$skippedTotal intentionally skipped: " + ($skippedReasons -join ", ")
+}
+Write-Host "   - Tests    : $skippedText" -ForegroundColor $(if ($skippedTotal -gt 0) { 'Yellow' } else { 'Gray' })
 Write-Host "   - Jitter   : Monthly ($ProjectMonthlyCron), Weekly ($ProjectWeeklyCron)"
 Write-Host "   - Workflows: $($AllWorkflows -join ', ')"
 Write-Host "=================================================" -ForegroundColor Cyan
