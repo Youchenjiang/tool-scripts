@@ -166,3 +166,60 @@ try {
 
 Write-Host "[+] 發現 $($RdpLogons.Count) 筆外部登入、$(@($FailedLogons).Count) 筆失敗嘗試、$(@($NewServices).Count) 筆新服務註冊紀錄。" -ForegroundColor Green
 
+# -------------------------------------------------------------
+# 3. Prefetch 預讀取歷史 (已自我刪除程式之執行軌跡)
+# -------------------------------------------------------------
+Write-Host "`n[3/4] 提取 Prefetch 預讀取執行歷史 (追溯近期已結束或刪除之程式)..." -ForegroundColor Cyan
+$PrefetchPath = "C:\Windows\Prefetch"
+$RecentPrefetch = @()
+
+if (Test-Path $PrefetchPath) {
+    try {
+        $pfFiles = Get-ChildItem -Path $PrefetchPath -Filter "*.pf" | Sort-Object LastWriteTime -Descending | Select-Object -First $TopPrefetchCount
+        foreach ($pf in $pfFiles) {
+            # 解析 Prefetch 檔名，格式通常為 EXE-HASH.pf
+            $rawName = $pf.BaseName
+            $exeName = ($rawName -split '-')[0] + ".exe"
+            $hash = ($rawName -split '-')[1]
+
+            $RecentPrefetch += [PSCustomObject]@{
+                ExecutionTime = $pf.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+                EstimatedExe  = $exeName
+                PrefetchFile  = $pf.Name
+                SizeKB        = [math]::Round($pf.Length / 1KB, 1)
+            }
+        }
+        Write-Host "[+] 成功提取最近 $($RecentPrefetch.Count) 筆 Prefetch 程式執行軌跡。" -ForegroundColor Green
+    } catch {
+        Write-Host "[-] 讀取 Prefetch 資料夾失敗 (可能需要 Administrator 權限): $($_.Exception.Message)" -ForegroundColor DarkGray
+    }
+} else {
+    Write-Host "[-] 本機未啟用 Prefetch 或路徑不可存取。" -ForegroundColor DarkGray
+}
+
+# -------------------------------------------------------------
+# 4. 排程任務持久化後門檢查 (Scheduled Tasks Persistence)
+# -------------------------------------------------------------
+Write-Host "`n[4/4] 檢查排程任務持久化機制 (Persistence Tasks)..." -ForegroundColor Cyan
+$SuspiciousTasks = @()
+
+try {
+    $allTasks = Get-ScheduledTask | Where-Object { $_.State -ne 'Disabled' }
+    foreach ($t in $allTasks) {
+        $actionStr = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join " ; "
+        # 標註位於使用者目錄、Temp、或執行 powershell/cmd 混淆指令的排程
+        if ($actionStr -match '(?i)(AppData|Temp|Users\\Public|powershell.*-enc|wscript|cscript)') {
+            $SuspiciousTasks += [PSCustomObject]@{
+                TaskName    = $t.TaskName
+                TaskPath    = $t.TaskPath
+                State       = "$($t.State)"
+                Action      = $actionStr
+            }
+        }
+    }
+    Write-Host "[+] 排程任務分析完成，偵測到 $(@($SuspiciousTasks).Count) 個具備高風險路徑/行為的排程。" -ForegroundColor Green
+} catch {
+    Write-Host "[-] 查詢排程任務失敗: $($_.Exception.Message)" -ForegroundColor DarkGray
+}
+
+
