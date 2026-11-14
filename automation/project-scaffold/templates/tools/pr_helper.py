@@ -3,7 +3,8 @@
 pr_helper.py - PR 自動生成、結構驗證與安全提交工具
 功能：
 1. 自動解析當前分支自基準分支以來的所有 Commit，提煉出符合 PR 模板的標準 Markdown。
-2. 本機檢驗 PR Body 是否包含三大必要章節：## Summary、## Key Changes、## Verification。
+2. 本機檢驗 PR Body 是否包含必要章節：## Summary、## Changes、## Validation、
+   ## Review Checklist，以及 External provider 聲明列。
 3. 驗證 PR 標題與 Commits 格式是否符合 Conventional Commits（<= 72 字元、無結尾句號）。
 4. 本機預檢通過後，使用 --body-file 搭配 --label 安全呼叫 `gh pr create`，徹底規避 Windows/PowerShell 引號脫落與字串截斷問題。
 """
@@ -14,6 +15,8 @@ import sys
 import argparse
 import subprocess
 from collections import defaultdict
+
+import pr_body_contract
 
 if sys.platform == "win32":
     try:
@@ -35,9 +38,10 @@ BRANCH_REGEX = re.compile(
 SAFE_IDENTIFIER_REGEX = re.compile(r"^[a-zA-Z0-9_./-]+$")
 LABEL_REGEX = re.compile(r"^[a-zA-Z0-9_ -]+$")
 
-SECTION_SUMMARY = "## Summary"
-SECTION_KEY_CHANGES = "## Key Changes"
-SECTION_VERIFICATION = "## Verification"
+SECTION_SUMMARY = pr_body_contract.SUMMARY
+SECTION_CHANGES = pr_body_contract.CHANGES
+SECTION_VALIDATION = pr_body_contract.VALIDATION
+CHECKLIST_SECTION = pr_body_contract.REVIEW_CHECKLIST
 DEFAULT_BASE_REF = "origin/main"
 
 
@@ -164,7 +168,7 @@ def build_pr_body(commits, custom_summary=None, custom_changes=None):
     else:
         changes_body = _format_categorized_changes(commits)
 
-    verification_items = [
+    validation_items = [
         "- [x] Conventional commits audit passes: `python tools/lint_commits.py`",
         f"- [x] All {len(commits)} commits strictly follow Conventional Commits (< 72 chars, whitelisted scopes, no trailing dot)",
         "- [x] No regression introduced",
@@ -173,42 +177,31 @@ def build_pr_body(commits, custom_summary=None, custom_changes=None):
     body = f"""{SECTION_SUMMARY}
 {summary_text}
 
-{SECTION_KEY_CHANGES}
+{SECTION_CHANGES}
 {changes_body}
 
-{SECTION_VERIFICATION}
-{chr(10).join(verification_items)}
+{SECTION_VALIDATION}
+{chr(10).join(validation_items)}
+
+{CHECKLIST_SECTION}
+{pr_body_contract.PROVIDER_ITEM}
 """
     return body.strip() + "\n"
 
 
 def lint_pr_content(body_text):
     errors = []
-    if SECTION_SUMMARY not in body_text:
-        errors.append(f"Missing mandatory section: '{SECTION_SUMMARY}'")
-    if SECTION_KEY_CHANGES not in body_text:
-        errors.append(f"Missing mandatory section: '{SECTION_KEY_CHANGES}'")
-    if SECTION_VERIFICATION not in body_text:
-        errors.append(f"Missing mandatory section: '{SECTION_VERIFICATION}'")
+    for section in pr_body_contract.REQUIRED_SECTIONS:
+        if section not in body_text:
+            errors.append(f"Missing mandatory section: '{section}'")
+            continue
+        content = body_text.split(section, 1)[1].split("##", 1)[0].strip()
+        if not content:
+            errors.append(f"Section '{section}' cannot be empty.")
 
-    if SECTION_SUMMARY in body_text:
-        parts = body_text.split(SECTION_SUMMARY, 1)[1]
-        summary_part = parts.split("##", 1)[0].strip()
-        if not summary_part:
-            errors.append(f"Section '{SECTION_SUMMARY}' cannot be empty.")
-
-    if SECTION_KEY_CHANGES in body_text:
-        parts = body_text.split(SECTION_KEY_CHANGES, 1)[1]
-        changes_part = parts.split("##", 1)[0].strip()
-        if not changes_part:
-            errors.append(f"Section '{SECTION_KEY_CHANGES}' cannot be empty.")
-
-    if SECTION_VERIFICATION in body_text:
-        parts = body_text.split(SECTION_VERIFICATION, 1)[1]
-        verif_part = parts.split("##", 1)[0].strip()
-        if not verif_part:
-            errors.append(f"Section '{SECTION_VERIFICATION}' cannot be empty.")
-
+    if not any(pr_body_contract.PROVIDER_LINE_PATTERN.match(line.strip())
+               for line in body_text.splitlines()):
+        errors.append("Missing required External provider acknowledgement line.")
     return errors
 
 
@@ -288,7 +281,7 @@ def handle_lint(args):
         print("=" * 75)
         sys.exit(1)
 
-    print("✅ PR Body 三大章節完整合規 (Summary, Key Changes, Verification)！")
+    print("✅ PR Body 章節與 External provider 聲明完整合規！")
     print("✅ PR Title 與 Commits 均符合 Conventional Commits 且 <= 72 字元！")
     print("✅ 分支命名規則完全合規！")
     print("=" * 75)
@@ -326,7 +319,7 @@ def handle_create(args):
     if not custom_changes:
         print("=" * 75)
         print("❌ [QUALITY GATE VIOLATION] 建立 PR 時必須提供架構層級之變更說明！")
-        print("🛑 請使用 --changes-file <path> 或 --changes \"<text>\" 提供 Key Changes。")
+        print("🛑 請使用 --changes-file <path> 或 --changes \"<text>\" 提供 Changes。")
         print("📌 嚴禁直接將原始 Git Commit 提交主旨傾印 (dump) 至 PR Body 中！")
         print("=" * 75)
         sys.exit(1)
@@ -385,8 +378,8 @@ def main():
     gen_parser = subparsers.add_parser("generate", help="自動產出合規 PR Body Markdown")
     gen_parser.add_argument("--base", default=DEFAULT_BASE_REF, help=f"比較之基準分支 (預設 {DEFAULT_BASE_REF})")
     gen_parser.add_argument("--summary", default=None, help="自訂 Summary 描述")
-    gen_parser.add_argument("--changes-file", default=None, help="指定自訂 Key Changes Markdown 檔案路徑")
-    gen_parser.add_argument("--changes", default=None, help="指定自訂 Key Changes Markdown 內文字串")
+    gen_parser.add_argument("--changes-file", default=None, help="指定自訂 Changes Markdown 檔案路徑")
+    gen_parser.add_argument("--changes", default=None, help="指定自訂 Changes Markdown 內文字串")
     gen_parser.add_argument("-o", "--output", default="PR_BODY.md", help="輸出檔案路徑 (預設 PR_BODY.md)")
 
     # 2. lint
@@ -401,8 +394,8 @@ def main():
     create_parser.add_argument("--base", default="main", help="目標基準分支 (預設 main)")
     create_parser.add_argument("--label", default="documentation", help="指定 PR 標籤 (預設 documentation)")
     create_parser.add_argument("--summary", default=None, help="自訂 Summary 描述")
-    create_parser.add_argument("--changes-file", default=None, help="指定自訂 Key Changes Markdown 檔案路徑")
-    create_parser.add_argument("--changes", default=None, help="指定自訂 Key Changes Markdown 內文字串")
+    create_parser.add_argument("--changes-file", default=None, help="指定自訂 Changes Markdown 檔案路徑")
+    create_parser.add_argument("--changes", default=None, help="指定自訂 Changes Markdown 內文字串")
     create_parser.add_argument("--skip-checks", action="store_true", help="跳過本地 lint 與驗證")
 
     # 4. merge (strictly forbidden security gate)

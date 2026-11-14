@@ -12,7 +12,10 @@ TOOLS_DIR = os.path.join(REPO_ROOT, "tools")
 if TOOLS_DIR not in sys.path:
     sys.path.insert(0, TOOLS_DIR)
 
+import pr_body_contract
 import pr_helper
+
+PROVIDER = "- [ ] **External provider**: no new named provider is introduced."
 
 
 class TestSanitizeTitle(unittest.TestCase):
@@ -64,85 +67,131 @@ class TestLintPrContent(unittest.TestCase):
     """Test verification of PR Body markdown sections."""
 
     def test_valid_body(self):
-        valid_body = """## Summary
+        valid_body = f"""## Summary
 Optimize MSIX package footprint by trimming and assembly whitelisting.
 
-## Key Changes
+## Changes
 1. **PERF (build)**:
    - retarget windows sdk to 19041
 2. **PERF (packaging)**:
    - optimize msix payload with trimming
 
-## Verification
+## Validation
 - [x] Conventional commits audit passes
 - [x] All 2 commits strictly follow Conventional Commits
+
+## Review Checklist
+{PROVIDER}
 """
         errors = pr_helper.lint_pr_content(valid_body)
         self.assertEqual(errors, [])
 
     def test_missing_sections(self):
-        missing_summary = """## Key Changes
+        missing_summary = f"""## Changes
 1. **FEAT (core)**: change
 
-## Verification
+## Validation
 - [x] passed
+
+## Review Checklist
+{PROVIDER}
 """
         errors = pr_helper.lint_pr_content(missing_summary)
         self.assertTrue(any("Missing mandatory section: '## Summary'" in err for err in errors))
 
-        missing_key_changes = """## Summary
+        missing_changes = f"""## Summary
 A summary here.
 
-## Verification
+## Validation
 - [x] passed
-"""
-        errors = pr_helper.lint_pr_content(missing_key_changes)
-        self.assertTrue(any("Missing mandatory section: '## Key Changes'" in err for err in errors))
 
-        missing_verification = """## Summary
+## Review Checklist
+{PROVIDER}
+"""
+        errors = pr_helper.lint_pr_content(missing_changes)
+        self.assertTrue(any("Missing mandatory section: '## Changes'" in err for err in errors))
+
+        missing_validation = """## Summary
 A summary here.
 
-## Key Changes
+## Changes
 1. **FEAT (core)**: change
 """
-        errors = pr_helper.lint_pr_content(missing_verification)
-        self.assertTrue(any("Missing mandatory section: '## Verification'" in err for err in errors))
+        errors = pr_helper.lint_pr_content(missing_validation)
+        self.assertTrue(any("Missing mandatory section: '## Validation'" in err for err in errors))
+
+        missing_checklist = """## Summary
+A summary here.
+
+## Changes
+1. **FEAT (core)**: change
+
+## Validation
+- [x] passed
+"""
+        errors = pr_helper.lint_pr_content(missing_checklist)
+        self.assertTrue(any("Missing mandatory section: '## Review Checklist'" in err for err in errors))
+
+    def test_missing_provider_acknowledgement(self):
+        body = """## Summary
+A summary here.
+
+## Changes
+1. **FEAT (core)**: change
+
+## Validation
+- [x] passed
+
+## Review Checklist
+- [ ] **Behavior**: reviewed.
+"""
+        self.assertIn("Missing required External provider acknowledgement line.",
+                      pr_helper.lint_pr_content(body))
 
     def test_empty_summary(self):
-        empty_summary = """## Summary
+        empty_summary = f"""## Summary
 
-## Key Changes
+## Changes
 1. **FEAT (core)**: change
 
-## Verification
+## Validation
 - [x] passed
+
+## Review Checklist
+{PROVIDER}
 """
         errors = pr_helper.lint_pr_content(empty_summary)
         self.assertTrue(any("Section '## Summary' cannot be empty" in err for err in errors))
 
-    def test_empty_key_changes(self):
-        empty_changes = """## Summary
+    def test_empty_changes(self):
+        empty_changes = f"""## Summary
 Summary text.
 
-## Key Changes
+## Changes
 
-## Verification
+## Validation
 - [x] passed
+
+## Review Checklist
+{PROVIDER}
 """
         errors = pr_helper.lint_pr_content(empty_changes)
-        self.assertTrue(any("Section '## Key Changes' cannot be empty" in err for err in errors))
+        self.assertTrue(any("Section '## Changes' cannot be empty" in err for err in errors))
 
-    def test_empty_verification(self):
-        empty_verif = """## Summary
+    def test_empty_validation(self):
+        empty_validation = f"""## Summary
 Summary text.
 
-## Key Changes
+## Changes
 1. **FEAT (core)**: change
 
-## Verification
+## Validation
+
+## Review Checklist
+{PROVIDER}
 """
-        errors = pr_helper.lint_pr_content(empty_verif)
-        self.assertTrue(any("Section '## Verification' cannot be empty" in err for err in errors))
+        errors = pr_helper.lint_pr_content(empty_validation)
+        self.assertTrue(any("Section '## Validation' cannot be empty" in err for err in errors))
 
 
 class TestLintBranchName(unittest.TestCase):
@@ -182,14 +231,26 @@ class TestBuildPrBody(unittest.TestCase):
         ]
         body = pr_helper.build_pr_body(sample_commits, custom_summary="Custom summary text.")
         self.assertIn("## Summary\nCustom summary text.", body)
-        self.assertIn("## Key Changes", body)
-        self.assertIn("## Verification", body)
+        self.assertIn("## Changes", body)
+        self.assertIn("## Validation", body)
+        self.assertTrue(body.rstrip().endswith(pr_body_contract.PROVIDER_ITEM), body)
         self.assertIn("1. **FEAT (fluent)**:", body)
         self.assertIn("2. **FIX (packaging)**:", body)
         self.assertIn("- [x] Conventional commits audit passes: `python tools/lint_commits.py`", body)
 
         errors = pr_helper.lint_pr_content(body)
         self.assertEqual(errors, [])
+
+    def test_generated_body_satisfies_preflight(self):
+        from pr_preflight import validate_pr_body
+
+        body = pr_helper.build_pr_body(
+            [("sha1", "feat(core): add capability")], custom_summary="Adds a capability.")
+        self.assertIn("completed External provider acknowledgement required",
+                      validate_pr_body(body))
+        acknowledged = body.replace(pr_body_contract.PROVIDER_ITEM,
+                                    pr_body_contract.PROVIDER_ITEM.replace("- [ ]", "- [x]"))
+        self.assertEqual([], validate_pr_body(acknowledged))
 
     def test_custom_changes_provided(self):
         sample_commits = [
@@ -200,7 +261,7 @@ class TestBuildPrBody(unittest.TestCase):
         self.assertIn(custom_changes, body)
         self.assertNotIn("1. **FEAT (fluent)**:", body)
 
-    def test_key_changes_never_dumps_raw_commit_subjects(self):
+    def test_changes_never_dumps_raw_commit_subjects(self):
         sample_commits = [
             (f"sha{i}", f"docs(docs): documentation item {i}")
             for i in range(10)
@@ -208,6 +269,21 @@ class TestBuildPrBody(unittest.TestCase):
         body = pr_helper.build_pr_body(sample_commits)
         self.assertIn("1. **DOCS (docs)**: 10 atomic refinement(s)", body)
         self.assertNotIn("documentation item 0", body)
+
+
+class TestPullRequestTemplate(unittest.TestCase):
+    """The shipped template must already be in the shape preflight accepts."""
+
+    def test_template_uses_the_contract_sections(self):
+        path = os.path.join(REPO_ROOT, "github", "pull_request_template.md")
+        with open(path, "r", encoding="utf-8") as handle:
+            template = handle.read()
+        headings = {line.strip() for line in template.splitlines() if line.startswith("## ")}
+        for section in pr_body_contract.REQUIRED_SECTIONS:
+            self.assertIn(section, headings)
+        self.assertIn(pr_body_contract.PROVIDER_ITEM, template)
+        self.assertNotIn("## Key Changes", headings)
+        self.assertNotIn("## Verification", headings)
 
 
 class TestSecurityGate(unittest.TestCase):
