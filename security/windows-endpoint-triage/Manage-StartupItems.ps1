@@ -6,7 +6,8 @@
       1. 啟動項目 (Startup Items - Registry Run 鍵值與 Startup 資料夾捷徑)
       2. 系統服務 (System Services - Win32 服務開機類型與狀態)
       3. 計劃任務 (Scheduled Tasks - 工作排程器開機/登入自啟排程)
-    支援清單列出 (-List)、關鍵字搜尋 (-Search) 以及狀態切換 (-EnableName / -DisableName)。
+    支援清單列出 (-List)、關鍵字搜尋 (-Search)、無效項目篩選 (-InvalidOnly) 以及狀態切換 (-EnableName / -DisableName)。
+    具備微軟 PE 檔案資訊分析與官方說明提取功能，能精準標記「該啟動項目無效（目標不存在）」與程式真實廠商說明。
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -18,6 +19,8 @@ param(
 
     [switch]$List,
 
+    [switch]$InvalidOnly,
+
     [string]$EnableName = '',
     [string]$DisableName = '',
     [ValidateSet('Startup', 'Service', 'Task')]
@@ -28,6 +31,115 @@ param(
 $ErrorActionPreference = 'SilentlyContinue'
 
 $IsAdmin = ([System.Security.Principal.WindowsPrincipal][System.Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+
+# -------------------------------------------------------------
+# 輔助函式：解析指令目標檔案、驗證有效性並提取官方說明 (FileVersion / Description)
+# -------------------------------------------------------------
+function Resolve-ExecutableMetadata {
+    param(
+        [string]$RawCommand,
+        [string]$ShortcutFilePath = ''
+    )
+
+    $meta = @{
+        ExePath     = ''
+        Exists      = $false
+        Description = ''
+        Company     = ''
+        IsValid     = $true
+    }
+
+    if ($ShortcutFilePath -and (Test-Path $ShortcutFilePath)) {
+        try {
+            $wscript = New-Object -ComObject WScript.Shell
+            $shortcut = $wscript.CreateShortcut($ShortcutFilePath)
+            $target = $shortcut.TargetPath
+            $shortcutDesc = $shortcut.Description
+            
+            if ($target) {
+                $expandedTarget = [Environment]::ExpandEnvironmentVariables($target).Trim()
+                $meta.ExePath = $expandedTarget
+                $meta.Exists = Test-Path $expandedTarget -PathType Leaf
+            }
+
+            if (-not $meta.Exists) {
+                $meta.IsValid = $false
+                $meta.Description = "該啟動項目無效（捷徑指向的檔案不存在或已解除安裝）"
+                return $meta
+            }
+
+            if ($shortcutDesc) {
+                $meta.Description = $shortcutDesc
+            }
+        } catch {}
+    }
+
+    if (-not $meta.ExePath -and $RawCommand) {
+        $expanded = [Environment]::ExpandEnvironmentVariables($RawCommand).Trim()
+        
+        # 處理帶引號路徑 "C:\Path\To\file.exe" args...
+        if ($expanded.StartsWith('"')) {
+            $endQuote = $expanded.IndexOf('"', 1)
+            if ($endQuote -gt 1) {
+                $meta.ExePath = $expanded.Substring(1, $endQuote - 1)
+            }
+        } else {
+            # 處理無引號路徑 (可能帶有空格)
+            $firstSpace = $expanded.IndexOf(' ')
+            if ($firstSpace -gt 0) {
+                $candidate = $expanded.Substring(0, $firstSpace)
+                if (Test-Path $candidate) {
+                    $meta.ExePath = $candidate
+                } else {
+                    $parts = $expanded.Split(' ')
+                    $accum = ""
+                    foreach ($p in $parts) {
+                        $accum = if ($accum) { "$accum $p" } else { $p }
+                        if (Test-Path $accum) { $meta.ExePath = $accum; break }
+                    }
+                    if (-not $meta.ExePath) { $meta.ExePath = $candidate }
+                }
+            } else {
+                $meta.ExePath = $expanded
+            }
+        }
+
+        # 檢查檔案是否存在
+        if ($meta.ExePath) {
+            $meta.Exists = Test-Path $meta.ExePath -PathType Leaf
+        }
+    }
+
+    if (-not $meta.Exists) {
+        $meta.IsValid = $false
+        if (-not $meta.Description) {
+            $meta.Description = "該啟動項目無效（目標檔案不存在或已解除安裝）"
+        }
+    } else {
+        # 檔案存在，嘗試讀取 PE 標頭之 FileDescription / Company / Product
+        try {
+            $fileVer = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($meta.ExePath)
+            $desc = $fileVer.FileDescription
+            if (-not $desc) { $desc = $fileVer.ProductName }
+            
+            $comp = $fileVer.CompanyName
+            if ($comp -and $desc -and ($desc -notlike "*$comp*")) {
+                $meta.Description = "$desc ($comp)"
+            } elseif ($desc) {
+                $meta.Description = $desc
+            } elseif ($comp) {
+                $meta.Description = $comp
+            }
+            $meta.Company = $comp
+        } catch {}
+    }
+
+    if (-not $meta.Description) {
+        $meta.Description = "無附加說明"
+    }
+
+    return $meta
+}
 
 # -------------------------------------------------------------
 # 類別一：啟動項目 (Registry Run & Startup Folders)
@@ -57,12 +169,17 @@ function Get-RegistryAndFolderStartupItems {
                     }
                 }
 
+                $meta = Resolve-ExecutableMetadata -RawCommand $command
+                $itemStatus = if (-not $meta.IsValid) { "該啟動項目無效" } else { $status }
+
                 $results += [PSCustomObject]@{
                     Category    = "啟動項目"
                     SubLocation = $target.Name
                     Name        = $valueName
                     DisplayName = $valueName
-                    Status      = $status
+                    Status      = $itemStatus
+                    IsValid     = $meta.IsValid
+                    Description = $meta.Description
                     Command     = $command
                     Hive        = $target.Hive
                     RegPath     = $target.Path
@@ -89,12 +206,18 @@ function Get-RegistryAndFolderStartupItems {
                     $b = $approvedFolderKey.GetValue($item.Name)
                     if ($b -and $b[0] -eq 3) { $status = "已禁用" }
                 }
+
+                $meta = Resolve-ExecutableMetadata -RawCommand $item.FullName -ShortcutFilePath $item.FullName
+                $itemStatus = if (-not $meta.IsValid) { "該啟動項目無效" } else { $status }
+
                 $results += [PSCustomObject]@{
                     Category    = "啟動項目"
                     SubLocation = $f.Scope
                     Name        = $item.Name
                     DisplayName = $item.Name
-                    Status      = $status
+                    Status      = $itemStatus
+                    IsValid     = $meta.IsValid
+                    Description = $meta.Description
                     Command     = $item.FullName
                     Hive        = "File"
                     RegPath     = $f.Path
@@ -122,12 +245,19 @@ function Get-SystemServicesStartup {
             default    { $svc.StartMode }
         }
 
+        # 檢驗服務執行檔二進位路徑是否存在
+        $meta = Resolve-ExecutableMetadata -RawCommand $svc.PathName
+        $desc = if ($svc.Description) { $svc.Description } else { $meta.Description }
+        $itemStatus = if (-not $meta.IsValid) { "該啟動項目無效" } else { $status }
+
         $results += [PSCustomObject]@{
             Category    = "系統服務"
             SubLocation = "Win32_Service"
             Name        = $svc.Name
             DisplayName = $svc.DisplayName
-            Status      = $status
+            Status      = $itemStatus
+            IsValid     = $meta.IsValid
+            Description = $desc
             State       = $svc.State
             Command     = $svc.PathName
             Hive        = "Service"
@@ -147,14 +277,26 @@ function Get-ScheduledTasksStartup {
 
     foreach ($t in $tasks) {
         $actionStr = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)".Trim() }) -join " ; "
+        $firstAction = $t.Actions | Select-Object -First 1
+        
+        $meta = if ($firstAction -and $firstAction.Execute) {
+            Resolve-ExecutableMetadata -RawCommand $firstAction.Execute
+        } else {
+            @{ IsValid = $true; Description = '' }
+        }
+
+        $desc = if ($t.Description) { $t.Description } elseif ($meta.Description) { $meta.Description } else { "無詳細說明" }
         $status = if ($t.State -eq 'Disabled') { "已禁用" } else { "已啟用" }
+        $itemStatus = if (-not $meta.IsValid) { "該啟動項目無效" } else { $status }
 
         $results += [PSCustomObject]@{
             Category    = "計劃任務"
             SubLocation = $t.TaskPath
             Name        = $t.TaskName
             DisplayName = $t.TaskName
-            Status      = $status
+            Status      = $itemStatus
+            IsValid     = $meta.IsValid
+            Description = $desc
             State       = "$($t.State)"
             Command     = $actionStr
             Hive        = "Task"
@@ -262,6 +404,7 @@ Write-Host " [Manage-StartupItems] Windows 三大類開機自啟項目管理盤�
 Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host "執行身分: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) $(if($IsAdmin){'[系統管理員]'}else{'[非管理員-修改服務需提升權限]'})"
 if ($Search) { Write-Host "搜尋關鍵字: '$Search'" -ForegroundColor Yellow }
+if ($InvalidOnly) { Write-Host "過濾模式: 僅顯示無效/殘留啟動項目" -ForegroundColor Magenta }
 Write-Host ""
 
 $allRecords = @()
@@ -276,19 +419,31 @@ if ($Category -in @('All', 'Task')) {
     $allRecords += Get-ScheduledTasksStartup
 }
 
+if ($InvalidOnly) {
+    $allRecords = $allRecords | Where-Object { $_.IsValid -eq $false }
+}
+
 if ($Search) {
     $allRecords = $allRecords | Where-Object {
-        $_.Name -like "*$Search*" -or $_.DisplayName -like "*$Search*" -or $_.Command -like "*$Search*"
+        $_.Name -like "*$Search*" -or $_.DisplayName -like "*$Search*" -or $_.Description -like "*$Search*" -or $_.Command -like "*$Search*"
     }
 }
 
 $grouped = $allRecords | Group-Object Category
 foreach ($g in $grouped) {
     Write-Host "=== 【$($g.Name)】(共 $($g.Count) 項) ===" -ForegroundColor Cyan
-    $g.Group | Select-Object Name, Status, SubLocation, Command | Format-Table -AutoSize
+    $g.Group | ForEach-Object {
+        $statusColor = if ($_.Status -like "*無效*") { 'Red' } elseif ($_.Status -eq "已啟用") { 'Green' } else { 'Yellow' }
+        Write-Host "  項目名稱: $($_.Name)" -ForegroundColor White
+        Write-Host "  當前狀態: " -NoNewline; Write-Host "$($_.Status)" -ForegroundColor $statusColor
+        Write-Host "  功能說明: $($_.Description)" -ForegroundColor Gray
+        Write-Host "  註冊位置: $($_.SubLocation)" -ForegroundColor DarkGray
+        Write-Host "  啟動指令: $($_.Command)" -ForegroundColor DarkGray
+        Write-Host "  -------------------------------------------------------------" -ForegroundColor DarkGray
+    }
 }
 
-Write-Host "-----------------------------------------------------------------" -ForegroundColor Gray
+Write-Host ""
 Write-Host "修改狀態指令範例：" -ForegroundColor Yellow
 Write-Host "  禁用啟動項目: .\Manage-StartupItems.ps1 -DisableName 'GameViewer' -TargetCategory Startup"
 Write-Host "  禁用系統服務: .\Manage-StartupItems.ps1 -DisableName 'KDService' -TargetCategory Service"
