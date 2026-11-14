@@ -108,23 +108,27 @@ Enables native auditing and state modification across all 3 autostart pillars wi
 
 ```powershell
 # ==============================================================
-# Method 1: Interactive TUI Menu - Recommended! Just type number
+# Method 1: Interactive TUI Menu - Supports Multi-selection & Ranges!
 # ==============================================================
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -i
-# Displays a live numbered menu. Type [number] (e.g. 2) to flip between Enabled and Disabled!
-# Supports /s for filtering, /c for category switching, /inv for invalid items, and Q to quit.
+
+# Interactive Commands:
+#   1. Multi-toggle : Enter "1, 2, 5" or range "1-4" to flip states simultaneously!
+#   2. Batch disable: Enter "d 1, 2, 5" or "d 1-4" or "d all" (all listed) or "d inv" (all invalid)
+#   3. Batch enable : Enter "e 1, 2, 5" or "e 1-4" or "e all"
+#   4. Quick filter : Enter "/s keyword" or "/inv" (invalid only), "Q" to quit.
 
 # ==============================================================
-# Method 2: Smart Quick Toggle (Auto-detects category across all 3 pillars)
+# Method 2: Smart Batch Commands (Comma-separated or array)
 # ==============================================================
-# One-shot toggle (flips current state)
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -T "GameViewer"
+# Disable multiple items at once (auto-resolves category):
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -D "GameViewer, KDService, ACC"
 
-# Quick disable
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -D "KDService"
+# Enable multiple items at once:
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -E "WSLService, GoogleDriveFS"
 
-# Quick enable
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -E "WSLService"
+# One-shot cleanup: Automatically audit and disable ALL invalid / orphaned startup items
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableInvalid
 
 # ==============================================================
 # Method 3: Audit and Search

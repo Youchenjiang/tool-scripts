@@ -108,23 +108,27 @@ powershell -ExecutionPolicy Bypass -File .\Get-HistoricalArtifacts.ps1 -EventLoo
 
 ```powershell
 # ==============================================================
-# 方法一：進入互動選單模式 (TUI Menu) - 最推薦！像火絨一樣只需按編號
+# 方法一：進入互動選單模式 (TUI Menu) - 支援多選與範圍批次！
 # ==============================================================
 powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -i
-# 終端將直接列出帶有編號的表格，輸入 [編號] (例如 2) 立即切換啟用/禁用！
-# 支援 /s 關鍵字過濾、/c 類別切換、/inv 無效項目過濾、Q 退出。
+
+# 操作方式（在互動清單中）：
+#   1. 多選翻轉：輸入 "1, 2, 5" 或連續範圍 "1-4"，同時切換這幾項的啟用/禁用！
+#   2. 批次禁用：輸入 "d 1, 2, 5" 或 "d 1-4" 或 "d all"（當前全部）或 "d inv"（所有無效項）
+#   3. 批次啟用：輸入 "e 1, 2, 5" 或 "e 1-4" 或 "e all"
+#   4. 即時過濾：輸入 "/s 關鍵字" 或 "/inv"（僅看無效項），輸入 "Q" 退出。
 
 # ==============================================================
-# 方法二：極簡一鍵指令 (免輸入類別，自動跨三大類別識別並切換)
+# 方法二：極簡批次指令 (支援逗號分隔或陣列多傳)
 # ==============================================================
-# 一鍵切換狀態 (若已啟用則禁用，若已禁用則啟用)
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -T "GameViewer"
+# 一次禁用多個項目（自動跨三大類別識別）：
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -D "GameViewer, KDService, ACC"
 
-# 一鍵禁用指定項目
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -D "KDService"
+# 一次啟用多個項目：
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -E "WSLService, GoogleDriveFS"
 
-# 一鍵啟用指定項目
-powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -E "WSLService"
+# 一鍵批次最佳化：自動盤點並禁用「所有」無效/殘留的啟動項目
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableInvalid
 
 # ==============================================================
 # 方法三：清單盤點與過濾
