@@ -95,6 +95,7 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 ### 2. `tools/pr_helper.py` (PR 自動生成、結構驗證與安全提交助手)
 * **自動萃取 Body**：解析自基準分支以來的所有 Commit，按 Conventional Commits 分類產出合規 Markdown。
 * **格式驗證**：推送前本機檢驗 PR 標題、分支命名、與 PR Body 必要章節（`## Summary`, `## Changes`, `## Validation`, `## Review Checklist`）與 External provider 聲明。
+* **Provider 決策**：`create` 產生的 body 帶未勾選的 `External provider` 項（刻意設計，工具不得替人宣告供應商決定）；開 PR 前請確認該項，否則 policy 會擋。
 * **規避 Shell 字串截斷**：以 `--body-file` 搭配 `--label` 呼叫 `gh pr create`，徹底消除 Windows/PowerShell 引號脫落與 GitHub Actions 時序競態問題。
 * **執行方式**：
   ```bash

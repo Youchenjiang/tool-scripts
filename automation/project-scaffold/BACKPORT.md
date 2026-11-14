@@ -41,7 +41,7 @@ Status values: `planned` · `landed` · `blocked` · `rejected`.
 | S1 | Read-only git surface for release/version gates | `scripts/process_guard.py` | `templates/tools/process_guard.py` | landed |
 | S2 | Unaddressed top-level review findings are not detected | `scripts/pr_verification.py` | `templates/tools/pr_verification.py` | landed |
 | S3 | New-code duplication ceiling cannot be enforced | `scripts/pr_verification.py` | `templates/tools/pr_verification.py` | landed |
-| S4 | Review-checklist prompts and metadata-as-checkbox ban | `scripts/pr_preflight.py` | `templates/tools/pr_preflight.py` | blocked |
+| S4 | PR body contract: headings, provider acknowledgement, reviewer prompts | `scripts/pr_preflight.py` | `templates/tools/pr_body_contract.py`, template, `policy.yml` | landed |
 | S5 | Version gate: release-impact paths, tag already released, manifest/changelog/listing sync | `scripts/pr_preflight.py` | `templates/tools/pr_preflight.py` + presets | planned |
 | S6 | Roadmap/spec alignment gate (milestone must exist in `docs/ROADMAP.md`) | `scripts/pr_preflight.py` | `templates/tools/pr_preflight.py` + docs template | planned |
 | S7 | Version-surface bump tool (BOM preserving) | `scripts/bump_version.ps1` | `templates/tools/bump_version.py` | planned |
@@ -54,16 +54,34 @@ Status values: `planned` · `landed` · `blocked` · `rejected`.
 | S14 | Tenant leakage: required checks hardcode Clickra/TapStrum names | — (scaffold-only defect) | `presets.json` → generated config | planned |
 | S15 | Docs/agent structure: thin `AGENTS.md`, skills, authority headers, SHA-pinned actions | `.agent/`, `AGENTS.md`, workflows | `templates/agent-rules`, `templates/github` | planned |
 
-### S4 is blocked on a contract conflict
+### S4 landed: one PR body contract
 
-Three files disagree about the PR body shape:
+Four implementations used to disagree about the PR body shape — the template,
+`policy.yml`, `pr_preflight.py` and `pr_helper.py` — so a body written from the template
+failed the local gate, while a body that passed the gate failed CI. They now all read
+`templates/tools/pr_body_contract.py`:
 
-- `templates/github/pull_request_template.md`: `## Summary` / `## Key Changes` / `## How to Verify (Verification)` / `## Pre-Submission Checklist`
-- `templates/github/workflows/policy.yml`: requires `## Summary` / `## Key Changes` / `## Verification`
-- `templates/tools/pr_preflight.py`: requires `## Summary` / `## Changes` / `## Validation` / `## Review Checklist`
+- `pr_preflight` (and through it `pr_creation` and `pr_tool`) validates the four headings,
+  the placeholder words and the provider acknowledgement.
+- `policy.yml` runs `pr_preflight.py --check-body` using the **base branch** tools, so CI
+  applies exactly the local rule and cannot be loosened by the PR under review. The
+  workflow keeps only Markdown hygiene checks of its own.
+- The template and `pr_helper generate` emit the same shape. The provider item stays
+  unchecked on purpose: only a human can assert that decision.
+- Reviewer prompts remain optional
+  (`test_review_prompts_are_optional_but_provider_acknowledgement_is_not`); only the
+  provider acknowledgement is enforced.
+- The `bot-pr-exempt` feature decides at scaffold time whether automated accounts skip
+  these steps. Human PRs are checked either way.
 
-Adding Clickra's mandatory checklist prompts before unifying these three would fail
-every scaffolded project. Unifying the contract is its own change and must land first.
+Deferred, with the trigger that should revive them:
+
+- **Legacy heading aliases** (`## Key Changes` → `## Changes`) — only if a scaffolded
+  project outside this repository still has open PRs in the old shape. Aliases alone
+  cannot rescue those bodies anyway: they carry no provider line.
+- **`pr_helper create --external-provider`** — only once someone actually drives that
+  subcommand. Clickra and this repository use `pr_tool.py`, and a rejected body is
+  visible and editable on GitHub, so the failure is recoverable rather than silent.
 
 ### Landed in this batch
 
@@ -77,6 +95,9 @@ every scaffolded project. Unifying the contract is its own change and must land 
 - **S3** — new-code duplication is reported as before, and enforced only when
   `PR_MAX_NEW_DUPLICATION` is set (for example `0` for a zero-duplication policy).
   An unreadable metric fails closed once a ceiling is configured.
+- **S4** — one PR body contract in `pr_body_contract.py`, consumed by the preflight, the
+  PR creation path, the helper and `policy.yml`; the template and `generate` produce a
+  body that passes both gates, and the provider acknowledgement is required from a human.
 
 ## 3. Reverse protection (scaffold is ahead — do not overwrite)
 
@@ -107,9 +128,13 @@ Each commit has one purpose and can be reverted independently.
 3. `feat(automation)`: S2 — reject unaddressed top-level review findings.
 4. `feat(automation)`: S3 — opt-in new-code duplication ceiling.
 5. `docs(automation)`: update the ledger with landed items.
+6. `refactor(automation)`: S4a — read the PR body shape from one module.
+7. `fix(automation)`: S4b — draft PR bodies in the shape the preflight accepts.
+8. `refactor(automation)`: S4c — collapse the contract to one provider pattern.
+9. `feat(automation)`: S4d — enforce the contract in `policy.yml`.
+10. `feat(automation)`: S4e — let projects opt into the bot PR exemption.
 
-S4–S15 continue in later batches, in the order listed once S4's contract
-conflict is resolved.
+S5–S15 continue in later batches, in the order listed.
 
 ## 6. Verification
 
@@ -119,10 +144,7 @@ run against a throwaway copy:
 ```bash
 T=automation/project-scaffold/.verify-tmp
 rm -rf "$T" && mkdir -p "$T"
-cp -r automation/project-scaffold/templates/tools "$T/tools"
-cp -r automation/project-scaffold/templates/tests "$T/tests"
-cp -r automation/project-scaffold/templates/git   "$T/git"
-(cd "$T" && python -m unittest discover -s tests -p 'test_pr_verification.py' -v)
-(cd "$T" && python -m unittest discover -s tests -p 'test_process_guard.py' -v)
+for d in tools tests git github; do cp -r automation/project-scaffold/templates/$d "$T/$d"; done
+(cd "$T" && python -m unittest discover -s tests -v)
 rm -rf "$T"
 ```
