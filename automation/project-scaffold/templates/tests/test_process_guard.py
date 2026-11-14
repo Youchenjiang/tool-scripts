@@ -34,6 +34,18 @@ class ProcessGuardTests(unittest.TestCase):
                     process_guard.invoke(["git", *args])
             self.assertEqual(len(process_guard.GIT_READ_OPERATIONS), run.call_count)
 
+    def test_git_diff_accepts_only_a_verified_target_revision(self):
+        fake = Path(__file__).resolve()
+        with patch.object(process_guard.shutil, "which", return_value=str(fake)), \
+             patch.object(process_guard.subprocess, "run") as run:
+            process_guard.invoke(["git", "diff", "-z", "--name-only", "--no-renames",
+                                 "origin/main..." + "a" * 40])
+            self.assertEqual(1, run.call_count)
+            for target in ("origin/main...evil", "origin/main..HEAD", "HEAD"):
+                with self.subTest(target=target), self.assertRaises(ValueError):
+                    process_guard.invoke(["git", "diff", "-z", "--name-only",
+                                         "--no-renames", target])
+
     def test_allowed_gh_uses_absolute_binary_and_no_shell(self):
         fake = Path(__file__).resolve()
         with patch.object(process_guard.shutil, "which", return_value=str(fake)), \
