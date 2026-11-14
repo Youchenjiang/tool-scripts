@@ -133,7 +133,11 @@
   - [x] 在 `presets.json` 每個範本定義結構化 `build` / `release` / `flow` 資料欄位。
   - [x] 專案生成時統一輸出 `tools/project.json`（UTF-8 without BOM），作為本地工具與 CI 共同遵循之架構契約。
   - [x] 針對全部 6 種 Archetype 自動執行測試，斷言 `tools/project.json` 內容與 `presets.json` 100% 精準吻合。
-- [ ] **第 2 階段：產品 CI**
+- [x] **第 2 階段：產品 CI（已完成）**
+  - [x] 新增 `ci.yml` 範本，統一固定 required check 名稱為 `Continuous Integration`。
+  - [x] `init-project.ps1` 依範本之 `build` 欄位動態注入對應之建置/測試步驟（`npm` / `dotnet` / `python` / baseline）。
+  - [x] 設計防禦機制，剛初始化或無程式碼之專案保證綠燈通過，不因無測試而紅燈。
+  - [x] 針對 6 大 Archetype 全數通過 YAML 解析與指令映射驗證。
 - [ ] **第 3 階段：push 前檢查補齊**
 - [ ] **第 4 階段：發佈生命週期**
 

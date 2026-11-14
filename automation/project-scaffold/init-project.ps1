@@ -615,6 +615,144 @@ foreach ($wf in $AllWorkflows) {
       $customized = $true
     }
 
+    # 4. Tailoring for ci.yml (Product CI)
+    if ($wf -eq "ci.yml") {
+      $runsOn = if ($Archetype -eq "desktop-app") { "windows-latest" } else { "ubuntu-latest" }
+      $wfContent = [System.Text.RegularExpressions.Regex]::Replace(
+        $wfContent,
+        '/\*\s*RUNS_ON_PLACEHOLDER\s*\*/[\s\S]*?/\*\s*RUNS_ON_PLACEHOLDER_END\s*\*/',
+        $runsOn
+      )
+
+      $ciSteps = switch ($Archetype) {
+        { $_ -in "web-spa", "backend-api" } {
+@"
+      # /* CI_STEPS_PLACEHOLDER_START */
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: `${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            npm install
+          else
+            echo "No package.json found; skipping dependency installation."
+          fi
+      - name: Code Quality (Lint)
+        run: |
+          if [ -f package.json ]; then
+            npm run lint --if-present
+          else
+            echo "No package.json found; skipping lint."
+          fi
+      - name: Run Tests
+        run: |
+          if [ -f package.json ]; then
+            npm test --if-present
+          else
+            echo "No package.json found; skipping tests."
+          fi
+      - name: Build Project
+        run: |
+          if [ -f package.json ]; then
+            npm run build --if-present
+          else
+            echo "No package.json found; skipping build."
+          fi
+      # /* CI_STEPS_PLACEHOLDER_END */
+"@
+        }
+        "desktop-app" {
+@"
+      # /* CI_STEPS_PLACEHOLDER_START */
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Code Quality (Lint)
+        shell: pwsh
+        run: |
+          `$projects = Get-ChildItem -Path . -Recurse -Filter *.sln, *.*proj
+          if (`$projects.Count -gt 0) {
+            dotnet format --verify-no-changes
+          } else {
+            Write-Host "No .NET solution or project found; skipping lint."
+          }
+      - name: Run Tests
+        shell: pwsh
+        run: |
+          `$projects = Get-ChildItem -Path . -Recurse -Filter *.sln, *.*proj
+          if (`$projects.Count -gt 0) {
+            dotnet test
+          } else {
+            Write-Host "No .NET solution or project found; skipping tests."
+          }
+      - name: Build Project
+        shell: pwsh
+        run: |
+          `$projects = Get-ChildItem -Path . -Recurse -Filter *.sln, *.*proj
+          if (`$projects.Count -gt 0) {
+            dotnet build -c Release
+          } else {
+            Write-Host "No .NET solution or project found; skipping build."
+          }
+      # /* CI_STEPS_PLACEHOLDER_END */
+"@
+        }
+        "sec-research" {
+@"
+      # /* CI_STEPS_PLACEHOLDER_START */
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install flake8
+      - name: Code Quality (Lint)
+        run: |
+          python_files=`$(find . -name "*.py" -not -path "*/.*" -not -path "./tools/*" | head -n 1)
+          if [ -n "`$python_files" ]; then
+            python -m flake8 --exclude=.git,__pycache__,tools,tests
+          else
+            echo "No project python files found; skipping lint."
+          fi
+      - name: Run Tests
+        run: |
+          if [ -d "tests" ]; then
+            python -m unittest discover -s tests
+          else
+            echo "No tests directory found; skipping tests."
+          fi
+      # /* CI_STEPS_PLACEHOLDER_END */
+"@
+        }
+        default {
+@"
+      # /* CI_STEPS_PLACEHOLDER_START */
+      - name: Baseline Verification
+        run: |
+          echo "No build or test commands configured for this archetype. Baseline check passed."
+      # /* CI_STEPS_PLACEHOLDER_END */
+"@
+        }
+      }
+
+      $wfContent = [System.Text.RegularExpressions.Regex]::Replace(
+        $wfContent,
+        '#\s*/\*\s*CI_STEPS_PLACEHOLDER_START\s*\*/[\s\S]*?#\s*/\*\s*CI_STEPS_PLACEHOLDER_END\s*\*/',
+        $ciSteps.Trim()
+      )
+      $customized = $true
+    }
+
     if ($customized) {
       [System.IO.File]::WriteAllText($wfDst, $wfContent, [System.Text.Encoding]::UTF8)
       Write-Host "  + Deployed Workflow: .github/workflows/$wf (Tailored / Jitter Configured)" -ForegroundColor Green

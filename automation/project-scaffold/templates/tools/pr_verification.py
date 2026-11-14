@@ -9,6 +9,7 @@ PENDING = {"PENDING", "QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED", "EXPECTED
 REQUIRED = {
     "PR and commit policy",
     "PR governance script tests",
+    "Continuous Integration",
     "DeepSource: Python",
     "SonarCloud",
     "SonarCloud Code Analysis",

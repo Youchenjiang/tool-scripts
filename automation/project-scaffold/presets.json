@@ -44,6 +44,7 @@
         "hooks/pre-push"
       ],
       "githubWorkflows": [
+        "ci.yml",
         "policy.yml",
         "trufflehog.yml",
         "codeql.yml"
@@ -115,6 +116,7 @@
         "hooks/pre-push"
       ],
       "githubWorkflows": [
+        "ci.yml",
         "policy.yml",
         "trufflehog.yml",
         "codeql.yml",
@@ -190,6 +192,7 @@
         "hooks/pre-push"
       ],
       "githubWorkflows": [
+        "ci.yml",
         "policy.yml",
         "trufflehog.yml",
         "codeql.yml",
@@ -261,6 +264,7 @@
         "hooks/pre-push"
       ],
       "githubWorkflows": [
+        "ci.yml",
         "policy.yml",
         "trufflehog.yml",
         "codeql.yml",
@@ -328,6 +332,7 @@
         "hooks/pre-push"
       ],
       "githubWorkflows": [
+        "ci.yml",
         "policy.yml"
       ],
       "githubFiles": [
@@ -397,6 +402,7 @@
         "hooks/commit-msg"
       ],
       "githubWorkflows": [
+        "ci.yml",
         "policy.yml",
         "trufflehog.yml",
         "codeql.yml"

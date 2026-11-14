@@ -1,0 +1,31 @@
+# ==============================================================================
+# 🚀 Continuous Integration (CI) Pipeline
+#
+# Automatically tailored to the project archetype by init-project.ps1 based on
+# build commands (lint / test / build) in presets.json and tools/project.json.
+# ==============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Continuous Integration
+    runs-on: /* RUNS_ON_PLACEHOLDER */ubuntu-latest/* RUNS_ON_PLACEHOLDER_END */
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # /* CI_STEPS_PLACEHOLDER_START */
+      - name: Baseline Verification
+        run: |
+          echo "No build or test commands configured for this archetype. Baseline check passed."
+      # /* CI_STEPS_PLACEHOLDER_END */
