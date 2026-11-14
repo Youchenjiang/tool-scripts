@@ -63,6 +63,7 @@
         "lint_commits.py",
         "build_runner.py",
         "release_checker.py",
+        "bump_version.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -143,6 +144,7 @@
         "lint_commits.py",
         "build_runner.py",
         "release_checker.py",
+        "bump_version.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -224,6 +226,7 @@
         "lint_commits.py",
         "build_runner.py",
         "release_checker.py",
+        "bump_version.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -303,6 +306,7 @@
         "lint_commits.py",
         "build_runner.py",
         "release_checker.py",
+        "bump_version.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -371,6 +375,7 @@
         "lint_commits.py",
         "build_runner.py",
         "release_checker.py",
+        "bump_version.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -447,7 +452,8 @@
       "toolFiles": [
         "lint_commits.py",
         "build_runner.py",
-        "release_checker.py"
+        "release_checker.py",
+        "bump_version.py"
       ],
       "recommendedFeatures": [
         "direct-push"
