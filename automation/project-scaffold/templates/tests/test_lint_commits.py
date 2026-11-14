@@ -20,8 +20,8 @@ class TestValidateCommit(unittest.TestCase):
 
     def test_valid_commits(self):
         valid = [
-            ("sha1", "feat(fluent): rebrand application to tapstrum", ["tapster.fluent/mainpage.xaml.cs"]),
-            ("sha2", "perf(packaging): optimize msix payload with trimming", ["scripts/build_msix.ps1"]),
+            ("sha1", "feat(ui): rebrand application to tapstrum", ["tapster.fluent/mainpage.xaml.cs"]),
+            ("sha2", "perf(core): optimize msix payload with trimming", ["scripts/build_msix.ps1"]),
             ("sha3", "docs(docs): update architecture documentation", ["docs/architecture.md"]),
             ("sha4", "chore(deps): bump nuget package versions", ["tapster.fluent.csproj"]),
         ]
@@ -46,10 +46,10 @@ class TestValidateCommit(unittest.TestCase):
     def test_vague_description(self):
         vague_examples = [
             "fix(core): fix bug",
-            "chore(packaging): update",
+            "chore(core): update",
             "refactor(ui): misc",
             "refactor(ui): changes",
-            "feat(launcher): stuff",
+            "feat(core): stuff",
         ]
         for subj in vague_examples:
             errors, _ = lint_commits.validate_commit("sha1", subj, ["file.cs"], strict=True)

@@ -6,31 +6,19 @@ import re
 PASS = {"SUCCESS", "PASS", "PASSED"}
 SKIP = {"SKIPPED", "SKIPPING", "NEUTRAL"}
 PENDING = {"PENDING", "QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED", "EXPECTED"}
-REQUIRED = {"PR and commit policy", "PR governance script tests", "DeepSource: Python",
-            "DeepSource: C#", "DeepSource: Secrets", "SonarCloud", "SonarCloud Code Analysis",
-            "Deterministic tests (no fixtures)", "Public PDF translation regression",
-            "Store publishing unit tests",
-            "Build Clickra.Core", "Build Clickra.Fluent",
-            "Publish CLI (NativeAOT)", "Publish Shell Extension (NativeAOT)",
-            "Publish ClickraLauncher (NativeAOT)"}
-
-TAPSTRUM_REQUIRED = {
-    "Build Solution & Packaging Pipelines",
-    "CodeQL Security Scan (csharp)",
-    "PR and Commit Policy Validation",
+REQUIRED = {
+    "PR and commit policy",
+    "PR governance script tests",
+    "DeepSource: Python",
     "SonarCloud",
     "SonarCloud Code Analysis",
-    "TruffleHog Secrets Scan",
 }
 
 
 def resolve_required_checks(repo=""):
-    import os
     env_req = os.environ.get("PR_REQUIRED_CHECKS")
     if env_req:
         return {item.strip() for item in env_req.split(",") if item.strip()}
-    if "tapstrum" in repo.lower() or "tapster" in repo.lower():
-        return set(TAPSTRUM_REQUIRED)
     return set(REQUIRED)
 
 

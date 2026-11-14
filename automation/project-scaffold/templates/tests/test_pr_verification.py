@@ -79,21 +79,21 @@ class VerificationTests(unittest.TestCase):
         self.assertTrue(result["checks"][0]["required"])
         self.assertFalse(result["checks"][-1]["required"])
 
-    def test_obsolete_aggregate_build_name_is_not_required(self):
-        self.assertNotIn("Build Core / CLI / Shell / Setup", pr_verification.REQUIRED)
-        self.assertIn("Build Clickra.Core", pr_verification.REQUIRED)
-        self.assertIn("Build Clickra.Fluent", pr_verification.REQUIRED)
+    def test_custom_required_checks_via_environment(self):
+        with patch.dict(os.environ, {"PR_REQUIRED_CHECKS": "CustomCheck1, CustomCheck2"}):
+            self.assertEqual({"CustomCheck1", "CustomCheck2"}, pr_verification.resolve_required_checks())
 
-    def test_public_pdf_regression_is_required(self):
+    def test_missing_required_check_blocks_readiness(self):
+        sample = next(iter(pr_verification.REQUIRED))
         pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
               "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
                                     for name in pr_verification.REQUIRED
-                                    if name != "Public PDF translation regression"]}
+                                    if name != sample]}
         report = {"counts": {"unresolved": 0}, "sonar": {"total": 0}}
         result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
         self.assertFalse(result["ready"])
-        self.assertTrue(any("Public PDF translation regression" in issue
-                            for issue in result["problems"]))
+        self.assertTrue(any(sample in issue for issue in result["problems"]))
+
     def test_merged_deleted_branch_reports_historical_checks(self):
         pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "MERGED",
               "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
@@ -115,13 +115,14 @@ class VerificationTests(unittest.TestCase):
         self.assertIn("PR HEAD differs from remote SHA", result["problems"])
 
     def test_merged_historical_checks_do_not_hide_failed_checks(self):
+        sample = next(iter(pr_verification.REQUIRED))
         pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "MERGED",
-              "statusCheckRollup": [{"name": name, "conclusion": "FAILURE" if name == "DeepSource: C#" else "SUCCESS"}
+              "statusCheckRollup": [{"name": name, "conclusion": "FAILURE" if name == sample else "SUCCESS"}
                                     for name in pr_verification.REQUIRED]}
         report = {"counts": {"unresolved": 0}, "sonar": {"total": 0}}
         result = pr_verification.summarize(pr, report, remote_sha=None)
         self.assertFalse(result["historical_checks_passed"])
-        self.assertTrue(any("DeepSource: C#" in problem for problem in result["problems"]))
+        self.assertTrue(any(sample in problem for problem in result["problems"]))
 
     def test_closed_unmerged_pr_not_ready(self):
         pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "CLOSED",
