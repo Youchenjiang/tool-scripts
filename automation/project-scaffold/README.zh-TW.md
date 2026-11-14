@@ -11,20 +11,38 @@
 
 ## 快速使用
 
-### 1. 互動式選單
-直接在目標專案目錄（或從本目錄指向目標專案）執行：
-```powershell
-.\init-project.ps1
-```
-互動式選單會引導您選擇 **Archetype（專案雛型）** 以及是否啟用 **可選擴充模組（Features）**。
+### 1. 跨平台命令列執行
 
-### 2. 命令列快速執行
+腳手架核心引擎採用 **100% 純 Python 標準庫** 實作（`scaffold_engine.py`），具備跨平台支援：
+
+#### 🐧 Linux / macOS
+```bash
+# 使用 Bash 包裝器
+./init-project.sh --archetype backend-python --project-name "MyApi" --target-dir "./MyApi"
+
+# 或直接使用 Python 引擎
+python scaffold_engine.py --archetype backend-python --project-name "MyApi" --target-dir "./MyApi"
+```
+
+#### 🪟 Windows PowerShell
 ```powershell
+# 互動式選單
+.\init-project.ps1
+
+# 命令列直接開案
+.\init-project.ps1 -Archetype backend-python -ProjectName "MyApi" -TargetDir "C:\path\to\MyApi"
+```
+
+### 2. 常用開案範例
+```powershell
+# Python 後端 (FastAPI / Django) - 保證 0% Node.js / npm 污染
+.\init-project.ps1 -Archetype backend-python -Features conda-env -TargetDir "C:\path\to\PyApi" -ProjectName "PyApi"
+
+# Node.js 後端 (Express / Nest / TypeScript)
+.\init-project.ps1 -Archetype backend-node -Features strict-linting -TargetDir "C:\path\to\NodeApi" -ProjectName "NodeApi"
+
 # 網頁 / 前端全端 (React / Ionic / Vite) + 啟用代碼規範與鏈式 PR 指引
 .\init-project.ps1 -Archetype web-spa -Features strict-linting,chained-prs -TargetDir "C:\path\to\WebPortal" -ProjectName "WebPortal"
-
-# 後端 API 服務 (Node / Express / FastAPI) + 啟用全部模組
-.\init-project.ps1 -Archetype backend-api -AllFeatures -TargetDir "C:\path\to\ApiServer" -ProjectName "ApiServer"
 
 # 桌面端 (Windows / C# / .NET / WinUI) + 啟用 MSIX 打包與架構拓撲守護
 .\init-project.ps1 -Archetype desktop-app -Features msix-packaging,architecture-guard,git-worktree -TargetDir "C:\path\to\NewApp" -ProjectName "NewApp"
@@ -35,7 +53,7 @@
 # 極簡小工具 / 單檔腳本 (無額外擴充模組、設定免版本管理)
 .\init-project.ps1 -Archetype minimal -NoRelease -NoFeatures -TargetDir "C:\path\to\Tool" -ProjectName "Tool"
 ```
-*(向後相容：亦可繼續使用 `-Preset` 參數傳入舊有名稱如 `web`、`desktop`、`research`。)*
+*(向後相容：亦可繼續使用 `-Preset` 參數傳入舊有名稱如 `backend-api`、`web`、`desktop`、`research`。`backend-api` 將自動探測目標目錄之檔案並轉導為 `backend-python` 或 `backend-node`。)*
 
 ### 3. 直接對 Agent 下指令
 在新專案開啟對話時，直接告訴 Agent：
@@ -51,14 +69,15 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 
 ### 1. 基礎雛型 (Archetypes)
 
-| Archetype | 相容別名 | 適用場景 | 自動注入 CI Scopes | 專屬預載規範 / 設定 | 內建治理工具 |
+| Archetype | 相容別名 | 主要生態 | 適用場景 | 自動注入 CI Scopes | 專屬預載規範 / Hook 安裝器 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`web-spa`** | `web`, `frontend` | React, Ionic, Vue, Vite, SPA 前端專案 | `app, ui, style, render, sim, test, docs, ci, deps, spec, rules, setup, quality` | Web Guidelines、`eslint.config.mjs`、npm prepare hook | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
-| **`backend-api`** | `api`, `server`, `service` | Node/Express, Nest, FastAPI, Go 服務 | `api, auth, db, models, routes, test, docs, ci, deps, spec, rules, setup, quality, sec` | Backend Guidelines | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
-| **`desktop-app`** | `desktop`, `winui`, `wpf` | Windows, C#, .NET, WinUI, Electron | `app, ui, winui, core, test, docs, ci, deps, spec, rules, setup, quality, release` | .NET Hygiene, Store Release | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
-| **`sec-research`** | `research`, `security`, `lab` | AI 論文, 漏洞分析, PoC 實驗 | `agent, audit, rules, poc, exp, test, docs, ci, deps, spec, setup, quality, sec` | PR-Agent, Security Audit rules | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
-| **`script-tool`** | `script`, `scripts`, `tools` | 腳本庫 / 個人工具集 / Monorepo (如 tool-scripts) | `automation, data, media, text, security, ai, core, cli, test, docs, ci, deps, setup, catalog` | 免開 PR、主幹原子推送規範 (`direct-trunk.md`)、`repo.directPush` 設定 | `lint_commits.py` |
-| **`minimal`** | `tool`, `script`, `cli` | 輕量腳本, 小型命令列工具 | `core, cli, test, docs, ci, deps, setup` | 僅核心 Commit 規範與 policy.yml | `lint_commits.py`, `pr_tool.py`, `pr_helper.py` 套件 |
+| **`backend-python`** | `backend-api`, `backend-py` | Python 3.10+ | FastAPI, Django, Flask, 現代化微服務 | `core, api, auth, db, service, middleware, config, test, deps, docs, ci, setup, agent, chore` | Python Ruff/Pytest、`scripts/install-hooks.py` (**0% Node.js 污染**) |
+| **`backend-node`** | `backend-js`, `node-api` | Node.js / TS | Express, NestJS, Fastify 服務端全端 | `core, api, auth, db, service, middleware, config, test, deps, docs, ci, setup, agent, chore` | ESLint、npm prepare hook、`scripts/install-hooks.mjs` |
+| **`web-spa`** | `web`, `frontend` | TypeScript | React, Ionic, Vue, Vite, SPA 前端專案 | `core, app, ui, style, render, sim, test, docs, ci, deps, spec, rules, setup, quality, agent, chore` | Web Guidelines、`eslint.config.mjs`、`scripts/install-hooks.mjs` |
+| **`desktop-app`** | `desktop`, `winui`, `wpf` | C# / .NET | Windows, .NET, WinUI, WPF 桌面應用 | `core, shell, ui, native, msix, store, test, deps, docs, ci, setup, agent, chore` | .NET Hygiene, Store Release, `scripts/install-hooks.py` |
+| **`sec-research`** | `research`, `security`, `lab` | Python | AI 論文, 漏洞分析, PoC 實驗庫 | `core, poc, vuln, exploit, report, scanner, data, test, deps, docs, ci, setup, agent, chore` | PR-Agent, Security Audit rules, `scripts/install-hooks.py` |
+| **`script-tool`** | `script`, `scripts`, `tools` | 語言中立 | 腳本庫 / 個人工具集 / Monorepo (如 tool-scripts) | `core, automation, data, media, text, security, ai, cli, test, deps, docs, ci, setup, catalog, agent, chore` | 免開 PR、主幹原子推送規範 (`direct-trunk.md`)、`scripts/install-hooks.py` |
+| **`minimal`** | `tool`, `cli` | 語言中立 | 極簡小工具, 快速原型 | `core, tool, test, deps, docs, ci, setup, agent, chore` | 僅核心 Commit 規範與 policy.yml, `scripts/install-hooks.py` |
 
 ### 2. 可選擴充模組 (Modular Features / Add-ons)
 
@@ -90,10 +109,14 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 - **`tools/bump_version.py`**：依據 `tools/project.json` 自動進行 `major`/`minor`/`patch`/`revision` 升版，同步關聯檔案並自動在 `CHANGELOG.md` 注入新版本日誌骨架。
 - **`tools/release_checker.py`**：Tag 推播前的嚴格門禁，驗證 Tag 版本與各檔案版本號及 CHANGELOG 是否 100% 吻合。
 
-### 4. 自動化 Git Hook 生命週期 (npm prepare)
-- 當目標專案包含 `package.json` 時，腳手架會自動於 `scripts` 中注入 `"prepare": "node scripts/install-hooks.mjs"`。
-- 同步產出 `scripts/install-hooks.mjs` 與版本庫納管的 `scripts/hooks/commit-msg`。
-- 任何團隊成員或 AI 代理人執行 `npm install` 時，本機 `.git/hooks/commit-msg` 便會自動部署就緒，免除手動安裝步驟。
+### 4. 生態隔離 Git Hook 生命週期 (Ecosystem-Clean Hooks)
+- **Node.js 專案 (`backend-node`, `web-spa`)**：
+  - 當目標專案包含 `package.json` 時，腳手架自動於 `scripts` 注入 `"prepare": "node scripts/install-hooks.mjs"`。
+  - 同步部署 `scripts/install-hooks.mjs` 與版本庫納管的 `scripts/hooks/*`。
+  - 執行 `npm install` 時自動部署 `.git/hooks/commit-msg` 與 `pre-push`。
+- **Python / .NET / 通用專案 (`backend-python`, `desktop-app`, `sec-research`, `minimal`, `script-tool`)**：
+  - 部署純 Python 標準庫實作之 `scripts/install-hooks.py`。
+  - 執行 `python scripts/install-hooks.py` 即可完成 Hook 部署與 `.gitmessage.txt` 提交範本綁定，**100% 零 Node.js / npm 依賴**。
 
 ---
 
