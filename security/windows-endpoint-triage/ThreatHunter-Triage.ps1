@@ -253,3 +253,112 @@ if ($DetectedPathAnomalies) {
 Write-Host "`n[!] 當前累計 CPU 佔用最高 Top 5 進程:" -ForegroundColor Yellow
 $TopCumulativeCpu | Select-Object -First 5 | Format-Table PID, ProcessName, TotalCpuSec, MemoryMB, Path -AutoSize
 
+# -------------------------------------------------------------
+# 產生專業獨立 HTML 報告
+# -------------------------------------------------------------
+if (-not $NoHtml) {
+    $HtmlPath = Join-Path $OutputDir "Forensic_Report_${HostName}_${FileTimestamp}.html"
+
+    $listeningHtmlRows = ($ListeningExposed | Sort-Object Risk -Descending | ForEach-Object {
+        $badgeClass = switch ($_.Risk) {
+            "極高" { "badge-critical" }
+            "高"   { "badge-high" }
+            "中"   { "badge-medium" }
+            default { "badge-low" }
+        }
+        "<tr><td><strong>$($_.Port)</strong></td><td>$($_.Address)</td><td>$($_.ProcessName) (PID: $($_.PID))</td><td>$($_.ServiceTag)</td><td><span class='$badgeClass'>$($_.Risk)</span></td><td>$($_.Note)</td><td class='code-path'>$($_.Path)</td></tr>"
+    }) -join "`n"
+
+    $remoteHtmlRows = ($DetectedRemoteTools | ForEach-Object {
+        "<tr><td>$($_.ProcessName)</td><td>$($_.PID)</td><td><strong>$($_.MatchedRule)</strong></td><td>$($_.Company)</td><td class='code-path'>$($_.Path)</td></tr>"
+    }) -join "`n"
+
+    $anomalyHtmlRows = ($DetectedPathAnomalies | ForEach-Object {
+        "<tr><td><span class='badge-critical'>$($_.AnomalyType)</span></td><td>$($_.ProcessName) (PID: $($_.PID))</td><td>$($_.Detail)</td><td class='code-path'>$($_.Path)</td></tr>"
+    }) -join "`n"
+
+    $topCpuHtmlRows = ($TopCumulativeCpu | ForEach-Object {
+        "<tr><td>$($_.PID)</td><td><strong>$($_.ProcessName)</strong></td><td>$($_.TotalCpuSec) s</td><td>$($_.MemoryMB) MB</td><td class='code-path'>$($_.Path)</td></tr>"
+    }) -join "`n"
+
+    $wanConnHtmlRows = ($WanConnections | Select-Object -First 30 | ForEach-Object {
+        "<tr><td>$($_.LocalIP)</td><td><strong>$($_.RemoteIP)</strong></td><td>$($_.ProcessName) (PID: $($_.PID))</td><td class='code-path'>$($_.Path)</td></tr>"
+    }) -join "`n"
+
+    $HtmlContent = @"
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>端點應急鑑識分析報告 - $HostName</title>
+<style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f8f9fa; color: #333; margin: 0; padding: 25px; }
+    .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    h1 { color: #1a202c; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-top: 0; }
+    h2 { color: #2d3748; margin-top: 30px; border-left: 4px solid #3182ce; padding-left: 10px; font-size: 1.25rem; }
+    .meta-box { background: #edf2f7; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px; font-size: 0.95rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+    th, td { border: 1px solid #e2e8f0; padding: 10px 12px; text-align: left; }
+    th { background: #f7fafc; color: #4a5568; font-weight: 600; }
+    tr:nth-child(even) { background-color: #fcfdfd; }
+    tr:hover { background-color: #f1f5f9; }
+    .code-path { font-family: Consolas, Monaco, monospace; font-size: 0.82rem; color: #4a5568; word-break: break-all; }
+    .badge-critical { background: #e53e3e; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+    .badge-high { background: #dd6b20; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+    .badge-medium { background: #d69e2e; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+    .badge-low { background: #38a169; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+    .empty-note { color: #718096; font-style: italic; padding: 10px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>端點應急鑑識分析報告 (Endpoint Forensic Triage)</h1>
+    <div class="meta-box">
+        <div><strong>主機名稱：</strong>$HostName</div>
+        <div><strong>報告時間：</strong>$ReportTime</div>
+        <div><strong>檢測身分：</strong>$CurrentUser $(if($IsAdmin){'<span class="badge-low">Admin</span>'}else{'<span class="badge-medium">Non-Admin</span>'})</div>
+    </div>
+
+    <h2>1. 全網卡開放之監聽埠 (0.0.0.0 Listening)</h2>
+    $(if ($ListeningExposed.Count -gt 0) {
+        "<table><thead><tr><th>埠號</th><th>綁定地址</th><th>進程與 PID</th><th>服務推測</th><th>風險</th><th>說明</th><th>程式路徑</th></tr></thead><tbody>$listeningHtmlRows</tbody></table>"
+    } else {
+        "<div class='empty-note'>✔ 未發現高危全網卡開放監聽埠。</div>"
+    })
+
+    <h2>2. 遠端桌面 / 穿透工具 / RAT 偵測</h2>
+    $(if ($DetectedRemoteTools.Count -gt 0) {
+        "<table><thead><tr><th>進程名稱</th><th>PID</th><th>命中特徵</th><th>開發公司</th><th>路徑</th></tr></thead><tbody>$remoteHtmlRows</tbody></table>"
+    } else {
+        "<div class='empty-note'>✔ 未發現常見第三方遠端控制或內網穿透軟體。</div>"
+    })
+
+    <h2>3. 異常執行路徑與進程偽裝檢查</h2>
+    $(if ($DetectedPathAnomalies.Count -gt 0) {
+        "<table><thead><tr><th>異常類別</th><th>進程名稱</th><th>特徵細節</th><th>實體路徑</th></tr></thead><tbody>$anomalyHtmlRows</tbody></table>"
+    } else {
+        "<div class='empty-note'>✔ 未檢測到可疑臨時路徑執行或微軟系統進程名稱偽裝。</div>"
+    })
+
+    <h2>4. 累計 CPU 時間消耗前 10 大進程</h2>
+    <table><thead><tr><th>PID</th><th>進程名稱</th><th>累計 CPU 時間</th><th>記憶體佔用</th><th>程式路徑</th></tr></thead><tbody>$topCpuHtmlRows</tbody></table>
+
+    <h2>5. 活躍對外公網連線 (前 30 筆)</h2>
+    $(if ($WanConnections.Count -gt 0) {
+        "<table><thead><tr><th>本地端點</th><th>遠端公網 IP 與埠</th><th>進程名稱</th><th>程式路徑</th></tr></thead><tbody>$wanConnHtmlRows</tbody></table>"
+    } else {
+        "<div class='empty-note'>當前無活躍之外部公網連線。</div>"
+    })
+</div>
+</body>
+</html>
+"@
+
+    $HtmlContent | Out-File -FilePath $HtmlPath -Encoding utf8
+    Write-Host "`n[+] HTML 鑑識報告已產生：" -ForegroundColor Green
+    Write-Host "    $HtmlPath" -ForegroundColor White
+}
+
+Write-Host "`n鑑識掃描完成！" -ForegroundColor Cyan
+
+
