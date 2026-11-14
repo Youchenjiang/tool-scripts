@@ -26,14 +26,14 @@
 # 後端 API 服務 (Node / Express / FastAPI) + 啟用全部模組
 .\init-project.ps1 -Archetype backend-api -AllFeatures -TargetDir "C:\path\to\ApiServer" -ProjectName "ApiServer"
 
-# 桌面端 (Windows / C# / .NET / WinUI)
-.\init-project.ps1 -Archetype desktop-app -TargetDir "C:\path\to\NewApp" -ProjectName "NewApp"
+# 桌面端 (Windows / C# / .NET / WinUI) + 啟用 MSIX 打包與架構拓撲守護
+.\init-project.ps1 -Archetype desktop-app -Features msix-packaging,architecture-guard,git-worktree -TargetDir "C:\path\to\NewApp" -ProjectName "NewApp"
 
 # AI 研究 / 資安實驗室
 .\init-project.ps1 -Archetype sec-research -TargetDir "C:\path\to\Research" -ProjectName "Research"
 
-# 極簡小工具 / 單檔腳本 (無額外擴充模組)
-.\init-project.ps1 -Archetype minimal -NoFeatures -TargetDir "C:\path\to\Tool" -ProjectName "Tool"
+# 極簡小工具 / 單檔腳本 (無額外擴充模組、設定免版本管理)
+.\init-project.ps1 -Archetype minimal -NoRelease -NoFeatures -TargetDir "C:\path\to\Tool" -ProjectName "Tool"
 ```
 *(向後相容：亦可繼續使用 `-Preset` 參數傳入舊有名稱如 `web`、`desktop`、`research`。)*
 
@@ -64,6 +64,9 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 
 | Feature | 模組名稱 | 功用與配置內容 |
 | :--- | :--- | :--- |
+| **`git-worktree`** | Git Worktree 並行工作流 | 支援獨立 Worktree 目錄並行開發（`../<repo>-pr-<branch>`），避免依賴快取污染。清理時具備 `ancestry`、`squash` patch、`rebase` cherry 3 重密碼學等價證明合併驗證門禁，嚴防未合併代碼遺失。 |
+| **`architecture-guard`** | 逐層架構與代碼指標 | 部署 `layered-architecture.md` 規則、`tools/file_lines.py`（單檔 500 行上限門禁）與 `tools/architecture_graph.py`（Python/TS/C# AST 相依拓撲、循環依賴檢測、孤兒死碼掃描與 Mermaid 輸出）。 |
+| **`msix-packaging`** | Windows MSIX 桌面打包簽章套件 | 部署 `tools/create_dev_cert.ps1`（自簽 Code Signing 憑證生成與本機 Trusted People 一鍵信任）與 `tools/verify_msix_signature.ps1`（MSIX Authenticode 簽章與發行者 Publisher CN 一致性校驗門禁）。 |
 | **`strict-linting`** | 嚴格代碼規範 | 部署 `eslint.config.mjs`，內建 TypeScript 嚴格規則、SonarCloud S3358 巢狀三元運算式防禦 (`no-nested-ternary`)、變數命名長度規範 (`id-length`)、物件非空斷言防禦 (`no-non-null-assertion`)。 |
 | **`bot-pr-exempt`** | 自動化 PR 免 body 契約 | `dependabot[bot]`、`github-actions[bot]` 等 Bot 開的 PR 跳過 PR body 章節與 External provider 勾選檢查；人手開的 PR 仍完整檢查。未啟用時所有 PR 一律受檢查。 |
 | **`direct-push`** | 免 PR 主幹原子推送 | 適用於無需開 PR 的腳本庫、筆記庫或工具庫。自動切換 Agent Rules 為主幹推送規範 (`direct-trunk.md`)，並設定 `git config repo.directPush true` 允許直推 `main`，Policy CI 同步支援 push 事件。 |
@@ -71,7 +74,23 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 | **`sec-enterprise`** | 企業級資安平台對接 | 部署完整 Post-Deploy 與排程安全驗證工作流（Dependency-Track, DefectDojo, Faraday, Wazuh, Nuclei, post-merge-security）。適合企業正式環境使用。 |
 | **`conda-env`** | Conda/Mamba 環境管理 | 自動生成現代化 `environment.yml`（支援 Python 3.14、PyTorch CUDA、FastAPI、工具模板），注入 `tools/env_tool.py`（提供硬體/GPU/Mamba 診斷、一鍵建立與髒 YAML 清洗）與 `tests/test_env_tool.py`。 |
 
-### 3. 自動化 Git Hook 生命週期 (npm prepare)
+### 3. 發佈與版本生命週期策略 (Release & CD Lifecycle)
+
+開案時可透過 `-Release <strategy>` 或互動選單選擇版本管理策略（或使用 `-NoRelease` 完全關閉版本管理）：
+
+| 策略名稱 | 版本控制主檔 | 同步檔案 (`syncFiles`) | 適用情境 |
+| :--- | :--- | :--- | :--- |
+| **`npm-version`** | `package.json` | `package-lock.json` | Node / TypeScript / 前端 Web 專案 |
+| **`dotnet-store`** | `Directory.Build.props` | `Package.appxmanifest` | .NET / C# 桌面端或 Windows Store 應用（保持 4 碼對齊） |
+| **`python-version`** | `pyproject.toml` | 無 | Python 函式庫、CLI 套件、FastAPI 服務 |
+| **`github-tag`** | `VERSION` | 無 | 單元腳本庫、Go/Rust 輕量工具、容器化服務 |
+| **`none`** | 無 (不建立版號檔案) | 無 | 內部快速原型、免版本管理工具庫 (`-NoRelease`) |
+
+配套治理工具：
+- **`tools/bump_version.py`**：依據 `tools/project.json` 自動進行 `major`/`minor`/`patch`/`revision` 升版，同步關聯檔案並自動在 `CHANGELOG.md` 注入新版本日誌骨架。
+- **`tools/release_checker.py`**：Tag 推播前的嚴格門禁，驗證 Tag 版本與各檔案版本號及 CHANGELOG 是否 100% 吻合。
+
+### 4. 自動化 Git Hook 生命週期 (npm prepare)
 - 當目標專案包含 `package.json` 時，腳手架會自動於 `scripts` 中注入 `"prepare": "node scripts/install-hooks.mjs"`。
 - 同步產出 `scripts/install-hooks.mjs` 與版本庫納管的 `scripts/hooks/commit-msg`。
 - 任何團隊成員或 AI 代理人執行 `npm install` 時，本機 `.git/hooks/commit-msg` 便會自動部署就緒，免除手動安裝步驟。
@@ -252,21 +271,49 @@ jobs:
 
 ---
 
-## 🛠️ PR 全生命週期治理工具鏈 (PR Lifecycle Toolchain)
+## 🛠️ PR 全生命週期與工程治理工具鏈 (Engineering & Governance Toolchain)
 
-腳手架提供開箱即用的 PR 輔助與全生命週期守衛工具（位於目標專案的 `tools/`）：
+腳手架提供開箱即用、通過 SonarCloud 與單元測試（225 項測試）驗證的跨平台治理工具庫（位於目標專案的 `tools/`）：
 
-1. **`pr_tool.py`（一站式 PR 操作中樞）**：
-   - `python tools/pr_tool.py prepare`：飛行前檢查（分支命名合規性、工作區乾淨度、Commit 格式）。
-   - `python tools/pr_tool.py push`：受控推播，嚴格執行 `pre-push` 本地完整門禁。
-   - `python tools/pr_tool.py create`：依據模板安全建立 PR，防止 Windows 引號與字串截斷。
-   - `python tools/pr_tool.py verify`：一鍵聚合查詢 CI 狀態、SonarCloud 品質指標與未解決 Review 討論串。
-   - `python tools/pr_tool.py diagnose`：自動提取失敗 CI 或靜態分析的關鍵日誌。
-   - `python tools/pr_tool.py resolve <ID>`：經授權透過 GraphQL 一鍵解決已修復之 Review 討論串。
-2. **`pr_helper.py`（PR 內容智慧萃取）**：
-   - `python tools/pr_helper.py generate`：自動解析當前分支相對於 `origin/main` 的所有 Commits，萃取並草擬出標準 Markdown PR 內容。
-3. **`branch_policy.py`（分支命名守衛）**：
-   - 強制分支前綴規範（`feat/`, `fix/`, `refactor/` 等）、後綴 2～3 個單字、總長度嚴格 $\le 25$ 字元。
+### 1. PR 流程與分支治理
+- **`pr_tool.py`（一站式 PR 操作中樞）**：
+  - `python tools/pr_tool.py prepare`：飛行前檢查（分支命名合規性、工作區乾淨度、Commit 格式）。
+  - `python tools/pr_tool.py push`：受控推播，嚴格執行 `pre-push` 本地完整門禁。
+  - `python tools/pr_tool.py create`：依據模板安全建立 PR，防止 Windows 引號與字串截斷。
+  - `python tools/pr_tool.py verify`：一鍵聚合查詢 CI 狀態、SonarCloud 品質指標與未解決 Review 討論串。
+  - `python tools/pr_tool.py diagnose`：自動提取失敗 CI 或靜態分析的關鍵日誌。
+  - `python tools/pr_tool.py threads <PR>`：透過 GitHub GraphQL 查詢所有未解決之審核討論串。
+  - `python tools/pr_tool.py resolve <PR> --thread-id <ID> | --all`：經授權透過 GraphQL 一鍵解決 Review 討論串。
+- **`branch_policy.py`（分支命名守衛）**：
+  - 強制分支前綴規範（`feat/`, `fix/`, `refactor/` 等）、後綴 2～3 個單字、總長度嚴格 $\le 25$ 字元。
+- **`pr_helper.py`（PR 內容智慧萃取）**：
+  - `python tools/pr_helper.py generate`：自動解析分支相對於 `origin/main` 的 Commits，萃取標準 Markdown PR 內容。
+- **`worktree_tool.py`（Git Worktree 隔離並行開發）**：
+  - `python tools/worktree_tool.py list`：列出活躍工作樹。
+  - `python tools/worktree_tool.py start <branch>`：建立父目錄獨立工作樹（`../<repo>-pr-<branch>`），避免跨分支快取污染。
+  - `python tools/worktree_tool.py cleanup <PR>`：清理已合併工作樹，內建 `ancestry`、`squash` patch、`rebase` cherry 3 重密碼學等價證明合併驗證，確保未合併代碼絕不被刪除。
+
+### 2. 版本管理與發佈門禁
+- **`bump_version.py`（多雛型通用自動升版）**：
+  - `python tools/bump_version.py [patch|minor|major|revision]`：依 `tools/project.json` 同步版號檔案並自動注入 `CHANGELOG.md` 區塊。支援 `--dry-run` 與 `--to <version>`。
+- **`release_checker.py`（Tag 發佈門禁守衛）**：
+  - `python tools/release_checker.py --version <version>`：驗證 Tag 版本與各版號檔案、CHANGELOG 是否完全一致。
+
+### 3. 代碼品質與存儲庫衛生門禁
+- **`repo_hygiene.py`（存儲庫衛生與目錄學測試）**：
+  - `python tools/repo_hygiene.py [--check]`：驗證根目錄白名單、禁止暫存檔案 (`*.tmp`, `*.log`, `__pycache__`) 與敏感憑證 (`.env`, `*.pem`) 進入 Git，確保測試檔案與文檔目錄學合規。
+- **`file_lines.py`（代碼行數統計與單檔上限門禁）**：
+  - `python tools/file_lines.py [--check --max-lines 500]`：跨語言統計源代碼行數，阻斷超長「神仙檔 (God File)」，支援輸出 `file_lines.json`。
+- **`architecture_graph.py`（真實相依拓撲分析器）**：
+  - `python tools/architecture_graph.py [--format mermaid|html|json] [--check]`：透過 AST 解析真實相依關係，自動偵測循環依賴環路與孤兒死碼，輸出 Mermaid 架構圖。
+- **`lint_commits.py`（Commit 規範與防搭便車稽核）**：
+  - `python tools/lint_commits.py --base origin/main [--strict]`：驗證 Conventional Commits 格式與職責分離。
+- **`build_runner.py`（跨語言統一建置調度器）**：
+  - `python tools/build_runner.py [lint|test|build|all]`：依據 `tools/project.json` 統一調度 npm、dotnet、python 等建置命令。
+
+### 4. Windows 桌面應用與 MSIX 封裝套件 (`msix-packaging`)
+- **`create_dev_cert.ps1`**：建立本機 Code Signing 自簽憑證，支援 `-Install` 一鍵信任至 `CurrentUser\TrustedPeople`。
+- **`verify_msix_signature.ps1`**：驗證 `.msix` Authenticode 簽章與 Publisher CN 一致性。
 
 ---
 
