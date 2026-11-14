@@ -1,6 +1,8 @@
 """Conservative final PR checks reject missing or unresolved findings."""
+import os
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 for _dir in ("tools", "scripts"):
@@ -193,6 +195,24 @@ class VerificationTests(unittest.TestCase):
         result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
         self.assertTrue(result["ready"])
         self.assertEqual([], result["top_level_findings"])
+
+    def test_new_code_duplication_ceiling_is_opt_in(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        quality = {"metrics": {"new_duplicated_lines_density": "0.2"},
+                   "quality_gate": {"status": "OK", "conditions": []}}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0},
+                  "sonar_quality": quality}
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("PR_MAX_NEW_DUPLICATION", None)
+            self.assertTrue(pr_verification.summarize(pr, report, remote_sha="a" * 40)["ready"])
+        with patch.dict(os.environ, {"PR_MAX_NEW_DUPLICATION": "1.0"}):
+            self.assertTrue(pr_verification.summarize(pr, report, remote_sha="a" * 40)["ready"])
+        with patch.dict(os.environ, {"PR_MAX_NEW_DUPLICATION": "0.0"}):
+            result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertFalse(result["ready"])
+        self.assertTrue(any("must be <= 0.0%" in problem for problem in result["problems"]))
 
 if __name__ == "__main__":
     unittest.main()

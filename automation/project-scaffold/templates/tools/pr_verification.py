@@ -1,5 +1,6 @@
 """Conservative read-only final PR gate across GitHub and SonarQube."""
 
+import os
 import re
 
 PASS = {"SUCCESS", "PASS", "PASSED"}
@@ -164,6 +165,36 @@ def _check_details(checks, required):
     return details
 
 
+def _max_new_duplication():
+    """Optional ceiling; unset keeps the historical report-only behavior."""
+    raw = os.environ.get("PR_MAX_NEW_DUPLICATION")
+    if raw is None or not raw.strip():
+        return None
+    try:
+        return float(raw)
+    except ValueError as exc:
+        raise RuntimeError("PR_MAX_NEW_DUPLICATION must be numeric") from exc
+
+
+def _sonar_quality_problems(quality):
+    problems = []
+    if quality is None:
+        return problems
+    gate = quality.get("quality_gate") or {}
+    if gate.get("status") != "OK":
+        problems.append("SonarQube quality gate not passed")
+    ceiling = _max_new_duplication()
+    raw = (quality.get("metrics") or {}).get("new_duplicated_lines_density")
+    if ceiling is not None and raw is not None:
+        try:
+            if float(raw) > ceiling:
+                problems.append(
+                    f"SonarQube new code duplication is {raw}% (must be <= {ceiling}%)")
+        except (TypeError, ValueError):
+            problems.append("SonarQube new code duplication is unreadable")
+    return problems
+
+
 def summarize(pr, report, *, remote_sha):
     """An absent or incomplete check is not a pass. Skip is reported separately."""
     head = pr.get("headRefOid")
@@ -181,8 +212,7 @@ def summarize(pr, report, *, remote_sha):
     problems = (_pr_problems(pr, remote_sha) +
                 _finding_problems(report, groups, required, pr_body))
     quality = report.get("sonar_quality")
-    if quality is not None and quality["quality_gate"]["status"] != "OK":
-        problems.append("SonarQube quality gate not passed")
+    problems.extend(_sonar_quality_problems(quality))
     top_findings = extract_top_review_findings(report.get("reviews", []), pr_body)
     unresolved_details = [
         {"id": t["id"], "path": t["path"], "line": t["line"], "outdated": t["outdated"]}
