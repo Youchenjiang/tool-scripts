@@ -104,3 +104,62 @@ function Get-RegistryAndFolderStartupItems {
 
     return $results
 }
+
+# -------------------------------------------------------------
+# 類別二：系統服務 (System Services)
+# -------------------------------------------------------------
+function Get-SystemServicesStartup {
+    $results = @()
+    $services = Get-CimInstance Win32_Service
+
+    foreach ($svc in $services) {
+        $status = switch ($svc.StartMode) {
+            'Auto'     { "已啟用" }
+            'Disabled' { "已禁用" }
+            'Manual'   { "手動啟動" }
+            default    { $svc.StartMode }
+        }
+
+        $results += [PSCustomObject]@{
+            Category    = "系統服務"
+            SubLocation = "Win32_Service"
+            Name        = $svc.Name
+            DisplayName = $svc.DisplayName
+            Status      = $status
+            State       = $svc.State
+            Command     = $svc.PathName
+            Hive        = "Service"
+            RegPath     = "HKLM:\SYSTEM\CurrentControlSet\Services\$($svc.Name)"
+        }
+    }
+
+    return $results
+}
+
+# -------------------------------------------------------------
+# 類別三：計劃任務 (Scheduled Tasks)
+# -------------------------------------------------------------
+function Get-ScheduledTasksStartup {
+    $results = @()
+    $tasks = Get-ScheduledTask
+
+    foreach ($t in $tasks) {
+        $actionStr = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)".Trim() }) -join " ; "
+        $status = if ($t.State -eq 'Disabled') { "已禁用" } else { "已啟用" }
+
+        $results += [PSCustomObject]@{
+            Category    = "計劃任務"
+            SubLocation = $t.TaskPath
+            Name        = $t.TaskName
+            DisplayName = $t.TaskName
+            Status      = $status
+            State       = "$($t.State)"
+            Command     = $actionStr
+            Hive        = "Task"
+            RegPath     = $t.TaskPath
+        }
+    }
+
+    return $results
+}
+
