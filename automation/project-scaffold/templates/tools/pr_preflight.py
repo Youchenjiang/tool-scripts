@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from pr_body_contract import (
     PLACEHOLDER,
-    PROVIDER_ACKNOWLEDGEMENT,
+    PROVIDER_LINE,
     REQUIRED_SECTIONS,
     REVIEW_CHECKLIST,
 )
@@ -23,7 +23,6 @@ except Exception:
     ALLOWED_SCOPES = "cli|core|shell|msix|docs|ci|deps|store|agent|tools|packaging|fluent|build|release"
 SUBJECT = re.compile(rf"^(?:{ALLOWED_TYPES})(?:\((?:{ALLOWED_SCOPES})\))?: [a-z0-9].*$")
 BODY_NUMBER = re.compile(r"1[.)][ \t]+")
-CHECKLIST_SECTION = REVIEW_CHECKLIST
 VAGUE = {"update", "misc", "stuff", "changes", "fix bug", "bug fix"}
 GIT_TIMEOUT = 30
 
@@ -74,10 +73,10 @@ def _split_pr_sections(body):
 
 
 def _provider_acknowledgement_errors(lines):
-    match = PROVIDER_ACKNOWLEDGEMENT.search(lines)
-    if not match or PLACEHOLDER.search(match.group(1)):
-        return ["completed External provider acknowledgement required"]
-    return []
+    for match in PROVIDER_LINE.finditer(lines):
+        if match.group(1).lower() == "x" and not PLACEHOLDER.search(match.group(2)):
+            return []
+    return ["completed External provider acknowledgement required"]
 
 
 def _live_metadata_errors(metadata):
@@ -98,9 +97,9 @@ def validate_pr_body(body, metadata=None):
             errors.append(heading)
             continue
         content = "\n".join(sections[heading]).strip()
-        if not content or (heading != CHECKLIST_SECTION and PLACEHOLDER.search(content)):
+        if not content or (heading != REVIEW_CHECKLIST and PLACEHOLDER.search(content)):
             errors.append(f"empty or placeholder {heading}")
-    errors.extend(_provider_acknowledgement_errors("\n".join(sections.get(CHECKLIST_SECTION, []))))
+    errors.extend(_provider_acknowledgement_errors("\n".join(sections.get(REVIEW_CHECKLIST, []))))
     if metadata is not None:
         errors.extend(_live_metadata_errors(metadata))
     return errors

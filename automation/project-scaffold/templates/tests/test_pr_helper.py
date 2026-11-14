@@ -15,9 +15,6 @@ if TOOLS_DIR not in sys.path:
 import pr_body_contract
 import pr_helper
 
-PROVIDER = "- [ ] **External provider**: no new named provider is introduced."
-
-
 class TestSanitizeTitle(unittest.TestCase):
     """Test validation of PR titles according to Conventional Commits and policy limits."""
 
@@ -81,7 +78,7 @@ Optimize MSIX package footprint by trimming and assembly whitelisting.
 - [x] All 2 commits strictly follow Conventional Commits
 
 ## Review Checklist
-{PROVIDER}
+{pr_body_contract.PROVIDER_ITEM}
 """
         errors = pr_helper.lint_pr_content(valid_body)
         self.assertEqual(errors, [])
@@ -94,7 +91,7 @@ Optimize MSIX package footprint by trimming and assembly whitelisting.
 - [x] passed
 
 ## Review Checklist
-{PROVIDER}
+{pr_body_contract.PROVIDER_ITEM}
 """
         errors = pr_helper.lint_pr_content(missing_summary)
         self.assertTrue(any("Missing mandatory section: '## Summary'" in err for err in errors))
@@ -106,7 +103,7 @@ A summary here.
 - [x] passed
 
 ## Review Checklist
-{PROVIDER}
+{pr_body_contract.PROVIDER_ITEM}
 """
         errors = pr_helper.lint_pr_content(missing_changes)
         self.assertTrue(any("Missing mandatory section: '## Changes'" in err for err in errors))
@@ -158,7 +155,7 @@ A summary here.
 - [x] passed
 
 ## Review Checklist
-{PROVIDER}
+{pr_body_contract.PROVIDER_ITEM}
 """
         errors = pr_helper.lint_pr_content(empty_summary)
         self.assertTrue(any("Section '## Summary' cannot be empty" in err for err in errors))
@@ -173,7 +170,7 @@ Summary text.
 - [x] passed
 
 ## Review Checklist
-{PROVIDER}
+{pr_body_contract.PROVIDER_ITEM}
 """
         errors = pr_helper.lint_pr_content(empty_changes)
         self.assertTrue(any("Section '## Changes' cannot be empty" in err for err in errors))
@@ -188,7 +185,7 @@ Summary text.
 ## Validation
 
 ## Review Checklist
-{PROVIDER}
+{pr_body_contract.PROVIDER_ITEM}
 """
         errors = pr_helper.lint_pr_content(empty_validation)
         self.assertTrue(any("Section '## Validation' cannot be empty" in err for err in errors))
@@ -279,11 +276,8 @@ class TestPullRequestTemplate(unittest.TestCase):
         with open(path, "r", encoding="utf-8") as handle:
             template = handle.read()
         headings = {line.strip() for line in template.splitlines() if line.startswith("## ")}
-        for section in pr_body_contract.REQUIRED_SECTIONS:
-            self.assertIn(section, headings)
+        self.assertEqual(headings, set(pr_body_contract.REQUIRED_SECTIONS))
         self.assertIn(pr_body_contract.PROVIDER_ITEM, template)
-        self.assertNotIn("## Key Changes", headings)
-        self.assertNotIn("## Verification", headings)
 
 
 class TestSecurityGate(unittest.TestCase):

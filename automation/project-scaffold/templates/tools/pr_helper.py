@@ -38,10 +38,6 @@ BRANCH_REGEX = re.compile(
 SAFE_IDENTIFIER_REGEX = re.compile(r"^[a-zA-Z0-9_./-]+$")
 LABEL_REGEX = re.compile(r"^[a-zA-Z0-9_ -]+$")
 
-SECTION_SUMMARY = pr_body_contract.SUMMARY
-SECTION_CHANGES = pr_body_contract.CHANGES
-SECTION_VALIDATION = pr_body_contract.VALIDATION
-CHECKLIST_SECTION = pr_body_contract.REVIEW_CHECKLIST
 DEFAULT_BASE_REF = "origin/main"
 
 
@@ -162,31 +158,20 @@ def build_pr_body(commits, custom_summary=None, custom_changes=None):
         f"This pull request incorporates {len(commits)} atomic commit(s) delivering updates "
         "aligned with repository engineering standards and conventional governance rules."
     )
-
-    if custom_changes and custom_changes.strip():
-        changes_body = custom_changes.strip()
-    else:
-        changes_body = _format_categorized_changes(commits)
-
+    changes_body = (custom_changes.strip() if custom_changes and custom_changes.strip()
+                    else _format_categorized_changes(commits))
     validation_items = [
         "- [x] Conventional commits audit passes: `python tools/lint_commits.py`",
         f"- [x] All {len(commits)} commits strictly follow Conventional Commits (< 72 chars, whitelisted scopes, no trailing dot)",
         "- [x] No regression introduced",
     ]
-
-    body = f"""{SECTION_SUMMARY}
-{summary_text}
-
-{SECTION_CHANGES}
-{changes_body}
-
-{SECTION_VALIDATION}
-{chr(10).join(validation_items)}
-
-{CHECKLIST_SECTION}
-{pr_body_contract.PROVIDER_ITEM}
-"""
-    return body.strip() + "\n"
+    sections = (
+        (pr_body_contract.SUMMARY, summary_text),
+        (pr_body_contract.CHANGES, changes_body),
+        (pr_body_contract.VALIDATION, "\n".join(validation_items)),
+        (pr_body_contract.REVIEW_CHECKLIST, pr_body_contract.PROVIDER_ITEM),
+    )
+    return "\n\n".join(f"{heading}\n{content}" for heading, content in sections) + "\n"
 
 
 def lint_pr_content(body_text):
@@ -194,13 +179,9 @@ def lint_pr_content(body_text):
     for section in pr_body_contract.REQUIRED_SECTIONS:
         if section not in body_text:
             errors.append(f"Missing mandatory section: '{section}'")
-            continue
-        content = body_text.split(section, 1)[1].split("##", 1)[0].strip()
-        if not content:
+        elif not body_text.split(section, 1)[1].split("##", 1)[0].strip():
             errors.append(f"Section '{section}' cannot be empty.")
-
-    if not any(pr_body_contract.PROVIDER_LINE_PATTERN.match(line.strip())
-               for line in body_text.splitlines()):
+    if not pr_body_contract.PROVIDER_LINE.search(body_text):
         errors.append("Missing required External provider acknowledgement line.")
     return errors
 
