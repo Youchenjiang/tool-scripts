@@ -129,7 +129,49 @@ foreach ($conn in ($AllTcp | Where-Object { $_.State -eq 'Established' })) {
     }
 }
 
+# 4. 資源鑑識：高 CPU 瞬時率與累計耗時排查
+Write-Host "[4/5] 採樣計算 CPU 瞬時使用率與累計資源佔用..." -ForegroundColor Cyan
+
+# 採樣 1.5 秒計算目前活動中佔用 CPU 的進程
+$sample1 = Get-Process | Select-Object Id, ProcessName, CPU, WorkingSet64
+Start-Sleep -Milliseconds 1500
+$sample2 = Get-Process | Select-Object Id, ProcessName, CPU, WorkingSet64
+
+$procDiff = foreach ($p2 in $sample2) {
+    $p1 = $sample1 | Where-Object { $_.Id -eq $p2.Id }
+    if ($p1 -and $p2.CPU -and $p1.CPU) {
+        $delta = ($p2.CPU - $p1.CPU) / 1.5 * 100 / [Environment]::ProcessorCount
+        if ($delta -gt 1.0) {
+            $pInfo = $ProcessMap[[int]$p2.Id]
+            [PSCustomObject]@{
+                PID            = $p2.Id
+                ProcessName    = $p2.ProcessName
+                InstantCpuPct  = [math]::Round($delta, 1)
+                TotalCpuSec    = [math]::Round($p2.CPU, 1)
+                MemoryMB       = [math]::Round($p2.WorkingSet64 / 1MB, 1)
+                Path           = if ($pInfo) { $pInfo.Path } else { "N/A" }
+            }
+        }
+    }
+}
+
+# 歷史累計 CPU 消耗最高 Top 10
+$TopCumulativeCpu = Get-Process | Where-Object { $_.CPU } | Sort-Object CPU -Descending | Select-Object -First 10 | ForEach-Object {
+    $pInfo = $ProcessMap[[int]$_.Id]
+    [PSCustomObject]@{
+        PID         = $_.Id
+        ProcessName = $_.ProcessName
+        TotalCpuSec = [math]::Round($_.CPU, 1)
+        MemoryMB    = [math]::Round($_.WorkingSet64 / 1MB, 1)
+        Path        = if ($pInfo) { $pInfo.Path } else { "N/A" }
+    }
+}
+
 Write-Host "`n[!] 全網卡開放之監聽埠 (0.0.0.0 Listening, 共 $($ListeningExposed.Count) 個):" -ForegroundColor Yellow
 if ($ListeningExposed) {
     $ListeningExposed | Sort-Object Risk -Descending | Format-Table Port, Address, ProcessName, ServiceTag, Risk, Note -AutoSize
 }
+
+Write-Host "`n[!] 當前累計 CPU 佔用最高 Top 5 進程:" -ForegroundColor Yellow
+$TopCumulativeCpu | Select-Object -First 5 | Format-Table PID, ProcessName, TotalCpuSec, MemoryMB, Path -AutoSize
+
