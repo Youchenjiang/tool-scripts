@@ -1,3 +1,8 @@
 opencv-python
 numpy
 pytesseract
+pandas
+openpyxl
+
+# 選用：深度學習 OCR 增強 (若需要高精度字體辨識可安裝)
+# easyocr
