@@ -135,7 +135,7 @@ Script-List/
 - **本地 HTTPS 自簽憑證測試與生成助手** ([security/local-https-cert-helper/](security/local-https-cert-helper/)) - 一鍵生成本地開發用 HTTPS 憑證 (Root CA & Server Cert) 且提供測試伺服器的實用工具。 → [詳細說明](security/local-https-cert-helper/README.zh-TW.md)
 - **網域資產與 SSL/TLS 憑證自動化資安稽核工具** ([security/domain-cert-auditor/](security/domain-cert-auditor/)) - 外部攻擊面管理 (EASM) 與自動化資安稽核工具，被動列舉子網域、即時檢測過期或即將到期憑證、自簽憑證及明文 HTTP 未轉址風險，並導出 Markdown 審計報表。 → [詳細說明](security/domain-cert-auditor/README.zh-TW.md)
 - **CyLab 題目匯出與刷題進度產生器** ([security/cylab-challenge-exporter/](security/cylab-challenge-exporter/)) - 導出 CyLab Security Academy (picoCTF) 全站題目並生成進度勾選清單。 → [詳細說明](security/cylab-challenge-exporter/README.zh-TW.md)
-- **Windows 本機端點快速應急鑑識工具** ([security/windows-endpoint-triage/](security/windows-endpoint-triage/)) - 專為 DFIR 與威脅獵捕設計之 Windows 原生 PowerShell 應急鑑識工具，快速排查全網卡暴露通訊埠、活躍公網連線、高 CPU 異常進程、RAT 穿透軟體與系統進程偽裝，自動產出獨立 HTML 鑑識報告。 → [詳細說明](security/windows-endpoint-triage/README.zh-TW.md)
+- **Windows 本機端點快速應急鑑識工具** ([security/windows-endpoint-triage/](security/windows-endpoint-triage/)) - 專為 DFIR 與威脅獵捕設計之 Windows 原生 PowerShell 應急鑑識工具組，涵蓋即時鑑識、常駐守護自動快照、事後歷史數位跡證倒查與三大類開機自啟項目（註冊表/服務/排程）原生管理，自動產出獨立 HTML 鑑識報告。 → [詳細說明](security/windows-endpoint-triage/README.zh-TW.md)
 
 ### 📝 文字轉換與編碼
 - **Markdown 工具箱 (Markdown Toolkit)** ([text/markdown-toolkit/](text/markdown-toolkit/)) - 輕量、零依賴的 Markdown 綜合處理工具箱（TXT/HTML 轉檔、智慧斷句排版、代碼區塊提取、目錄生成）。 → [詳細說明](text/markdown-toolkit/README.zh-TW.md)
