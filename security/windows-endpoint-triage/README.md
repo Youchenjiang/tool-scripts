@@ -96,4 +96,37 @@ powershell -ExecutionPolicy Bypass -File .\Get-HistoricalArtifacts.ps1 -EventLoo
   4. **DNS Client Resolution Cache** (Resolved domains post-disconnection)
   5. **Persistence Scheduled Tasks** (Tasks running from Temp, Public, or obfuscated scripts)
 
+---
+
+### D. Native Autostart Management Across 3 Pillars (`Manage-StartupItems.ps1`)
+
+Enables native auditing and state modification across all 3 autostart pillars without relying on third-party security software (e.g. Huorong):
+
+1. **Startup Items**: Audits `HKCU\Run`, `HKLM\Run` (32-bit & 64-bit), and Startup folders. Manipulates native Windows `StartupApproved\Run` binary flags (`0x02` Enabled, `0x03` Disabled) safely without destructive registry key deletion.
+2. **System Services**: Audits Win32 service start types (`Automatic`, `Manual`, `Disabled`) and manages runtime states.
+3. **Scheduled Tasks**: Audits and manages task scheduler items configured for boot or logon triggers.
+
+```powershell
+# 1. Audit all autostart items across all 3 categories in formatted tables
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1
+
+# 2. Filter by category or search by keyword
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Startup -Search "GameViewer"
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Service -Search "KDService"
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Task -Search "ACC"
+
+# 3. Modify item state (Enable / Disable)
+# Disable a startup registry item (modifies StartupApproved without deleting run key)
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "GameViewer" -TargetCategory Startup
+
+# Disable a Windows service (sets startup type to Disabled and stops service)
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "KDService" -TargetCategory Service
+
+# Disable a scheduled task
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "ACC" -TargetCategory Task
+
+# Re-enable an item
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -EnableName "GameViewer" -TargetCategory Startup
+```
+
 

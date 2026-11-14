@@ -96,6 +96,39 @@ powershell -ExecutionPolicy Bypass -File .\Get-HistoricalArtifacts.ps1 -EventLoo
   4. **DNS Client 快取歷史**（即便連線中斷，仍記錄解析過之外部網域）
   5. **可疑排程任務持久化後門**（排查執行於 Temp/Public 或混淆指令之工作排程）
 
+---
+
+### D. 開機自啟三大類原生管理模式 (`Manage-StartupItems.ps1`)
+
+不依賴任何第三方防毒軟體（如火絨），自主完整掌握 Windows 底層三大類開機自啟管道，支援清單列出、搜尋與狀態修改切換（啟用/禁用）：
+
+1. **啟動項目 (Startup Items)**：深入解析註冊表 `HKCU\Run`、`HKLM\Run`、32/64 位元對應項與開機資料夾，並直接操作微軟原生 `StartupApproved\Run` 二進位標記（`0x02` 啟用 / `0x03` 禁用），無損原註冊表鍵值。
+2. **系統服務 (System Services)**：檢索與管理所有 Win32 服務之開機類型 (`Automatic`, `Manual`, `Disabled`) 與運行狀態。
+3. **計劃任務 (Scheduled Tasks)**：檢索與管理 Windows 工作排程器中註冊的開機或登入觸發排程。
+
+```powershell
+# 1. 檢視所有三大類開機自啟項目（分類表格呈現）
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1
+
+# 2. 依類別篩選或依關鍵字搜尋（例如查詢遠程工具或服務）
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Startup -Search "GameViewer"
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Service -Search "KDService"
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -Category Task -Search "ACC"
+
+# 3. 原生切換狀態（禁用 / 啟用）
+# 禁用啟動項目 (免刪除註冊表，原生標記為已禁用)
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "GameViewer" -TargetCategory Startup
+
+# 禁用系統服務 (設為 Disabled 並停止服務)
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "KDService" -TargetCategory Service
+
+# 禁用計劃任務
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -DisableName "ACC" -TargetCategory Task
+
+# 重新啟用指定項目
+powershell -ExecutionPolicy Bypass -File .\Manage-StartupItems.ps1 -EnableName "GameViewer" -TargetCategory Startup
+```
+
 
 
 ## 鑑識報告產出說明
