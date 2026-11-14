@@ -514,6 +514,17 @@ if ($SelectedArchetype.toolFiles) {
     }
   }
 
+  foreach ($featKey in $ActiveFeatures) {
+    $feat = $Config.features.$featKey
+    if ($feat -and $feat.toolFiles) {
+      foreach ($ftf in $feat.toolFiles) {
+        if (-not $toolsToDeploy.Contains($ftf)) {
+          $toolsToDeploy.Add($ftf)
+        }
+      }
+    }
+  }
+
   foreach ($tf in $toolsToDeploy) {
     $tfSrc = Join-Path $TemplatesDir "tools\$tf"
     $tfDst = Join-Path $ToolsDir $tf
