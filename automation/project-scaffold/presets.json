@@ -65,6 +65,8 @@
         "release_checker.py",
         "bump_version.py",
         "repo_hygiene.py",
+        "file_lines.py",
+        "architecture_graph.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -147,6 +149,8 @@
         "release_checker.py",
         "bump_version.py",
         "repo_hygiene.py",
+        "file_lines.py",
+        "architecture_graph.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -230,6 +234,8 @@
         "release_checker.py",
         "bump_version.py",
         "repo_hygiene.py",
+        "file_lines.py",
+        "architecture_graph.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -245,7 +251,9 @@
         "pr_tool.py"
       ],
       "recommendedFeatures": [
-        "chained-prs"
+        "chained-prs",
+        "msix-packaging",
+        "architecture-guard"
       ]
     },
     "sec-research": {
@@ -311,6 +319,8 @@
         "release_checker.py",
         "bump_version.py",
         "repo_hygiene.py",
+        "file_lines.py",
+        "architecture_graph.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -381,6 +391,8 @@
         "release_checker.py",
         "bump_version.py",
         "repo_hygiene.py",
+        "file_lines.py",
+        "architecture_graph.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -459,7 +471,9 @@
         "build_runner.py",
         "release_checker.py",
         "bump_version.py",
-        "repo_hygiene.py"
+        "repo_hygiene.py",
+        "file_lines.py",
+        "architecture_graph.py"
       ],
       "recommendedFeatures": [
         "direct-push"
@@ -521,6 +535,24 @@
       ],
       "toolFiles": [
         "worktree_tool.py"
+      ]
+    },
+    "architecture-guard": {
+      "name": "Layered Architecture & Code Metrics",
+      "description": "逐層相依拓撲分析、循環依賴檢測、單檔行數門禁與架構規範",
+      "agentRules": [
+        "layered-architecture.md"
+      ]
+    },
+    "msix-packaging": {
+      "name": "Windows MSIX Packaging & Code Signing Suite",
+      "description": "Windows 桌面應用程式自簽發行憑證生成、本機受信任安裝、以及 MSIX Authenticode 簽章與發行者對齊驗證門禁",
+      "agentRules": [
+        "store-release.md"
+      ],
+      "toolFiles": [
+        "create_dev_cert.ps1",
+        "verify_msix_signature.ps1"
       ]
     },
     "bot-pr-exempt": {
