@@ -51,6 +51,7 @@ if (-not (Test-Path $PresetsFile)) {
 }
 
 $Config = Get-Content $PresetsFile -Raw -Encoding UTF8 | ConvertFrom-Json
+$AvailableFeatures = @($Config.features.PSObject.Properties.Name)
 
 # Handle legacy aliases
 if ($Archetype -and $Config.legacyAliases.$Archetype) {
@@ -98,7 +99,8 @@ if ($NoFeatures) {
 } elseif ($AllFeatures) {
   $ActiveFeatures = @($Config.features.PSObject.Properties.Name)
 } elseif ($Features -and $Features.Count -gt 0) {
-  $ActiveFeatures = $Features
+  # From a shell, -Features a,b arrives as one string, so split it here.
+  $ActiveFeatures = $Features -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
 } else {
   # Default to recommended features for this archetype
   $recommended = @($SelectedArchetype.recommendedFeatures)
@@ -116,6 +118,14 @@ if ($NoFeatures) {
       $ActiveFeatures = $prompt -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
     }
   }
+}
+
+# Drop unknown feature names instead of letting them look enabled
+$UnknownFeatures = @($ActiveFeatures | Where-Object { $AvailableFeatures -notcontains $_ })
+if ($UnknownFeatures.Count -gt 0) {
+  Write-Host "  ! Unknown feature(s) ignored: $($UnknownFeatures -join ', ')" -ForegroundColor Yellow
+  Write-Host "    Available: $($AvailableFeatures -join ', ')" -ForegroundColor DarkGray
+  $ActiveFeatures = @($ActiveFeatures | Where-Object { $AvailableFeatures -contains $_ })
 }
 
 # Resolve Target Directory & Project Name
