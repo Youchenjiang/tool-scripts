@@ -1,8 +1,57 @@
 {
+  "defaults": {
+    "coreRules": [
+      "core.md",
+      "deliberation-gate.md",
+      "memory-protocol.md"
+    ],
+    "coreGitFiles": [
+      ".gitignore",
+      ".gitmessage.txt",
+      ".editorconfig",
+      "hooks/commit-msg",
+      "hooks/pre-push"
+    ],
+    "coreTools": [
+      "lint_commits.py",
+      "build_runner.py",
+      "release_checker.py",
+      "bump_version.py",
+      "repo_hygiene.py",
+      "file_lines.py",
+      "architecture_graph.py"
+    ],
+    "prTools": [
+      "pr_helper.py",
+      "branch_policy.py",
+      "process_guard.py",
+      "gh_guard.py",
+      "sonar_audit.py",
+      "pr_audit.py",
+      "pr_reports.py",
+      "pr_verification.py",
+      "pr_body_contract.py",
+      "pr_preflight.py",
+      "pr_publication.py",
+      "pr_creation.py",
+      "pr_tool.py"
+    ],
+    "coreGithubWorkflows": [
+      "ci.yml",
+      "policy.yml",
+      "trufflehog.yml",
+      "codeql.yml"
+    ],
+    "coreGithubFiles": [
+      "pull_request_template.md",
+      "SECURITY.md"
+    ]
+  },
   "archetypes": {
     "web-spa": {
       "name": "Web SPA / Frontend",
       "flow": "pr",
+      "ecosystem": "node",
       "build": {
         "lint": "npm run lint",
         "test": "npm test",
@@ -35,73 +84,32 @@
         "chore"
       ],
       "agentRules": [
-        "core.md",
-        "deliberation-gate.md",
-        "memory-protocol.md",
         "git-discipline.md",
         "web-guidelines.md"
       ],
-      "gitFiles": [
-        ".gitignore",
-        ".gitmessage.txt",
-        ".editorconfig",
-        "hooks/commit-msg",
-        "hooks/pre-push"
-      ],
-      "githubWorkflows": [
-        "ci.yml",
-        "policy.yml",
-        "trufflehog.yml",
-        "codeql.yml"
-      ],
       "githubFiles": [
-        "pull_request_template.md",
-        "dependabot.yml",
-        "SECURITY.md"
-      ],
-      "toolFiles": [
-        "lint_commits.py",
-        "build_runner.py",
-        "release_checker.py",
-        "bump_version.py",
-        "repo_hygiene.py",
-        "file_lines.py",
-        "architecture_graph.py",
-        "pr_helper.py",
-        "branch_policy.py",
-        "process_guard.py",
-        "gh_guard.py",
-        "sonar_audit.py",
-        "pr_audit.py",
-        "pr_reports.py",
-        "pr_verification.py",
-        "pr_body_contract.py",
-        "pr_preflight.py",
-        "pr_publication.py",
-        "pr_creation.py",
-        "pr_tool.py"
+        "dependabot.yml"
       ],
       "recommendedFeatures": [
         "strict-linting",
         "chained-prs"
       ]
     },
-    "backend-api": {
-      "name": "Backend / API Service",
+    "backend-python": {
+      "name": "Backend Python / FastAPI Service",
       "flow": "pr",
+      "ecosystem": "python",
       "build": {
-        "lint": "npm run lint",
-        "test": "npm test",
-        "build": "npm run build"
+        "lint": "python -m ruff check .",
+        "test": "python -m unittest discover -s tests -p \"test_*.py\"",
+        "build": "python -m build"
       },
       "release": {
-        "strategy": "npm-version",
-        "versionFile": "package.json",
-        "syncFiles": [
-          "package-lock.json"
-        ]
+        "strategy": "python-version",
+        "versionFile": "pyproject.toml",
+        "syncFiles": []
       },
-      "description": "Backend / API / Node.js / ASP.NET / FastAPI 服務端全端應用",
+      "description": "Python 服務端全端 / FastAPI / Django / Flask 現代化後端 (0% Node.js 污染)",
       "defaultScopes": [
         "core",
         "api",
@@ -119,60 +127,68 @@
         "chore"
       ],
       "agentRules": [
-        "core.md",
-        "deliberation-gate.md",
-        "memory-protocol.md",
         "git-discipline.md"
       ],
-      "gitFiles": [
-        ".gitignore",
-        ".gitmessage.txt",
-        ".editorconfig",
-        "hooks/commit-msg",
-        "hooks/pre-push"
-      ],
       "githubWorkflows": [
-        "ci.yml",
-        "policy.yml",
-        "trufflehog.yml",
-        "codeql.yml",
         "sbom.yml"
       ],
       "githubFiles": [
-        "pull_request_template.md",
-        "dependabot.yml",
-        "SECURITY.md"
-      ],
-      "toolFiles": [
-        "lint_commits.py",
-        "build_runner.py",
-        "release_checker.py",
-        "bump_version.py",
-        "repo_hygiene.py",
-        "file_lines.py",
-        "architecture_graph.py",
-        "pr_helper.py",
-        "branch_policy.py",
-        "process_guard.py",
-        "gh_guard.py",
-        "sonar_audit.py",
-        "pr_audit.py",
-        "pr_reports.py",
-        "pr_verification.py",
-        "pr_body_contract.py",
-        "pr_preflight.py",
-        "pr_publication.py",
-        "pr_creation.py",
-        "pr_tool.py"
+        "dependabot.yml"
       ],
       "recommendedFeatures": [
-        "strict-linting",
         "conda-env"
+      ]
+    },
+    "backend-node": {
+      "name": "Backend Node.js / Express / Nest Service",
+      "flow": "pr",
+      "ecosystem": "node",
+      "build": {
+        "lint": "npm run lint",
+        "test": "npm test",
+        "build": "npm run build"
+      },
+      "release": {
+        "strategy": "npm-version",
+        "versionFile": "package.json",
+        "syncFiles": [
+          "package-lock.json"
+        ]
+      },
+      "description": "Node.js / TypeScript / Express / NestJS 服務端全端應用",
+      "defaultScopes": [
+        "core",
+        "api",
+        "auth",
+        "db",
+        "service",
+        "middleware",
+        "config",
+        "test",
+        "deps",
+        "docs",
+        "ci",
+        "setup",
+        "agent",
+        "chore"
+      ],
+      "agentRules": [
+        "git-discipline.md"
+      ],
+      "githubWorkflows": [
+        "sbom.yml"
+      ],
+      "githubFiles": [
+        "dependabot.yml"
+      ],
+      "recommendedFeatures": [
+        "strict-linting"
       ]
     },
     "desktop-app": {
       "name": "Desktop Application",
       "flow": "pr",
+      "ecosystem": "dotnet",
       "build": {
         "lint": "dotnet format --verify-no-changes",
         "test": "dotnet test",
@@ -202,53 +218,15 @@
         "chore"
       ],
       "agentRules": [
-        "core.md",
-        "deliberation-gate.md",
-        "memory-protocol.md",
         "git-discipline.md",
         "dotnet-hygiene.md",
         "store-release.md"
       ],
-      "gitFiles": [
-        ".gitignore",
-        ".gitmessage.txt",
-        ".editorconfig",
-        "hooks/commit-msg",
-        "hooks/pre-push"
-      ],
       "githubWorkflows": [
-        "ci.yml",
-        "policy.yml",
-        "trufflehog.yml",
-        "codeql.yml",
         "sbom.yml"
       ],
       "githubFiles": [
-        "pull_request_template.md",
-        "dependabot.yml",
-        "SECURITY.md"
-      ],
-      "toolFiles": [
-        "lint_commits.py",
-        "build_runner.py",
-        "release_checker.py",
-        "bump_version.py",
-        "repo_hygiene.py",
-        "file_lines.py",
-        "architecture_graph.py",
-        "pr_helper.py",
-        "branch_policy.py",
-        "process_guard.py",
-        "gh_guard.py",
-        "sonar_audit.py",
-        "pr_audit.py",
-        "pr_reports.py",
-        "pr_verification.py",
-        "pr_body_contract.py",
-        "pr_preflight.py",
-        "pr_publication.py",
-        "pr_creation.py",
-        "pr_tool.py"
+        "dependabot.yml"
       ],
       "recommendedFeatures": [
         "chained-prs",
@@ -259,6 +237,7 @@
     "sec-research": {
       "name": "Security Research / PoC",
       "flow": "pr",
+      "ecosystem": "python",
       "build": {
         "lint": "python -m flake8",
         "test": "python -m unittest discover -s tests",
@@ -287,53 +266,15 @@
         "chore"
       ],
       "agentRules": [
-        "core.md",
-        "deliberation-gate.md",
-        "memory-protocol.md",
         "git-discipline.md"
       ],
       "gitFiles": [
-        ".gitignore",
-        ".gitmessage.txt",
-        ".editorconfig",
-        ".pr_agent.toml",
-        "hooks/commit-msg",
-        "hooks/pre-push"
+        ".pr_agent.toml"
       ],
       "githubWorkflows": [
-        "ci.yml",
-        "policy.yml",
-        "trufflehog.yml",
-        "codeql.yml",
         "nuclei-scan.yml",
         "pr_agent.yml",
         "sbom.yml"
-      ],
-      "githubFiles": [
-        "pull_request_template.md",
-        "SECURITY.md"
-      ],
-      "toolFiles": [
-        "lint_commits.py",
-        "build_runner.py",
-        "release_checker.py",
-        "bump_version.py",
-        "repo_hygiene.py",
-        "file_lines.py",
-        "architecture_graph.py",
-        "pr_helper.py",
-        "branch_policy.py",
-        "process_guard.py",
-        "gh_guard.py",
-        "sonar_audit.py",
-        "pr_audit.py",
-        "pr_reports.py",
-        "pr_verification.py",
-        "pr_body_contract.py",
-        "pr_preflight.py",
-        "pr_publication.py",
-        "pr_creation.py",
-        "pr_tool.py"
       ],
       "recommendedFeatures": [
         "conda-env"
@@ -342,6 +283,7 @@
     "minimal": {
       "name": "Minimal Utility",
       "flow": "pr",
+      "ecosystem": "generic",
       "build": {
         "lint": "",
         "test": "",
@@ -365,48 +307,9 @@
         "chore"
       ],
       "agentRules": [
-        "core.md",
-        "deliberation-gate.md",
-        "memory-protocol.md",
         "git-discipline.md"
       ],
-      "gitFiles": [
-        ".gitignore",
-        ".gitmessage.txt",
-        ".editorconfig",
-        "hooks/commit-msg",
-        "hooks/pre-push"
-      ],
-      "githubWorkflows": [
-        "ci.yml",
-        "policy.yml"
-      ],
-      "githubFiles": [
-        "pull_request_template.md",
-        "SECURITY.md"
-      ],
-      "toolFiles": [
-        "lint_commits.py",
-        "build_runner.py",
-        "release_checker.py",
-        "bump_version.py",
-        "repo_hygiene.py",
-        "file_lines.py",
-        "architecture_graph.py",
-        "pr_helper.py",
-        "branch_policy.py",
-        "process_guard.py",
-        "gh_guard.py",
-        "sonar_audit.py",
-        "pr_audit.py",
-        "pr_reports.py",
-        "pr_verification.py",
-        "pr_body_contract.py",
-        "pr_preflight.py",
-        "pr_publication.py",
-        "pr_creation.py",
-        "pr_tool.py"
-      ],
+      "githubWorkflows": [],
       "recommendedFeatures": [
         "conda-env"
       ]
@@ -414,6 +317,9 @@
     "script-tool": {
       "name": "Script Repository / Utility Monorepo",
       "flow": "direct-push",
+      "ecosystem": "generic",
+      "includePrTools": false,
+      "includePrGithubFiles": false,
       "build": {
         "lint": "",
         "test": "",
@@ -444,36 +350,10 @@
         "chore"
       ],
       "agentRules": [
-        "core.md",
-        "deliberation-gate.md",
-        "memory-protocol.md",
         "direct-trunk.md"
       ],
-      "gitFiles": [
-        ".gitignore",
-        ".gitmessage.txt",
-        ".editorconfig",
-        "hooks/commit-msg",
-        "hooks/pre-push"
-      ],
-      "githubWorkflows": [
-        "ci.yml",
-        "policy.yml",
-        "trufflehog.yml",
-        "codeql.yml"
-      ],
       "githubFiles": [
-        "dependabot.yml",
-        "SECURITY.md"
-      ],
-      "toolFiles": [
-        "lint_commits.py",
-        "build_runner.py",
-        "release_checker.py",
-        "bump_version.py",
-        "repo_hygiene.py",
-        "file_lines.py",
-        "architecture_graph.py"
+        "dependabot.yml"
       ],
       "recommendedFeatures": [
         "direct-push"
@@ -561,6 +441,10 @@
     }
   },
   "legacyAliases": {
+    "backend-api": "backend-python",
+    "backend": "backend-python",
+    "backend-py": "backend-python",
+    "backend-js": "backend-node",
     "desktop": "desktop-app",
     "web": "web-spa",
     "research": "sec-research",
