@@ -172,6 +172,84 @@ if ($ListeningExposed) {
     $ListeningExposed | Sort-Object Risk -Descending | Format-Table Port, Address, ProcessName, ServiceTag, Risk, Note -AutoSize
 }
 
+# 5. 進程鑑識：可疑目錄執行、系統二進位檔偽裝與遠端軟體偵測
+Write-Host "[5/5] 鑑識可疑路徑、進程偽裝與遠端控制工具 (RAT)..." -ForegroundColor Cyan
+
+$RemoteToolKeywords = @('gameviewer', 'anydesk', 'teamviewer', 'todesk', 'rustdesk', 'sunlogin', 'tailscale', 'zerotier', 'frpc', 'ngrok', 'softether', 'vpnclient', 'cloudflare warp')
+$SuspiciousPathPatterns = @('AppData\\Local\\Temp', 'Windows\\Temp', 'Users\\Public', 'ProgramData\\[^\\]+\.exe$')
+
+$DetectedRemoteTools = @()
+$DetectedPathAnomalies = @()
+
+foreach ($kv in $ProcessMap.Values) {
+    if (-not $kv.Path) { continue }
+    $pPath = $kv.Path
+    $pName = $kv.Name
+
+    # 檢查是否為遠端控制 / 穿透工具
+    foreach ($kw in $RemoteToolKeywords) {
+        if ($pName -like "*$kw*" -or $pPath -like "*$kw*") {
+            $DetectedRemoteTools += [PSCustomObject]@{
+                PID         = $kv.Id
+                ProcessName = $pName
+                MatchedRule = $kw
+                Path        = $pPath
+                Company     = $kv.Company
+            }
+            break
+        }
+    }
+
+    # 檢查是否在可疑臨時或共用目錄執行
+    foreach ($pattern in $SuspiciousPathPatterns) {
+        if ($pPath -match $pattern) {
+            $DetectedPathAnomalies += [PSCustomObject]@{
+                PID         = $kv.Id
+                ProcessName = $pName
+                AnomalyType = "可疑執行路徑"
+                Detail      = "符合高危目錄特徵: $pattern"
+                Path        = $pPath
+            }
+            break
+        }
+    }
+
+    # 檢查微軟核心系統二進位檔偽裝（Masquerading）
+    if ($pName -in @('svchost.exe', 'csrss.exe', 'smss.exe', 'lsass.exe', 'services.exe', 'winlogon.exe')) {
+        if ($pPath -notmatch '(?i)^C:\\Windows\\System32\\') {
+            $DetectedPathAnomalies += [PSCustomObject]@{
+                PID         = $kv.Id
+                ProcessName = $pName
+                AnomalyType = "系統二進位檔偽裝"
+                Detail      = "核心系統進程未位於 System32 目錄下"
+                Path        = $pPath
+            }
+        }
+    } elseif ($pName -eq 'explorer.exe' -and $pPath -notmatch '(?i)^C:\\Windows\\explorer\.exe$') {
+        $DetectedPathAnomalies += [PSCustomObject]@{
+            PID         = $kv.Id
+            ProcessName = $pName
+            AnomalyType = "系統二進位檔偽裝"
+            Detail      = "explorer.exe 未位於 Windows 根目錄"
+            Path        = $pPath
+        }
+    }
+}
+
+Write-Host "`n[!] 偵測到的遠端控制 / 穿透工具 (共 $($DetectedRemoteTools.Count) 個):" -ForegroundColor Yellow
+if ($DetectedRemoteTools) {
+    $DetectedRemoteTools | Format-Table PID, ProcessName, MatchedRule, Company, Path -AutoSize
+} else {
+    Write-Host "  未偵測到常見的商業遠端控制或穿透工具。" -ForegroundColor Gray
+}
+
+Write-Host "`n[!] 可疑目錄執行與進程偽裝異常 (共 $($DetectedPathAnomalies.Count) 個):" -ForegroundColor Yellow
+if ($DetectedPathAnomalies) {
+    $DetectedPathAnomalies | Format-Table PID, ProcessName, AnomalyType, Detail, Path -AutoSize
+} else {
+    Write-Host "  未發現可疑目錄執行或系統進程偽裝行為。" -ForegroundColor Gray
+}
+
 Write-Host "`n[!] 當前累計 CPU 佔用最高 Top 5 進程:" -ForegroundColor Yellow
 $TopCumulativeCpu | Select-Object -First 5 | Format-Table PID, ProcessName, TotalCpuSec, MemoryMB, Path -AutoSize
 
