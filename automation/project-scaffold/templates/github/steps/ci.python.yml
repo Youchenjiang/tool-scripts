@@ -1,0 +1,15 @@
+      # /* CI_STEPS_PLACEHOLDER_START */
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies & linters
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Code Quality (Ruff Lint)
+        run: python -m ruff check .
+      - name: Run Tests
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      # /* CI_STEPS_PLACEHOLDER_END */

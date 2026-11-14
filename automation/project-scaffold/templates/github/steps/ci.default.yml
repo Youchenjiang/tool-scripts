@@ -1,0 +1,4 @@
+      # /* CI_STEPS_PLACEHOLDER_START */
+      - name: Baseline Verification
+        run: echo 'No build or test commands configured for this archetype. Baseline check passed.'
+      # /* CI_STEPS_PLACEHOLDER_END */

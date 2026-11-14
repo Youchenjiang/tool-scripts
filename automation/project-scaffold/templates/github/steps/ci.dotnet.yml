@@ -1,0 +1,15 @@
+      # /* CI_STEPS_PLACEHOLDER_START */
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Code Quality (Lint)
+        shell: pwsh
+        run: dotnet format --verify-no-changes
+      - name: Run Tests
+        shell: pwsh
+        run: dotnet test
+      - name: Build Project
+        shell: pwsh
+        run: dotnet build -c Release
+      # /* CI_STEPS_PLACEHOLDER_END */

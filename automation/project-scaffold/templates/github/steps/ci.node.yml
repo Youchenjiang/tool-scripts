@@ -1,0 +1,17 @@
+      # /* CI_STEPS_PLACEHOLDER_START */
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci;
+          elif [ -f package.json ]; then npm install; fi
+      - name: Code Quality (Lint)
+        run: if [ -f package.json ]; then npm run lint --if-present; fi
+      - name: Run Tests
+        run: if [ -f package.json ]; then npm test --if-present; fi
+      - name: Build Project
+        run: if [ -f package.json ]; then npm run build --if-present; fi
+      # /* CI_STEPS_PLACEHOLDER_END */
