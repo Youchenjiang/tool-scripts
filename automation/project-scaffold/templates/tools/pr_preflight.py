@@ -6,6 +6,12 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from pr_body_contract import (
+    PLACEHOLDER,
+    PROVIDER_ACKNOWLEDGEMENT,
+    REQUIRED_SECTIONS,
+    REVIEW_CHECKLIST,
+)
 from process_guard import invoke
 from branch_policy import validate_branch_name
 
@@ -17,9 +23,7 @@ except Exception:
     ALLOWED_SCOPES = "cli|core|shell|msix|docs|ci|deps|store|agent|tools|packaging|fluent|build|release"
 SUBJECT = re.compile(rf"^(?:{ALLOWED_TYPES})(?:\((?:{ALLOWED_SCOPES})\))?: [a-z0-9].*$")
 BODY_NUMBER = re.compile(r"1[.)][ \t]+")
-CHECKLIST_SECTION = "## Review Checklist"
-REQUIRED_SECTIONS = ("## Summary", "## Changes", "## Validation", CHECKLIST_SECTION)
-PLACEHOLDER = re.compile(r"(?i)\b(?:todo|tbd|placeholder|describe the|assign the|add an appropriate|choose the|not run: full pre-push)\b")
+CHECKLIST_SECTION = REVIEW_CHECKLIST
 VAGUE = {"update", "misc", "stuff", "changes", "fix bug", "bug fix"}
 GIT_TIMEOUT = 30
 
@@ -70,7 +74,7 @@ def _split_pr_sections(body):
 
 
 def _provider_acknowledgement_errors(lines):
-    match = re.search(r"(?mi)^- \[x\] \*\*External provider\*\*:[ \t]*(\S[^\r\n]*)$", lines)
+    match = PROVIDER_ACKNOWLEDGEMENT.search(lines)
     if not match or PLACEHOLDER.search(match.group(1)):
         return ["completed External provider acknowledgement required"]
     return []
