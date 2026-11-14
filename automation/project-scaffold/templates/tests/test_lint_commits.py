@@ -19,11 +19,12 @@ class TestValidateCommit(unittest.TestCase):
     """Test validation of commit subjects and separation of concerns."""
 
     def test_valid_commits(self):
+        sample_scope = lint_commits.ALLOWED_SCOPES[0] if lint_commits.ALLOWED_SCOPES else "core"
         valid = [
-            ("sha1", "feat(ui): rebrand application to tapstrum", ["tapster.fluent/mainpage.xaml.cs"]),
-            ("sha2", "perf(core): optimize msix payload with trimming", ["scripts/build_msix.ps1"]),
+            ("sha1", f"feat({sample_scope}): implement new feature", ["src/main.py"]),
+            ("sha2", "perf(core): optimize payload with trimming", ["scripts/build.ps1"]),
             ("sha3", "docs(docs): update architecture documentation", ["docs/architecture.md"]),
-            ("sha4", "chore(deps): bump nuget package versions", ["tapster.fluent.csproj"]),
+            ("sha4", "chore(deps): bump package versions", ["package.json"]),
         ]
         for sha, subj, files in valid:
             errors, warnings = lint_commits.validate_commit(sha, subj, files, strict=True)
@@ -38,26 +39,27 @@ class TestValidateCommit(unittest.TestCase):
 
     def test_subject_too_long(self):
         sha = "sha1"
-        subj = "perf(packaging): optimize msix package footprint with trimming and assembly whitelist"
+        subj = "perf(core): optimize package footprint with trimming and assembly whitelist"
         self.assertGreater(len(subj), 72)
-        errors, _ = lint_commits.validate_commit(sha, subj, ["scripts/build_msix.ps1"], strict=True)
+        errors, _ = lint_commits.validate_commit(sha, subj, ["scripts/build.ps1"], strict=True)
         self.assertTrue(any("超過上限 72 字元" in err for err in errors))
 
     def test_vague_description(self):
+        sample_scope = lint_commits.ALLOWED_SCOPES[0] if lint_commits.ALLOWED_SCOPES else "core"
         vague_examples = [
-            "fix(core): fix bug",
-            "chore(core): update",
-            "refactor(ui): misc",
-            "refactor(ui): changes",
-            "feat(core): stuff",
+            f"fix({sample_scope}): fix bug",
+            f"chore({sample_scope}): update",
+            f"refactor({sample_scope}): misc",
+            f"refactor({sample_scope}): changes",
+            f"feat({sample_scope}): stuff",
         ]
         for subj in vague_examples:
             errors, _ = lint_commits.validate_commit("sha1", subj, ["file.cs"], strict=True)
             self.assertTrue(any("描述過於空泛" in err for err in errors), f"Expected vague error for '{subj}'")
 
     def test_separation_of_concerns_free_riding(self):
-        # Mixing governance doc (memory.md) with code file (app.cs)
-        files = ["memory.md", "src/tapster/app.cs"]
+        # Mixing governance doc (memory.md) with code file (app.py)
+        files = ["memory.md", "src/core/app.py"]
         subj = "feat(core): implement feature and update memory"
         errors, warnings = lint_commits.validate_commit("sha1", subj, files, strict=True)
         self.assertTrue(any("違反職責分離" in err for err in errors))
@@ -65,7 +67,7 @@ class TestValidateCommit(unittest.TestCase):
     def test_governance_isolated_in_docs(self):
         # Isolated governance commit should pass
         files = ["memory.md"]
-        subj = "docs(docs): record tapstrum rebranding and partner center identity"
+        subj = "docs(docs): record architecture decision and memory updates"
         errors, warnings = lint_commits.validate_commit("sha1", subj, files, strict=True)
         self.assertEqual(errors, [])
 

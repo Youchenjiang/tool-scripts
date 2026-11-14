@@ -15,6 +15,7 @@ initial_push_flag=""
 if [ -n "$push_updates" ]; then
   branch_count=0
   tag_count=0
+  tag_list=""
   while read -r local_ref local_oid remote_ref remote_oid; do
     if [ -z "$local_oid" ] || [ -z "$remote_ref" ] || [ -z "$remote_oid" ]; then
       echo "[pre-push] ERROR: incomplete pushed ref update." >&2
@@ -31,6 +32,7 @@ if [ -n "$push_updates" ]; then
           exit 1
         fi
         tag_count=$((tag_count + 1))
+        tag_list="$tag_list $local_ref"
         ;;
       refs/heads/*)
         case "$remote_ref" in
@@ -63,6 +65,19 @@ EOF
   fi
   if [ "$branch_count" -eq 0 ]; then
     echo "[pre-push] Tag-only push: PR checks are inapplicable; release/tag authorization and gates are handled separately."
+    RELEASE_CHECKER=""
+    if [ -f "tools/release_checker.py" ]; then
+      RELEASE_CHECKER="tools/release_checker.py"
+    elif [ -f "scripts/release_checker.py" ]; then
+      RELEASE_CHECKER="scripts/release_checker.py"
+    fi
+
+    if [ -n "$RELEASE_CHECKER" ]; then
+      echo "[pre-push] Running release verification for pushed tags..."
+      for tag in $tag_list; do
+        python "$RELEASE_CHECKER" --tag "$tag"
+      done
+    fi
     exit 0
   fi
   if [ "$branch_count" -ne 1 ]; then

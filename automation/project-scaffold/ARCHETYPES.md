@@ -143,7 +143,12 @@
   - [x] 新增 `tools/build_runner.py` 與 `tests/test_build_runner.py`，支援 cross-platform 自動識別套件類型與空專案優雅略過。
   - [x] 為 `script-tool` 補上等價的 `hooks/pre-push` 與 `build_runner.py`，直推 main 亦享有嚴格的本地測試與提交檢查防護。
   - [x] 實測驗證：測試失敗時 push 確實被攔截阻擋；測試成功時放行；全套 147 項測試 PASS。
-- [ ] **第 4 階段：發佈生命週期**
+- [x] **第 4 階段：發佈生命週期（已完成）**
+  - [x] 依據架構契約（`tools/project.json` 的 `release` 區塊），為全數 6 種 Archetype 實作統一且活躍的發佈策略（`npm-version`、`dotnet-store`、`python-version`、`github-tag`）。
+  - [x] 新增 `tools/release_checker.py` 與 `tests/test_release_checker.py`（23 項測試），支援版本格式校驗（SemVer 3-part / 4-part）、主版本檔與同步清單校驗（`package-lock.json`、`Package.appxmanifest`）、`CHANGELOG.md` 變更日誌確認與未初始化空專案之防禦略過機制。
+  - [x] 串接 Git pre-push hook（`templates/git/hooks/pre-push`）：偵測 tag push（`refs/tags/*`）時自動觸發 `release_checker.py --tag "$local_ref"`，確保未升版本或標籤不一致之發佈操作在本地即被攔截。
+  - [x] 完備各 Archetype 通用基礎工程 scopes（`core`, `docs`, `ci`, `deps`, `test`, `setup`, `agent`, `chore`），消弭各範本間測試套件的邊界衝突。
+  - [x] 全套單元測試套件擴充至 170 項測試，100% 全數綠燈通過。
 
 ## 六、不在這次範圍
 
