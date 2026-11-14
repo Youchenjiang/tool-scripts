@@ -9,7 +9,10 @@
 #    `<type>(<scope>): <subject>` 或 `<type>: <subject>`
 # 2. 長度限制：標頭不可超過 72 字元，且結尾不可帶句號 (`.`)。
 # 3. 杜絕模糊提交：禁止使用 `update`, `misc`, `stuff`, `changes`, `fix bug` 等空洞主旨。
-# 4. PR 元件檢查：自動指派作者（Author Auto-assign），提醒缺失的 Label 與 Milestone。
+# 4. PR Body 契約：章節、placeholder 與 External provider 勾選完全交給
+#    tools/pr_preflight.py 判定（與本機 preflight 同一份 tools/pr_body_contract.py），
+#    本 workflow 只另外檢查 Markdown 格式衛生。
+# 5. PR 元件檢查：自動指派作者（Author Auto-assign），提醒缺失的 Label 與 Milestone。
 #
 # 【分級報告機制】
 # - ❌ Blocker (硬性錯誤)：格式不符、超長、帶句號、模糊字 -> 觸發 `core.setFailed()` 阻擋合併。
@@ -34,6 +37,21 @@ jobs:
     name: PR and Commit Policy Validation
     runs-on: ubuntu-latest
     steps:
+      - name: Check out the base branch PR contract
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          sparse-checkout: |
+            tools
+      - name: Verify the PR body against the repository contract
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s' "$PR_BODY" > "$RUNNER_TEMP/pr_body.md"
+          python3 base/tools/pr_preflight.py --check-body "$RUNNER_TEMP/pr_body.md"
       - name: Validate PR Title, Commits & Metadata
         uses: actions/github-script@v8
         with:
@@ -140,22 +158,13 @@ jobs:
                 summaryRows.push(["PR Title", `\`${prTitle}\``, "✅ Passed", "-"]);
               }
 
-              // 2. Check PR Body Structure (PR Template Parity)
+              // 2. Check PR Body formatting hygiene only: the section and provider
+              // requirements are enforced by tools/pr_preflight.py in the step above.
               const prBody = (context.payload.pull_request.body || "").trim();
               const bodyIssues = [];
               if (!prBody) {
                 bodyIssues.push("PR description body must not be empty.");
               } else {
-                if (!/^##\s+Summary/mi.test(prBody)) {
-                  bodyIssues.push("Missing required section heading `## Summary`.");
-                }
-                if (!/^##\s+Key Changes/mi.test(prBody)) {
-                  bodyIssues.push("Missing required section heading `## Key Changes`.");
-                }
-                if (!/^##\s+(How to Verify|Verification)/mi.test(prBody)) {
-                  bodyIssues.push("Missing required section heading `## How to Verify` or `## Verification`.");
-                }
-
                 // Check for corrupted escaped inline code artifacts (e.g. \npm test\ instead of `npm test`)
                 const escapedArtifactPattern = /\\([a-zA-Z0-9_./#:@<>()'" -]+)\\/;
                 if (escapedArtifactPattern.test(prBody)) {
@@ -179,10 +188,10 @@ jobs:
               }
 
               if (bodyIssues.length > 0) {
-                blockers.push({ target: "PR Body", text: "PR Template Sections", issues: bodyIssues });
-                summaryRows.push(["PR Body", "Structure Validation", "❌ Failed", bodyIssues.join("<br>")]);
+                blockers.push({ target: "PR Body", text: "PR Body Formatting", issues: bodyIssues });
+                summaryRows.push(["PR Body", "Formatting Hygiene", "❌ Failed", bodyIssues.join("<br>")]);
               } else {
-                summaryRows.push(["PR Body", "Structure Validation", "✅ Passed", "-"]);
+                summaryRows.push(["PR Body", "Formatting Hygiene", "✅ Passed", "-"]);
               }
             } else {
               summaryRows.push(["Trunk Push", `\`${context.ref}\``, "ℹ️ Info", "Direct trunk push validated without PR envelope."]);

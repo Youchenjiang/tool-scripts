@@ -10,7 +10,11 @@ for _dir in ("tools", "scripts"):
     _p = str(Path(__file__).resolve().parents[1] / _dir)
     if _p not in sys.path:
         sys.path.insert(0, _p)
-from pr_preflight import validate_message, validate_pr_body, check, _check_history
+from pr_preflight import validate_message, validate_pr_body, check, _check_history, _check_body_file
+
+
+CONTRACT_BODY = ("## Summary\nA change.\n## Changes\n- One change.\n## Validation\n- Suite passes.\n"
+                 "## Review Checklist\n- [x] **External provider**: none\n")
 
 
 class PrPreflightTests(unittest.TestCase):
@@ -192,6 +196,35 @@ class PrPreflightTests(unittest.TestCase):
         self.assertIn("pushed branch does not match checked development branch", errors)
         self.assertIn("pushed object is not the validated HEAD", errors)
         self.assertIn("cannot verify branch changes against base", errors)
+
+    def test_check_body_mode_enforces_the_contract_without_git(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            body = Path(directory) / "body.md"
+            body.write_text(CONTRACT_BODY.replace("## Changes", "## Key Changes"), encoding="utf-8")
+            self.assertIn("## Changes", _check_body_file(str(body)))
+
+            body.write_text(CONTRACT_BODY.replace("- [x] **External provider**",
+                                                 "- [ ] **External provider**"), encoding="utf-8")
+            self.assertIn("completed External provider acknowledgement required",
+                          _check_body_file(str(body)))
+
+            body.write_text(CONTRACT_BODY.replace("A change.", "Describe the change."), encoding="utf-8")
+            self.assertIn("empty or placeholder ## Summary", _check_body_file(str(body)))
+
+            body.write_text(CONTRACT_BODY, encoding="utf-8")
+            self.assertEqual([], _check_body_file(str(body)))
+            self.assertIn("PR body file missing", _check_body_file(str(Path(directory) / "absent.md")))
+
+    def test_check_body_flag_never_reaches_github(self):
+        from tempfile import TemporaryDirectory
+        import pr_preflight
+        with TemporaryDirectory() as directory:
+            body = Path(directory) / "body.md"
+            body.write_text(CONTRACT_BODY, encoding="utf-8")
+            with patch.object(sys, "argv", ["pr_preflight.py", "--check-body", str(body)]), \
+                 patch("pr_preflight.invoke", side_effect=AssertionError("GitHub was contacted")):
+                self.assertEqual(0, pr_preflight.main())
 
     @patch("pr_preflight.git", side_effect=TimeoutExpired("git", 30))
     def test_timeout_fails_closed(self, _mock_git):

@@ -105,6 +105,13 @@ def validate_pr_body(body, metadata=None):
     return errors
 
 
+def _check_body_file(path):
+    body = Path(path)
+    if not body.is_file():
+        return ["PR body file missing"]
+    return validate_pr_body(body.read_text(encoding="utf-8"))
+
+
 def _check_pushed_ref(pushed_ref, pushed_oid):
     errors = []
     branch = git("branch", "--show-current").stdout.strip()
@@ -227,11 +234,21 @@ def main():
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--base", default="origin/main")
     parser.add_argument("--body-file")
+    parser.add_argument("--check-body", metavar="FILE",
+                        help="Validate a PR body file against the contract only; no git or GitHub access")
     parser.add_argument("--push-ref")
     parser.add_argument("--push-oid")
     parser.add_argument("--initial-push", action="store_true",
                         help="New remote branch without a PR: validate completed draft metadata instead")
     args = parser.parse_args()
+    if args.check_body:
+        errors = _check_body_file(args.check_body)
+        for error in errors:
+            print(f"PR PREFLIGHT FAIL: {error}", file=sys.stderr)
+        if errors:
+            return 1
+        print("PR body matches the repository contract")
+        return 0
     if not args.check:
         parser.error("specify --check")
     if args.initial_push and (not args.push_ref or not args.push_oid):
