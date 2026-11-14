@@ -105,7 +105,7 @@ def review_threads(repo, number, run=command):
     query = ("query($owner:String!,$name:String!,$number:Int!,$after:String){"
              "repository(owner:$owner,name:$name){pullRequest(number:$number){"
              "reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}"
-             "nodes{id isResolved isOutdated path line comments(first:1){nodes{body url}}}}}}}")
+             "nodes{id isResolved isOutdated path line comments(first:1){nodes{body url author{login}}}}}}}}}")
     after = None
     seen = set()
     threads = []
@@ -453,6 +453,29 @@ def _verify_pr(run, repo, number):
     return 0 if result["ready"] else 2
 
 
+def print_threads(repo, number, run=command, as_json=False):
+    threads = review_threads(repo, number, run)
+    unresolved = [t for t in threads if not t.get("isResolved")]
+    if as_json:
+        print(json.dumps(unresolved, indent=2, ensure_ascii=False))
+        return
+    if not unresolved:
+        print(f"[pr_tool] PR #{number} has no unresolved review threads.")
+        return
+    print(f"[pr_tool] PR #{number} has {len(unresolved)} unresolved review thread(s):")
+    for i, t in enumerate(unresolved, 1):
+        tid = t.get("id")
+        path = t.get("path") or "unknown"
+        line = t.get("line") or "?"
+        comments = (t.get("comments") or {}).get("nodes") or []
+        first_comment = comments[0] if comments else {}
+        author = (first_comment.get("author") or {}).get("login") or "unknown"
+        body = (first_comment.get("body") or "").splitlines()[0] if first_comment.get("body") else ""
+        print(f"  {i}. ID: {tid} ({path}:{line}) by @{author}")
+        if body:
+            print(f"     \"{body}\"")
+
+
 def _execute_pr_action(args, run, repo, number):
     if args.action == "body":
         export_body(repo, number, args.output, run)
@@ -468,14 +491,43 @@ def _execute_pr_action(args, run, repo, number):
         return _verify_pr(run, repo, number)
     elif args.action == "review":
         print_review(repo, number, run)
+    elif args.action == "threads":
+        print_threads(repo, number, run, as_json=args.json)
     else:
         _execute_resolution(repo, number, args, run)
     return 0
 
 
 def _execute_resolution(repo, number, args, run):
+    if not args.thread and not args.all:
+        raise ValueError("Specify either --thread <thread_id> or --all to resolve review threads")
+    if args.thread and args.all:
+        raise ValueError("Cannot specify both --thread and --all")
     if args.execute and not args.authorize:
         raise ValueError("--execute requires --authorize and explicit user consent")
+
+    if args.all:
+        if args.execute and args.authorize != f"{number}:ALL":
+            raise ValueError(f"--all with --execute requires --authorize {number}:ALL")
+        threads = review_threads(repo, number, run)
+        unresolved = [t for t in threads if not t.get("isResolved")]
+        if not unresolved:
+            print(f"[pr_tool] PR #{number} has no unresolved review threads to resolve.")
+            return
+        for t in unresolved:
+            tid = t.get("id")
+            thread = resolve_thread(
+                repo,
+                str(number),
+                tid,
+                f"{number}:{tid}" if args.execute else f"{number}:{tid}",
+                execute=run,
+                dry_run=not args.execute,
+                repair_evidence=args.repair_evidence,
+            )
+            print(f"{'Resolved' if args.execute else 'Eligible for resolution (preview only)'}: {thread['id']}; no comment posted")
+        return
+
     thread = resolve_thread(repo, str(number), args.thread,
                             args.authorize if args.execute else f"{number}:{args.thread}",
                             execute=run, dry_run=not args.execute,
@@ -520,9 +572,13 @@ def main(argv=None, run=command):
     creator.add_argument("--assignee")
     creator.add_argument("--authorize")
     creator.add_argument("--execute", action="store_true")
-    resolver = sub.add_parser("resolve", help="Resolve exactly one explicitly authorized thread")
+    threads = sub.add_parser("threads", help="List unresolved PR review threads with locations and comments")
+    threads.add_argument("pr", nargs="?")
+    threads.add_argument("--json", action="store_true", help="Output machine-readable JSON array")
+    resolver = sub.add_parser("resolve", help="Resolve explicitly authorized PR review thread(s)")
     resolver.add_argument("pr")
-    resolver.add_argument("--thread", required=True)
+    resolver.add_argument("--thread", help="Resolve a single specific review thread ID")
+    resolver.add_argument("--all", action="store_true", help="Resolve all unresolved review threads")
     resolver.add_argument("--authorize")
     resolver.add_argument("--repair-evidence", help="Verified fix reference for an outdated thread")
     resolver.add_argument("--execute", action="store_true", help="Execute explicitly authorized resolution; default is read-only preview")

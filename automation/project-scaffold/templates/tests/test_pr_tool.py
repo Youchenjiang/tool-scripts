@@ -215,6 +215,65 @@ class PrToolTests(unittest.TestCase):
         self.assertIn("preview only", output.getvalue())
         self.assertEqual(1, pr_tool.main(["resolve", "177", "--thread", "PRRT_test123", "--execute"], fake))
 
+    def test_threads_lists_unresolved_review_threads(self):
+        def fake(argv):
+            if argv[:3] == ["git", "branch", "--show-current"]:
+                return "feature/pr-governance-preflight"
+            if argv[:3] == ["git", "remote", "get-url"]:
+                return "https://github.com/Youchenjiang/Clickra.git"
+            self.assertEqual(["gh", "api", "graphql"], argv[:3])
+            return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [
+                    {"id": "PRRT_resolved", "isResolved": True, "path": "src/old.cs", "line": 10, "comments": {"nodes": []}},
+                    {"id": "PRRT_unresolved", "isResolved": False, "path": "src/App.cs", "line": 42,
+                     "comments": {"nodes": [{"author": {"login": "reviewer"}, "body": "Please fix this typo", "url": "https://example"}]}},
+                ],
+                "pageInfo": {"hasNextPage": False}
+            }}}}})
+        with redirect_stdout(StringIO()) as output:
+            result = pr_tool.main(["threads", "177"], fake)
+        self.assertEqual(0, result)
+        val = output.getvalue()
+        self.assertIn("PRRT_unresolved", val)
+        self.assertIn("src/App.cs:42", val)
+        self.assertIn("@reviewer", val)
+        self.assertNotIn("PRRT_resolved", val)
+
+    def test_threads_json_mode(self):
+        def fake(argv):
+            if argv[:3] == ["git", "branch", "--show-current"]:
+                return "feature/pr-governance-preflight"
+            if argv[:3] == ["git", "remote", "get-url"]:
+                return "https://github.com/Youchenjiang/Clickra.git"
+            return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [{"id": "PRRT_unresolved", "isResolved": False, "path": "src/App.cs", "line": 42, "comments": {"nodes": []}}],
+                "pageInfo": {"hasNextPage": False}
+            }}}}})
+        with redirect_stdout(StringIO()) as output:
+            result = pr_tool.main(["threads", "177", "--json"], fake)
+        self.assertEqual(0, result)
+        data = json.loads(output.getvalue())
+        self.assertEqual(1, len(data))
+        self.assertEqual("PRRT_unresolved", data[0]["id"])
+
+    def test_resolve_all_requires_authorization(self):
+        def fake(argv):
+            if argv[:3] == ["git", "branch", "--show-current"]:
+                return "feature/pr-governance-preflight"
+            if argv[:3] == ["git", "remote", "get-url"]:
+                return "https://github.com/Youchenjiang/Clickra.git"
+            return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [{"id": "PRRT_thread1", "isResolved": False, "isOutdated": False, "comments": {"totalCount": 0, "nodes": []}}],
+                "pageInfo": {"hasNextPage": False}
+            }}}}})
+        # Fails without --authorize 177:ALL when executing
+        self.assertEqual(1, pr_tool.main(["resolve", "177", "--all", "--execute"], fake))
+        # Succeeds preview with --all
+        with redirect_stdout(StringIO()) as output:
+            result = pr_tool.main(["resolve", "177", "--all"], fake)
+        self.assertEqual(0, result)
+        self.assertIn("Eligible for resolution (preview only): PRRT_thread1", output.getvalue())
+
     def test_ready_executes_only_versioned_hook_with_body(self):
         with TemporaryDirectory() as folder:
             body = Path(folder) / "pr.md"

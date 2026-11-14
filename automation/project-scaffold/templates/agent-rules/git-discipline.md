@@ -49,7 +49,8 @@ or
   - `create`: Separately authorized PR creation with validation against the PR template.
   - `verify`: Combined acceptance checking CI status, SonarCloud quality gate, and open review threads.
   - `diagnose`: Automatic failure log and check run diagnostic extraction.
-  - `resolve`: Safe GraphQL-based review thread resolution upon explicit user authorization.
+  - `threads`: Lists all unresolved review threads with file locations and comment summaries.
+  - `resolve`: Safe GraphQL-based review thread resolution upon explicit user authorization (supports single `--thread <id>` or batch `--all`).
 - **PR Content Generator (`pr_helper.py`)**: Use `python tools/pr_helper.py generate` to auto-extract and structure PR body drafts from commit history.
 - **Bypass Shell String Escaping**: Never pass raw markdown text directly via CLI string arguments. Always write the PR body to a file and pass `--body-file <path>` to eliminate Windows/PowerShell escape stripping and markdown truncation.
 - **Atomic Label Assignment**: Always pass `--label` during initial PR creation to avoid race conditions with GitHub Actions policy workflows triggering on the `opened` event.
