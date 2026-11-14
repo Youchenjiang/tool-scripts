@@ -9,6 +9,10 @@
   Project core archetype profile (or alias -Preset)
 .PARAMETER Flow
   Git workflow mode: 'pr' (Pull Request based) or 'direct-push' / 'trunk' (Direct trunk push, no PR).
+.PARAMETER Release
+  Release & CD lifecycle strategy: 'default', 'none', 'npm-version', 'dotnet-store', 'python-version', 'github-tag'.
+.PARAMETER NoRelease
+  Disable version and release management (sets release strategy to 'none').
 .PARAMETER Features
   Optional array of features to enable
 .PARAMETER TargetDir
@@ -32,6 +36,12 @@ param(
 
   [ValidateSet('pr', 'direct-push', 'trunk')]
   [string]$Flow,
+
+  [Alias('ReleaseStrategy')]
+  [ValidateSet('default', 'none', 'npm-version', 'dotnet-store', 'python-version', 'github-tag')]
+  [string]$Release,
+
+  [switch]$NoRelease,
 
   [string[]]$Features,
 
@@ -132,7 +142,82 @@ if (-not $Flow) {
 
 if ($Flow -eq "trunk") { $Flow = "direct-push" }
 
-# 3. Resolve Active Features
+# 3. Resolve Release & CD Lifecycle Strategy
+$defaultReleaseStrategy = if ($SelectedArchetype.release -and $SelectedArchetype.release.strategy) {
+  $SelectedArchetype.release.strategy
+} else {
+  "github-tag"
+}
+
+if ($NoRelease) {
+  $Release = "none"
+}
+
+if (-not $Release -or $Release -eq "default") {
+  # If running in interactive mode (neither Archetype nor Features supplied via CLI)
+  if (-not $PSBoundParameters.ContainsKey('Archetype') -or (-not $Features -and -not $AllFeatures -and -not $NoFeatures)) {
+    Write-Host ""
+    Write-Host "Stage 3: Release & CD Lifecycle (版本管理與發佈門禁):" -ForegroundColor Cyan
+    Write-Host "  [1] 遵循範本預設 ($defaultReleaseStrategy) - 具備完整版本檔校驗、tag 門禁與自動 CD 發佈" -ForegroundColor Green
+    Write-Host "  [2] none         - 不需要管理版本 (免除 tag 與版本號綁定、無 release 門禁、自由發布)" -ForegroundColor $(if ($defaultReleaseStrategy -eq 'none') { "Green" } else { "Gray" })
+    Write-Host "  [3] github-tag   - 輕量 GitHub Release Tag (以 VERSION 檔為準)" -ForegroundColor Gray
+    Write-Host "  [4] 自選套件策略 (npm-version / dotnet-store / python-version)" -ForegroundColor Gray
+    Write-Host ""
+    $relChoice = Read-Host "請選擇版本管理策略 [1/2/3/4, 預設: 1 ($defaultReleaseStrategy)]"
+    if ($relChoice -eq '1' -or $relChoice -eq '') {
+      $Release = $defaultReleaseStrategy
+    } elseif ($relChoice -eq '2' -or $relChoice -match '^[Nn]') {
+      $Release = "none"
+    } elseif ($relChoice -eq '3' -or $relChoice -match '^[GgTt]') {
+      $Release = "github-tag"
+    } elseif ($relChoice -eq '4') {
+      Write-Host "  可用策略: npm-version, dotnet-store, python-version" -ForegroundColor Cyan
+      $customRel = Read-Host "請輸入策略名稱"
+      if ($customRel -in @('npm-version', 'dotnet-store', 'python-version', 'github-tag', 'none')) {
+        $Release = $customRel
+      } else {
+        Write-Host "  ! 未知策略，採用預設: $defaultReleaseStrategy" -ForegroundColor DarkYellow
+        $Release = $defaultReleaseStrategy
+      }
+    } else {
+      Write-Host "  ! 無效輸入，採用預設: $defaultReleaseStrategy" -ForegroundColor DarkYellow
+      $Release = $defaultReleaseStrategy
+    }
+  } else {
+    $Release = $defaultReleaseStrategy
+  }
+}
+
+# Construct $releaseConfig object
+$releaseConfig = if ($Release -eq "none") {
+  [ordered]@{
+    strategy    = "none"
+    versionFile = ""
+    syncFiles   = @()
+  }
+} elseif ($Release -eq $SelectedArchetype.release.strategy) {
+  $SelectedArchetype.release
+} else {
+  switch ($Release) {
+    "npm-version" {
+      [ordered]@{ strategy = "npm-version"; versionFile = "package.json"; syncFiles = @("package-lock.json") }
+    }
+    "dotnet-store" {
+      [ordered]@{ strategy = "dotnet-store"; versionFile = "Directory.Build.props"; syncFiles = @("Package.appxmanifest") }
+    }
+    "python-version" {
+      [ordered]@{ strategy = "python-version"; versionFile = "pyproject.toml"; syncFiles = @() }
+    }
+    "github-tag" {
+      [ordered]@{ strategy = "github-tag"; versionFile = "VERSION"; syncFiles = @() }
+    }
+    default {
+      [ordered]@{ strategy = $Release; versionFile = ""; syncFiles = @() }
+    }
+  }
+}
+
+# 4. Resolve Active Features
 $ActiveFeatures = @()
 if ($NoFeatures) {
   $ActiveFeatures = @()
@@ -152,7 +237,7 @@ if ($NoFeatures) {
   }
   if ($recommended.Count -gt 0) {
     Write-Host ""
-    Write-Host "Stage 3: Features Configuration:" -ForegroundColor Cyan
+    Write-Host "Stage 4: Features Configuration:" -ForegroundColor Cyan
     Write-Host "Recommended features for ${Archetype}: $($recommended -join ', ')" -ForegroundColor Yellow
     Write-Host "Available features: $($Config.features.PSObject.Properties.Name -join ', ')" -ForegroundColor DarkGray
     $prompt = Read-Host "Enable recommended features? [Y/n] (or enter custom comma-separated list)"
@@ -213,6 +298,7 @@ Write-Host "Target Directory : $TargetDir" -ForegroundColor Cyan
 Write-Host "Project Name     : $ProjectName" -ForegroundColor Cyan
 Write-Host "Archetype        : $Archetype ($($SelectedArchetype.name))" -ForegroundColor Green
 Write-Host "Workflow Mode    : $Flow $(if ($Flow -eq 'direct-push') { '(免 PR 主幹直接推送)' } else { '(Pull Request 分支審查流程)' })" -ForegroundColor Cyan
+Write-Host "Release Strategy : $(if ($releaseConfig.strategy -and $releaseConfig.strategy -ne 'none') { "$($releaseConfig.strategy) (Version file: $($releaseConfig.versionFile))" } else { 'none (免版本管理)' })" -ForegroundColor Cyan
 Write-Host "Active Features  : $(if ($ActiveFeatures.Count -gt 0) { $ActiveFeatures -join ', ' } else { '(None)' })" -ForegroundColor Yellow
 Write-Host "Jitter Schedules : Monthly ($ProjectMonthlyCron), Weekly ($ProjectWeeklyCron)" -ForegroundColor DarkCyan
 Write-Host "-------------------------------------------------"
@@ -483,12 +569,20 @@ if ($SelectedArchetype.toolFiles) {
     features  = @($ActiveFeatures)
     scopes    = @($SelectedArchetype.defaultScopes)
     build     = if ($SelectedArchetype.build) { $SelectedArchetype.build } else { [ordered]@{ lint = ""; test = ""; build = "" } }
-    release   = if ($SelectedArchetype.release) { $SelectedArchetype.release } else { [ordered]@{ strategy = ""; versionFile = ""; syncFiles = @() } }
+    release   = $releaseConfig
   }
   $projectJsonContent = $projectObj | ConvertTo-Json -Depth 5
   $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
   [System.IO.File]::WriteAllText($projectJsonPath, $projectJsonContent, $utf8NoBom)
   Write-Host "  + Created: tools/project.json (Project Metadata & Architecture Contract)" -ForegroundColor Green
+
+  if ($releaseConfig.strategy -eq "github-tag" -and $releaseConfig.versionFile -eq "VERSION") {
+    $versionFilePath = Join-Path $TargetDir "VERSION"
+    if (-not (Test-Path $versionFilePath)) {
+      [System.IO.File]::WriteAllText($versionFilePath, "0.1.0`n", $utf8NoBom)
+      Write-Host "  + Created: VERSION (Initial version 0.1.0)" -ForegroundColor Gray
+    }
+  }
 }
 
 if ($ActiveFeatures -contains "strict-linting") {
@@ -831,6 +925,8 @@ Write-Host "[5/5] Scaffolding Complete!" -ForegroundColor Green
 Write-Host "=================================================" -ForegroundColor Cyan
 Write-Host "✨ Project '$ProjectName' is fully scaffolded!" -ForegroundColor Green
 Write-Host "   - Archetype: $Archetype ($($SelectedArchetype.name))"
+Write-Host "   - Workflow : $Flow $(if ($Flow -eq 'direct-push') { '(免 PR 主幹直接推送)' } else { '(Pull Request 分支審查流程)' })"
+Write-Host "   - Release  : $(if ($releaseConfig.strategy -and $releaseConfig.strategy -ne 'none') { "$($releaseConfig.strategy) (Version file: $($releaseConfig.versionFile))" } else { 'none (免版本管理)' })"
 Write-Host "   - Features : $(if ($ActiveFeatures.Count -gt 0) { $ActiveFeatures -join ', ' } else { 'None' })"
 Write-Host "   - Scopes   : $($SelectedArchetype.defaultScopes -join ', ')"
 Write-Host "   - Rules    : AGENTS.md, .agent/rules.md, MEMORY.md"

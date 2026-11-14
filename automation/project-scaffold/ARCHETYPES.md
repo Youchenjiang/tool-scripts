@@ -110,8 +110,9 @@
 
 驗證：桌面專案改了發佈相關檔案但沒升版本時被擋；其他五個範本不受影響。
 
-## 四、已定稿的決定：工作流程自主選擇 (Flow Selection)
+## 四、已定稿的決定：工作流程與發佈策略自主選擇 (Flow & Release Selection)
 
+### 1. 工作流程自主選擇 (Flow Selection)
 原本的爭議是：`tool` / `script` 要偏向「直推 main」還是「走 PR」。
 **已定稿方案**：將工作流程抽成**獨立的一級選項**，不再與範本死綁：
 
@@ -120,6 +121,16 @@
   - `[1] pr`：Pull Request 審查流程（分行開發、開 PR、PR 模板與審查門禁工具）。
   - `[2] direct-push`：Direct Trunk Push（免開 PR、原子提交直接推 main、自動設定 `repo.directPush true`）。
 - 範本在 `presets.json` 中保留其推薦預設（例如 `script-tool` 預設 `direct-push`，其他預設 `pr`），但使用者擁有最終選擇權。
+
+### 2. 版本管理與發佈門禁自主選擇 (Release Lifecycle Selection)
+使用者可自由決定專案是否需要版本管理與 CD 發佈檢查：
+- CLI 新增參數 `-Release <default|none|npm-version|dotnet-store|python-version|github-tag>` 與 `-NoRelease` 開關。
+- 互動模式在 Stage 2 選完 Flow 後，進入 **Stage 3: Release & CD Lifecycle** 供使用者自選：
+  - `[1] (Recommended) 遵循範本預設`：具備完整版本檔校驗、tag 門禁與自動 CD 發佈。
+  - `[2] none`：不需要管理版本（免除 tag 與版本號綁定、無 release 門禁、自由發布）。
+  - `[3] github-tag`：輕量 GitHub Release Tag（以 `VERSION` 檔為準，自動初始化 `VERSION` 為 0.1.0）。
+  - `[4] 自選套件策略`：可自由切換為 `npm-version` / `dotnet-store` / `python-version`。
+- 若選擇 `none`，`tools/project.json` 寫入 `"release": { "strategy": "none" }`，`release_checker.py` 與 CI 自動略過所有版本檢查。
 
 ## 五、進度追蹤
 
