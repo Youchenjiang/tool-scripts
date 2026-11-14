@@ -23,6 +23,7 @@ GIT_READ_OPERATIONS = {
     ("diff", "--name-only", f"{MAIN_REF}...HEAD"),
     ("diff", "-z", "--name-only", "--no-renames", f"{MAIN_REF}...HEAD"),
     ("status", "--porcelain"),
+    ("ls-files",),
     ("tag", "-l"),
 }
 GH_READ_VERBS = {("pr", "view"), ("pr", "checks"), ("pr", "list"),

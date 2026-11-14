@@ -64,6 +64,7 @@
         "build_runner.py",
         "release_checker.py",
         "bump_version.py",
+        "repo_hygiene.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -145,6 +146,7 @@
         "build_runner.py",
         "release_checker.py",
         "bump_version.py",
+        "repo_hygiene.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -227,6 +229,7 @@
         "build_runner.py",
         "release_checker.py",
         "bump_version.py",
+        "repo_hygiene.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -307,6 +310,7 @@
         "build_runner.py",
         "release_checker.py",
         "bump_version.py",
+        "repo_hygiene.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -376,6 +380,7 @@
         "build_runner.py",
         "release_checker.py",
         "bump_version.py",
+        "repo_hygiene.py",
         "pr_helper.py",
         "branch_policy.py",
         "process_guard.py",
@@ -453,7 +458,8 @@
         "lint_commits.py",
         "build_runner.py",
         "release_checker.py",
-        "bump_version.py"
+        "bump_version.py",
+        "repo_hygiene.py"
       ],
       "recommendedFeatures": [
         "direct-push"

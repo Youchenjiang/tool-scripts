@@ -296,7 +296,12 @@ class PrePushHookRefTests(unittest.TestCase):
 
     def test_tag_only_has_explicit_pr_gate_exemption(self):
         sha = "a" * 40
-        result = self.run_hook(f"refs/tags/v1.2.3.0 {sha} refs/tags/v1.2.3.0 {'0' * 40}\n")
+        repo_root = Path(__file__).resolve().parents[1]
+        v_file = repo_root / "VERSION"
+        tag_version = "1.2.3.0"
+        if v_file.is_file():
+            tag_version = v_file.read_text(encoding="utf-8").strip()
+        result = self.run_hook(f"refs/tags/v{tag_version} {sha} refs/tags/v{tag_version} {'0' * 40}\n")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("release/tag authorization and gates", result.stdout)
 
