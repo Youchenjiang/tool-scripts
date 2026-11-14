@@ -129,7 +129,10 @@
   - [x] `pr_verification.py` 移除寫死的 `Build Clickra.*` 等專屬 checks，改為通用門禁並支援 `PR_REQUIRED_CHECKS` 環境變數。
   - [x] 實作 `-Flow` 參數與互動式工作流程選擇（開 PR vs 免開 PR 直推）。
   - [x] 通過 142 項單元測試全數驗證。
-- [ ] **第 1 階段：把三條軸變成資料**
+- [x] **第 1 階段：把三條軸變成資料（已完成）**
+  - [x] 在 `presets.json` 每個範本定義結構化 `build` / `release` / `flow` 資料欄位。
+  - [x] 專案生成時統一輸出 `tools/project.json`（UTF-8 without BOM），作為本地工具與 CI 共同遵循之架構契約。
+  - [x] 針對全部 6 種 Archetype 自動執行測試，斷言 `tools/project.json` 內容與 `presets.json` 100% 精準吻合。
 - [ ] **第 2 階段：產品 CI**
 - [ ] **第 3 階段：push 前檢查補齊**
 - [ ] **第 4 階段：發佈生命週期**

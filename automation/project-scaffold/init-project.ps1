@@ -473,6 +473,22 @@ if ($SelectedArchetype.toolFiles) {
       Write-Host "  + Deployed Test: tests/$($_.Name)" -ForegroundColor Gray
     }
   }
+
+  # Deploy tools/project.json contract (Stage 1 schema)
+  $projectJsonPath = Join-Path $ToolsDir "project.json"
+  $projectObj = [ordered]@{
+    name      = $ProjectName
+    archetype = $Archetype
+    flow      = $Flow
+    features  = @($ActiveFeatures)
+    scopes    = @($SelectedArchetype.defaultScopes)
+    build     = if ($SelectedArchetype.build) { $SelectedArchetype.build } else { [ordered]@{ lint = ""; test = ""; build = "" } }
+    release   = if ($SelectedArchetype.release) { $SelectedArchetype.release } else { [ordered]@{ strategy = ""; versionFile = ""; syncFiles = @() } }
+  }
+  $projectJsonContent = $projectObj | ConvertTo-Json -Depth 5
+  $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+  [System.IO.File]::WriteAllText($projectJsonPath, $projectJsonContent, $utf8NoBom)
+  Write-Host "  + Created: tools/project.json (Project Metadata & Architecture Contract)" -ForegroundColor Green
 }
 
 if ($ActiveFeatures -contains "strict-linting") {

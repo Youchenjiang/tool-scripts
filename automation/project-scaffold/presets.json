@@ -3,6 +3,16 @@
     "web-spa": {
       "name": "Web SPA / Frontend",
       "flow": "pr",
+      "build": {
+        "lint": "npm run lint",
+        "test": "npm test",
+        "build": "npm run build"
+      },
+      "release": {
+        "strategy": "",
+        "versionFile": "",
+        "syncFiles": []
+      },
       "description": "Web / Frontend SPA / React / Vite / Ionic 靜態發布應用 (如 Wildwatch, 零後端應用)",
       "defaultScopes": [
         "app",
@@ -67,6 +77,16 @@
     "backend-api": {
       "name": "Backend / API Service",
       "flow": "pr",
+      "build": {
+        "lint": "npm run lint",
+        "test": "npm test",
+        "build": "npm run build"
+      },
+      "release": {
+        "strategy": "",
+        "versionFile": "",
+        "syncFiles": []
+      },
       "description": "Backend / API / Node.js / ASP.NET / FastAPI 服務端全端應用",
       "defaultScopes": [
         "api",
@@ -129,6 +149,18 @@
     "desktop-app": {
       "name": "Desktop Application",
       "flow": "pr",
+      "build": {
+        "lint": "dotnet format --verify-no-changes",
+        "test": "dotnet test",
+        "build": "dotnet build -c Release"
+      },
+      "release": {
+        "strategy": "dotnet-store",
+        "versionFile": "Directory.Build.props",
+        "syncFiles": [
+          "Package.appxmanifest"
+        ]
+      },
       "description": "Windows / .NET / WinUI / C# / Tauri 桌面端應用 (如 Tapster, Clickra)",
       "defaultScopes": [
         "shell",
@@ -191,6 +223,16 @@
     "sec-research": {
       "name": "Security Research / PoC",
       "flow": "pr",
+      "build": {
+        "lint": "python -m flake8",
+        "test": "python -m unittest discover -s tests",
+        "build": ""
+      },
+      "release": {
+        "strategy": "",
+        "versionFile": "",
+        "syncFiles": []
+      },
       "description": "資安研究 / 漏洞分析 / 概念驗證 PoC / 腳本庫 / 知識庫 (如 sec-compendium)",
       "defaultScopes": [
         "poc",
@@ -253,6 +295,16 @@
     "minimal": {
       "name": "Minimal Utility",
       "flow": "pr",
+      "build": {
+        "lint": "",
+        "test": "",
+        "build": ""
+      },
+      "release": {
+        "strategy": "",
+        "versionFile": "",
+        "syncFiles": []
+      },
       "description": "極簡小工具 / 輕量腳本庫 / 快速原型",
       "defaultScopes": [
         "core",
@@ -305,6 +357,16 @@
     "script-tool": {
       "name": "Script Repository / Utility Monorepo",
       "flow": "direct-push",
+      "build": {
+        "lint": "",
+        "test": "",
+        "build": ""
+      },
+      "release": {
+        "strategy": "",
+        "versionFile": "",
+        "syncFiles": []
+      },
       "description": "腳本庫 / 個人工具集 / 單元腳本 Monorepo (如 tool-scripts，免開 PR、主幹原子直接推送)",
       "defaultScopes": [
         "automation",
