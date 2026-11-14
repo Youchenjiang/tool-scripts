@@ -85,7 +85,8 @@ Script-List/
 │   ├── hacker-news-scraper/    # The Hacker News 3-week article scraper & digest builder
 │   ├── local-https-cert-helper/ # Local HTTPS self-signed certificate helper
 │   ├── domain-cert-auditor/    # Automated domain asset and SSL/TLS certificate security auditor
-│   └── cylab-challenge-exporter/ # CyLab Security Academy challenge exporter & checklist generator
+│   ├── cylab-challenge-exporter/ # CyLab Security Academy challenge exporter & checklist generator
+│   └── windows-endpoint-triage/ # Windows native endpoint emergency forensic triage & threat hunting tool
 └── text/                       # Text transformation & encoding
     ├── markdown-toolkit/       # Markdown conversion, formatting, code extraction & TOC toolkit
     ├── text-converter-zh/      # Chinese Simplified ↔ Traditional converter
@@ -140,6 +141,7 @@ Practical script tools categorized by function:
 - **Local HTTPS Certificate Helper** ([security/local-https-cert-helper/](security/local-https-cert-helper/)) - OpenSSL tool to quickly generate local Root CA and server certificates, with a Node.js test server. → [Details](security/local-https-cert-helper/README.md)
 - **Domain Certificate & Attack Surface Auditor** ([security/domain-cert-auditor/](security/domain-cert-auditor/)) - Automated security audit and external attack surface management (EASM) tool to enumerate subdomains, detect expired or soon-to-expire SSL/TLS certificates, and flag unencrypted plaintext HTTP transmissions. → [Details](security/domain-cert-auditor/README.md)
 - **CyLab Challenge Exporter** ([security/cylab-challenge-exporter/](security/cylab-challenge-exporter/)) - Export all challenges from CyLab Security Academy (picoCTF) and generate progress checklists. → [Details](security/cylab-challenge-exporter/README.md)
+- **Windows Endpoint Forensic Triage** ([security/windows-endpoint-triage/](security/windows-endpoint-triage/)) - Native Windows PowerShell incident response triage tool for inspecting exposed listening ports, active WAN connections, high-CPU processes, remote tunnels (RAT), and process masquerading with standalone HTML reports. → [Details](security/windows-endpoint-triage/README.md)
 
 ### 📝 Text & Encoding
 - **Markdown Toolkit** ([text/markdown-toolkit/](text/markdown-toolkit/)) - Lightweight utility toolkit for Markdown conversions (TXT/HTML to MD), quote-safe paragraph formatting, code block extraction, and TOC generation. → [Details](text/markdown-toolkit/README.md)
