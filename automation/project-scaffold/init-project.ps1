@@ -106,6 +106,7 @@ if ($NoFeatures) {
     Write-Host ""
     Write-Host "Stage 2: Features Configuration:" -ForegroundColor Cyan
     Write-Host "Recommended features for ${Archetype}: $($recommended -join ', ')" -ForegroundColor Yellow
+    Write-Host "Available features: $($Config.features.PSObject.Properties.Name -join ', ')" -ForegroundColor DarkGray
     $prompt = Read-Host "Enable recommended features? [Y/n] (or enter custom comma-separated list)"
     if ($prompt -eq '' -or $prompt -match '^[Yy]') {
       $ActiveFeatures = $recommended
@@ -453,6 +454,18 @@ foreach ($wf in $AllWorkflows) {
         '#\s*/\*\s*CRON_PLACEHOLDER_START\s*\*/[\s\S]*?#\s*/\*\s*CRON_PLACEHOLDER_END\s*\*/',
         $formattedCron
       )
+      $customized = $true
+    }
+
+    # 3. Optional bot-author exemption for the PR body contract steps
+    $botMarker = "github.event_name == 'pull_request' # /* BOT_PR_EXEMPT_PLACEHOLDER */"
+    if ($wfContent.Contains($botMarker)) {
+      $bodyGuard = if ($ActiveFeatures -contains "bot-pr-exempt") {
+        "github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'"
+      } else {
+        "github.event_name == 'pull_request'"
+      }
+      $wfContent = $wfContent.Replace($botMarker, $bodyGuard)
       $customized = $true
     }
 

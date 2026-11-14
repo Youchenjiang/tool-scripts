@@ -393,6 +393,10 @@
       ]
     }
   },
+    "bot-pr-exempt": {
+      "name": "Bot PR exemption from the PR body contract",
+      "description": "自動化帳號（dependabot[bot]、github-actions[bot] 等）開的 PR 跳過 PR body 章節與 provider 勾選檢查；人手開的 PR 仍受完整檢查"
+    },
   "legacyAliases": {
     "desktop": "desktop-app",
     "web": "web-spa",

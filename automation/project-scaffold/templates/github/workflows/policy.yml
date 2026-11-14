@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the base branch PR contract
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' # /* BOT_PR_EXEMPT_PLACEHOLDER */
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
@@ -46,7 +46,7 @@ jobs:
           sparse-checkout: |
             tools
       - name: Verify the PR body against the repository contract
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' # /* BOT_PR_EXEMPT_PLACEHOLDER */
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |

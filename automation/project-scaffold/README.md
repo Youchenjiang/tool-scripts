@@ -65,6 +65,7 @@ Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scop
 | Feature | 模組名稱 | 功用與配置內容 |
 | :--- | :--- | :--- |
 | **`strict-linting`** | 嚴格代碼規範 | 部署 `eslint.config.mjs`，內建 TypeScript 嚴格規則、SonarCloud S3358 巢狀三元運算式防禦 (`no-nested-ternary`)、變數命名長度規範 (`id-length`)、物件非空斷言防禦 (`no-non-null-assertion`)。 |
+| **`bot-pr-exempt`** | 自動化 PR 免 body 契約 | `dependabot[bot]`、`github-actions[bot]` 等 Bot 開的 PR 跳過 PR body 章節與 External provider 勾選檢查；人手開的 PR 仍完整檢查。未啟用時所有 PR 一律受檢查。 |
 | **`direct-push`** | 免 PR 主幹原子推送 | 適用於無需開 PR 的腳本庫、筆記庫或工具庫。自動切換 Agent Rules 為主幹推送規範 (`direct-trunk.md`)，並設定 `git config repo.directPush true` 允許直推 `main`，Policy CI 同步支援 push 事件。 |
 | **`chained-prs`** | 鏈式 PR 工作流 | 部署 `chained-prs.md` 規則，規範滾動 Rebase（Rolling Rebase）技巧、分支推動決策樹（普通 append vs force-with-lease）、GitHub 倉儲設定（關閉 squash merge、Rulesets 配置）。 |
 | **`sec-enterprise`** | 企業級資安平台對接 | 部署完整 Post-Deploy 與排程安全驗證工作流（Dependency-Track, DefectDojo, Faraday, Wazuh, Nuclei, post-merge-security）。適合企業正式環境使用。 |
