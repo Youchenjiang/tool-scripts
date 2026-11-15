@@ -268,39 +268,45 @@ def detect_faces(photo: np.ndarray) -> list[tuple[int, int, int, int]]:
         except Exception:
             pass
 
-    # 備援：Haar Cascades
-    gray = cv2.cvtColor(photo, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray)
-    frontal = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
-    profile = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_profileface.xml"
-    )
+    # 備援：Haar Cascades (若環境支援)
+    if hasattr(cv2, "CascadeClassifier") and hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+        try:
+            gray = cv2.cvtColor(photo, cv2.COLOR_BGR2GRAY)
+            gray = cv2.equalizeHist(gray)
+            frontal = cv2.CascadeClassifier(
+                cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+            )
+            profile = cv2.CascadeClassifier(
+                cv2.data.haarcascades + "haarcascade_profileface.xml"
+            )
 
-    faces = []
-    f1 = frontal.detectMultiScale(
-        gray, scaleFactor=1.05, minNeighbors=4, minSize=(36, 36)
-    )
-    for x, y, w, h in f1:
-        faces.append((int(x), int(y), int(w), int(h)))
+            faces = []
+            f1 = frontal.detectMultiScale(
+                gray, scaleFactor=1.05, minNeighbors=4, minSize=(36, 36)
+            )
+            for x, y, w, h in f1:
+                faces.append((int(x), int(y), int(w), int(h)))
 
-    p1 = profile.detectMultiScale(
-        gray, scaleFactor=1.05, minNeighbors=4, minSize=(36, 36)
-    )
-    for x, y, w, h in p1:
-        faces.append((int(x), int(y), int(w), int(h)))
+            p1 = profile.detectMultiScale(
+                gray, scaleFactor=1.05, minNeighbors=4, minSize=(36, 36)
+            )
+            for x, y, w, h in p1:
+                faces.append((int(x), int(y), int(w), int(h)))
 
-    gray_flip = cv2.flip(gray, 1)
-    p2 = profile.detectMultiScale(
-        gray_flip, scaleFactor=1.05, minNeighbors=4, minSize=(36, 36)
-    )
-    for x, y, w, h in p2:
-        faces.append((int(w_img - x - w), int(y), int(w), int(h)))
+            gray_flip = cv2.flip(gray, 1)
+            p2 = profile.detectMultiScale(
+                gray_flip, scaleFactor=1.05, minNeighbors=4, minSize=(36, 36)
+            )
+            for x, y, w, h in p2:
+                faces.append((int(w_img - x - w), int(y), int(w), int(h)))
 
-    faces = [b for b in faces if b[1] < int(h_img * 0.65)]
-    faces = nms_boxes(faces, iou_thr=0.35)
-    return dedupe_by_x(faces)
+            faces = [b for b in faces if b[1] < int(h_img * 0.65)]
+            faces = nms_boxes(faces, iou_thr=0.35)
+            return dedupe_by_x(faces)
+        except Exception:
+            pass
+
+    return []
 
 
 def pick_expected_count(
@@ -1075,8 +1081,8 @@ def process_one_image(
     elif gid is not None and gid in LEGACY_ROSTER_MAP:
         roster = LEGACY_ROSTER_MAP[gid]
 
-    # 2. 人臉偵測
-    use_full_img = (gid in LEGACY_USE_FULL_IMAGE) if (not auto_mode and gid is not None) else False
+    # 2. 人臉偵測 (特定組別如 3、9 使用全圖避免切掉人物)
+    use_full_img = (gid in LEGACY_USE_FULL_IMAGE) if (gid is not None) else False
     split_y = detect_photo_text_split(img)
 
     if use_full_img:
