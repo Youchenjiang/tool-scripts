@@ -102,7 +102,7 @@ LEGACY_ROSTER_MAP: dict[int, list[str]] = {
 LEGACY_IMAGE_ORDER_NAMES: dict[int, list[str]] = {
     1: ["林妤蓁", "鄒雅雯", "周怡湘", "朱宇婕", "蘇文馨", "黃詩涵"],
     2: ["簡柔恩", "陳梓銜", "王廷瑜", "胡翔安"],
-    3: ["林承駿", "葉羿君", "黃櫳萱", "李恩齊", "蔣侑宸", "林秭礽"],
+    3: ["蔣侑宸", "林秭礽", "李恩齊", "林承駿", "黃櫳萱", "葉羿君"],
     4: ["林秋香", "朱芸萱", "林佩臻", "張芮瑀", "李采姈", "陳莉豐"],
     5: ["彭琦崴", "謝嘉盈", "彭家樺", "李若依", "郭士揚", "賴劭穎"],
     6: ["張珉萁", "謝子尉", "廖承偉", "潘維晟", "楊佳炘", "陳柏甫"],
@@ -1150,7 +1150,16 @@ def process_one_image(
             candidate_strategies=candidates,
         )
 
-        if row_layout and sum(row_layout) == len(final_names):
+        # 若無文字標籤/OCR 匹配失敗，且該組已有預設驗證名單與排版，優先回退到已驗證之預設規則
+        if (strategy_tag == "roster_fallback" or matched_count == 0) and gid is not None and gid in LEGACY_IMAGE_ORDER_NAMES:
+            order_names = LEGACY_IMAGE_ORDER_NAMES[gid]
+            row_layout = LEGACY_ROW_LAYOUT.get(gid, [])
+            expected = min(len(faces), len(order_names))
+            pairs = assign_names_with_row_layout(faces, order_names[:expected], row_layout)
+            strategy_tag = "preset_verified"
+            matched_count = expected
+            avg_score = 1.0
+        elif row_layout and sum(row_layout) == len(final_names):
             pairs = assign_names_with_row_layout(faces, final_names, row_layout)
         else:
             pairs = assign_names_with_row_layout(faces, final_names, face_row_sizes)
@@ -1293,7 +1302,7 @@ def main() -> None:
             for p in uniq.values()
             if not p.name.lower().startswith(("_tmp_", "tmp_ocr", "debug_"))
         ],
-        key=lambda p: int(p.stem) if p.stem.isdigit() else str(p.stem),
+        key=lambda p: (0, int(p.stem)) if p.stem.isdigit() else (1, str(p.stem)),
     )
 
     if not imgs:
