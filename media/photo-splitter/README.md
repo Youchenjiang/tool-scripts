@@ -54,6 +54,7 @@ python split_students.py --input-dir <path_to_photos> --output-dir split_student
 ```
 
 #### Optional Arguments:
+- `--mode {portrait,full-body}`: Crop mode (default: `portrait`, 3:4 vertical head-and-shoulders portrait; `full-body` for midline full-body crop).
 - `--roster <path>`: Path to a class roster (`.xlsx`, `.xls`, `.csv`, or `.json`) to enable automatic typo correction.
 - `--use-easyocr`: Enable EasyOCR for higher OCR accuracy on complex fonts.
 - `--report <path.md>`: Generate a Markdown execution summary report.

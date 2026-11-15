@@ -22,7 +22,9 @@ import difflib
 import json
 import os
 import re
+import shutil
 import subprocess
+import tempfile
 import urllib.request
 from pathlib import Path
 from statistics import median
@@ -34,6 +36,33 @@ import numpy as np
 # YuNet 人臉偵測模型設定
 YUNET_MODEL = Path("face_detection_yunet_2023mar.onnx")
 YUNET_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
+
+
+def imread_unicode(path: Union[str, Path]) -> Optional[np.ndarray]:
+    """支援 Windows 中文與萬國碼路徑讀取圖片。"""
+    try:
+        p = Path(path)
+        if not p.is_file():
+            return None
+        data = np.fromfile(str(p), dtype=np.uint8)
+        return cv2.imdecode(data, cv2.IMREAD_COLOR)
+    except Exception:
+        return None
+
+
+def imwrite_unicode(path: Union[str, Path], img: np.ndarray) -> bool:
+    """支援 Windows 中文與萬國碼路徑儲存圖片。"""
+    try:
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        ext = p.suffix if p.suffix else ".png"
+        success, enc = cv2.imencode(ext, img)
+        if success:
+            enc.tofile(str(p))
+            return True
+        return False
+    except Exception:
+        return False
 
 # OCR 停用字（避免把排版指示誤認為學生姓名）
 STOP_WORDS = {
@@ -139,6 +168,23 @@ def ensure_yunet_model() -> bool:
         return False
 
 
+def get_safe_yunet_path() -> Optional[Path]:
+    """取得相容於 OpenCV C++ ONNX Importer 的路徑（自動處理 Windows 非 ASCII 路徑）。"""
+    if not ensure_yunet_model():
+        return None
+    resolved = YUNET_MODEL.resolve()
+    try:
+        str(resolved).encode("ascii")
+        return resolved
+    except UnicodeEncodeError:
+        temp_dir = Path(tempfile.gettempdir()) / "photo_splitter_models"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        target = temp_dir / "face_detection_yunet_2023mar.onnx"
+        if not target.exists() or target.stat().st_size != resolved.stat().st_size:
+            shutil.copy2(resolved, target)
+        return target
+
+
 def nms_boxes(
     boxes: list[tuple[int, int, int, int]], iou_thr: float = 0.35
 ) -> list[tuple[int, int, int, int]]:
@@ -201,10 +247,11 @@ def detect_faces(photo: np.ndarray) -> list[tuple[int, int, int, int]]:
     """人臉偵測主函式：優先使用 YuNet CNN，失敗時自動退回 Haar Cascade。"""
     h_img, w_img = photo.shape[:2]
 
-    if ensure_yunet_model():
+    safe_model = get_safe_yunet_path()
+    if safe_model is not None:
         try:
             detector = cv2.FaceDetectorYN.create(
-                str(YUNET_MODEL), "", (w_img, h_img), 0.65, 0.3, 5000
+                str(safe_model), "", (w_img, h_img), 0.65, 0.3, 5000
             )
             _, det = detector.detect(photo)
             if det is not None and len(det) > 0:
@@ -293,16 +340,75 @@ def split_rows_by_y(faces: list[tuple[int, int, int, int]]) -> list[list[int]]:
     return [top_ids, bottom_ids]
 
 
+def compute_portrait_box(
+    face: tuple[int, int, int, int],
+    img_w: int,
+    img_h: int,
+    split_y: Optional[int] = None,
+) -> tuple[int, int, int, int]:
+    """
+    計算以人臉為中心的標準 3:4 直式半身證件照邊界。
+    保留適當頭頂頭髮空間、領口與胸口，避免細長條或切到身體下半部。
+    """
+    x, y, w, h = face
+    cx = x + w * 0.5
+    top = int(y - 0.45 * h)
+    bottom = int(y + 2.30 * h)
+
+    if split_y is not None and split_y > 0 and split_y < img_h:
+        bottom = min(bottom, split_y - 2)
+
+    target_h = max(20, bottom - top)
+    target_w = int(target_h * 0.75)  # 3:4 標準證件照比例
+
+    left = int(cx - target_w * 0.5)
+    right = left + target_w
+
+    # 邊界平移校正，盡可能保持 3:4 比例
+    if left < 0:
+        right = min(img_w, right - left)
+        left = 0
+    if right > img_w:
+        left = max(0, left - (right - img_w))
+        right = img_w
+
+    if top < 0:
+        bottom = min(img_h, bottom - top)
+        top = 0
+    if bottom > img_h:
+        top = max(0, top - (bottom - img_h))
+        bottom = img_h
+
+    top = max(0, top)
+    bottom = min(img_h, bottom)
+    left = max(0, left)
+    right = min(img_w, right)
+
+    if right <= left:
+        left, right = max(0, x - 10), min(img_w, x + w + 10)
+    if bottom <= top:
+        top, bottom = max(0, y - 10), min(img_h, y + h + 10)
+
+    return (left, top, right, bottom)
+
+
 def compute_crop_boxes(
-    photo: np.ndarray, faces: list[tuple[int, int, int, int]]
+    photo: np.ndarray,
+    faces: list[tuple[int, int, int, int]],
+    mode: str = "portrait",
+    split_y: Optional[int] = None,
 ) -> list[tuple[int, int, int, int]]:
     """
-    核心中線裁切演算法：
-    計算相鄰人臉之間的水平中點作為裁切分界，保證同排同學照片不重疊，且保留適當身體高度。
+    根據模式計算裁切方框：
+    - portrait: 標準 3:4 直式半身證件照（預設，頭像端正、保留胸口）
+    - full-body: 全身智慧中線無重疊裁切
     """
     ph, pw = photo.shape[:2]
     if not faces:
         return []
+
+    if mode == "portrait":
+        return [compute_portrait_box(f, pw, ph, split_y) for f in faces]
 
     rows = split_rows_by_y(faces)
     crop_boxes: list[tuple[int, int, int, int]] = [(0, 0, 0, 0)] * len(faces)
@@ -406,7 +512,7 @@ def run_tesseract_text(img: np.ndarray, psm: str = "6") -> str:
     if img is None or img.size == 0:
         return ""
     tmp = Path(f"_tmp_ocr_{os.getpid()}_{id(img)}.png")
-    cv2.imwrite(str(tmp), img)
+    imwrite_unicode(tmp, img)
     cmd = ["tesseract", str(tmp), "stdout", "-l", "chi_tra", "--psm", psm]
     try:
         out = subprocess.check_output(
@@ -424,7 +530,7 @@ def run_tesseract_tsv(img: np.ndarray, psm: str = "6") -> list[dict]:
     if img is None or img.size == 0:
         return []
     tmp = Path(f"_tmp_tsv_{os.getpid()}_{id(img)}.png")
-    cv2.imwrite(str(tmp), img)
+    imwrite_unicode(tmp, img)
     cmd = ["tesseract", str(tmp), "stdout", "-l", "chi_tra", "--psm", psm, "tsv"]
     try:
         out = subprocess.check_output(
@@ -948,10 +1054,11 @@ def process_one_image(
     debug_dir: Path,
     roster_map: dict[Union[int, str], list[str]],
     auto_mode: bool = True,
+    crop_mode: str = "portrait",
     reader=None,
 ) -> dict:
     """處理單張合照，自動完成偵測、裁切、重命名與除錯圖產出。"""
-    img = cv2.imread(str(img_path))
+    img = imread_unicode(img_path)
     if img is None:
         print(f"[WARN] 無法讀取圖片: {img_path.name}")
         return {}
@@ -1050,7 +1157,7 @@ def process_one_image(
 
     # 4. 裁切與輸出
     pair_faces = [f for _, f in pairs]
-    crop_boxes = compute_crop_boxes(photo, pair_faces)
+    crop_boxes = compute_crop_boxes(photo, pair_faces, mode=crop_mode, split_y=split_y)
 
     stem_dir = out_dir / img_path.stem
     stem_dir.mkdir(parents=True, exist_ok=True)
@@ -1074,10 +1181,10 @@ def process_one_image(
         cv2.rectangle(dbg, (x1, y1), (x2, y2), (255, 180, 0), 2)
         crop = photo[y1:y2, x1:x2]
         filename = f"{i:02d}_{sanitize_filename(name)}.png"
-        cv2.imwrite(str(stem_dir / filename), crop)
+        imwrite_unicode(stem_dir / filename, crop)
 
     debug_dir.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(debug_dir / f"{img_path.stem}_debug.png"), dbg)
+    imwrite_unicode(debug_dir / f"{img_path.stem}_debug.png", dbg)
     print(f"[OK] {img_path.name} -> {len(pairs)} 人 (策略: {strategy_tag}, 信心度: {avg_score:.2f})")
 
     return {
@@ -1151,6 +1258,13 @@ def main() -> None:
     parser.add_argument("--roster", "-r", help="名冊檔案路徑 (.xlsx, .xls, .csv, .json)")
     parser.add_argument("--no-auto", action="store_true", help="停用自動排版多策略推斷，使用預設規則")
     parser.add_argument("--use-easyocr", action="store_true", help="若已安裝 easyocr，強制啟用以加強文字識別")
+    parser.add_argument(
+        "--mode",
+        "-m",
+        choices=["portrait", "full-body"],
+        default="portrait",
+        help="裁切模式: portrait (預設, 3:4 直式半身證件照) 或 full-body (全身智慧中線裁切)",
+    )
     parser.add_argument("--report", help="產出 Markdown 執行報告檔案路徑")
     parser.add_argument("--low-confidence-report", help="產出低信心覆核報告檔案路徑")
     args = parser.parse_args()
@@ -1195,6 +1309,7 @@ def main() -> None:
             debug_dir=debug_dir,
             roster_map=roster_map,
             auto_mode=not args.no_auto,
+            crop_mode=args.mode,
             reader=reader,
         )
         if meta:

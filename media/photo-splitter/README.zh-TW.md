@@ -54,6 +54,7 @@ python split_students.py --input-dir <圖片目錄路徑> --output-dir split_stu
 ```
 
 #### 常見選用參數：
+- `--mode {portrait,full-body}`：裁切模式（預設: `portrait`，標準 3:4 直式半身證件照，頭像置中並保留肩膀；可選 `full-body` 全身中線無重疊裁切）。
 - `--roster <路徑>`：傳入班級名冊檔案（`.xlsx`、`.xls`、`.csv` 或 `.json`），啟用 OCR 錯字自動校正。
 - `--use-easyocr`：若本機有安裝 EasyOCR，啟用高精度文字偵測。
 - `--report <路徑.md>`：產出處理結果彙總 Markdown 報告。
