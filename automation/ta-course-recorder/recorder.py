@@ -184,15 +184,30 @@ class TACourseRecorder:
         ws[m["date"]].font = FONT_REGULAR_14
         ws[m["date"]].alignment = ALIGN_LEFT_CENTER
 
-        ws[m["start_time"]] = self.start_time
+        def _to_time(v, fallback):
+            if v is None:
+                return fallback
+            h, mi = (int(x) for x in str(v).split(":")[:2])
+            return time(h, mi)
+
+        week_start = _to_time(record.get("start_time"), self.start_time)
+        week_end = _to_time(record.get("end_time"), self.end_time)
+        if "start_time" in record or "end_time" in record:
+            week_duration = (week_end.hour * 60 + week_end.minute) - (
+                week_start.hour * 60 + week_start.minute
+            )
+        else:
+            week_duration = self.duration_minutes
+
+        ws[m["start_time"]] = week_start
         ws[m["start_time"]].font = FONT_REGULAR_14
         ws[m["start_time"]].alignment = ALIGN_CENTER_CENTER
 
-        ws[m["end_time"]] = self.end_time
+        ws[m["end_time"]] = week_end
         ws[m["end_time"]].font = FONT_REGULAR_14
         ws[m["end_time"]].alignment = ALIGN_CENTER_CENTER
 
-        ws[m["duration"]] = self.duration_minutes
+        ws[m["duration"]] = week_duration
         ws[m["duration"]].font = FONT_REGULAR_14
         ws[m["duration"]].alignment = ALIGN_CENTER_CENTER
 
