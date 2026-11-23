@@ -190,17 +190,24 @@ class TACourseRecorder:
             h, mi = (int(x) for x in str(v).split(":")[:2])
             return time(h, mi)
 
-        week_start = _to_time(record.get("start_time"), self.start_time)
-        week_end = _to_time(record.get("end_time"), self.end_time)
-        if "start_time" in record or "end_time" in record:
+        course_cfg = self.config.get("course", {})
+        if record.get("is_holiday", False):
+            # 未觀課週：填表定時間，不填實際觀課時間
+            week_start = _to_time(course_cfg.get("official_start_time"), self.start_time)
+            week_end = _to_time(course_cfg.get("official_end_time"), self.end_time)
+        else:
+            week_start = _to_time(record.get("start_time"), self.start_time)
+            week_end = _to_time(record.get("end_time"), self.end_time)
+        if record.get("is_holiday", False) or "start_time" in record or "end_time" in record:
             week_duration = (week_end.hour * 60 + week_end.minute) - (
                 week_start.hour * 60 + week_start.minute
             )
         else:
             week_duration = self.duration_minutes
 
-        # 停課週（沒有上課）：時間與長度留空
-        if record.get("is_holiday", False):
+        # 停課週（沒有上課）：時間與長度留空；助教請假週仍填表定時間
+        week_cfg_t = self.weeks_data.get(week_num, {})
+        if record.get("is_holiday", False) and not week_cfg_t.get("ta_absent", False):
             week_start = week_end = week_duration = None
 
         ws[m["start_time"]] = week_start
@@ -257,18 +264,30 @@ class TACourseRecorder:
 
         if is_holiday:
             holiday_reason = record.get("holiday_reason", "期中考/國定假日")
-            ws[c_obj] = f"無（{holiday_reason}）"
+            week_cfg = self.weeks_data.get(week_num, {})
+            ta_absent = week_cfg.get("ta_absent", False)
+            unknown_text = week_cfg.get("unknown_text", "未知")
+            ws[c_obj] = week_cfg.get("objective", f"無（{holiday_reason}）")
             ws[c_plat] = "無"
-            ws[f"{m.get('col_pre_name', 'C')}{crow}"] = "無"
-            ws[f"{m.get('col_pre_content', 'D')}{crow}"] = "無"
-            ws[f"{m.get('col_pre_eval', 'E')}{crow}"] = "無"
-            ws[f"{m.get('col_in_name', 'F')}{crow}"] = "無"
-            ws[f"{m.get('col_in_content', 'G')}{crow}"] = "無"
-            ws[f"{m.get('col_in_eval', 'H')}{crow}"] = "無"
-            ws[f"{m.get('col_post_name', 'I')}{crow}"] = "無"
-            ws[f"{m.get('col_post_content', 'J')}{crow}"] = "無"
-            ws[f"{m.get('col_post_eval', 'K')}{crow}"] = "無"
-            reflection_text = f"本週為{holiday_reason}，暫停一次課堂實體/線上觀課。"
+            # 停課/請假週若老師仍有公告課前教材，於 weeks 中提供 pre_class 即照填
+            has_pre = "pre_class" in self.weeks_data.get(week_num, {})
+            if has_pre:
+                ws[c_plat] = record.get("platform", "無")
+            ws[f"{m.get('col_pre_name', 'C')}{crow}"] = pre.get("name", "無") if has_pre else "無"
+            ws[f"{m.get('col_pre_content', 'D')}{crow}"] = pre.get("content", "無") if has_pre else "無"
+            ws[f"{m.get('col_pre_eval', 'E')}{crow}"] = pre.get("eval", "無") if has_pre else "無"
+            ws[f"{m.get('col_in_name', 'F')}{crow}"] = unknown_text if ta_absent else "無"
+            ws[f"{m.get('col_in_content', 'G')}{crow}"] = unknown_text if ta_absent else "無"
+            ws[f"{m.get('col_in_eval', 'H')}{crow}"] = unknown_text if ta_absent else "無"
+            ws[f"{m.get('col_post_name', 'I')}{crow}"] = unknown_text if ta_absent else "無"
+            ws[f"{m.get('col_post_content', 'J')}{crow}"] = unknown_text if ta_absent else "無"
+            ws[f"{m.get('col_post_eval', 'K')}{crow}"] = unknown_text if ta_absent else "無"
+            if ta_absent:
+                reflection_text = week_cfg.get(
+                    "reflection", f"本週{holiday_reason}，未能到課觀課，課堂進行情形未知。"
+                )
+            else:
+                reflection_text = f"本週為{holiday_reason}，暫停一次課堂實體/線上觀課。"
         else:
             ws[c_obj] = record.get("objective", "")
             ws[c_plat] = record.get("platform", "")

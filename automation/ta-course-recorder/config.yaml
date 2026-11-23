@@ -7,6 +7,8 @@ course:
   start_date: "2026-10-09"   # 第 1 頁起始上課日 (Week 5: 2026-10-09)
   start_time: "14:07"
   end_time: "16:50"
+  official_start_time: "14:00"  # 表定時間（第 6~8 節），未觀課週填此時間
+  official_end_time: "16:50"
   duration_minutes: 163     # 14:07 ~ 16:50 共 163 分鐘
   total_semester_weeks: 16  # 大學一學期共 16 週，上限絕不超過 Week 16
 
@@ -152,3 +154,17 @@ weeks:
       content: "於 eeclass 填答 A5：flag 所在資料表與指令、兩題 Irish-Name-Repo 的帳密與差異，並附 AI 使用聲明；選作另找一題 SQLi 說明原理。整理參數化查詢等防禦方式。"
       eval: "答案正確性與原理說明、AI 使用聲明完整性"
     reflection: "1. 使用方式與過程：本週作業首次要求附 AI 使用聲明。依學生聲明，多數以 Claude 為主（少數使用 ChatGPT），用於查詢 psql 指令與 SQL 語法、理解單引號、OR 條件與註解符號的作用，也有人用來解讀選作題的位移提示、協助潤飾答案文字。\n2. 學生反應與狀況：多數聲明強調實際操作與關鍵判斷由自己完成、AI 只協助理解，顯示學生已從直接向 AI 要答案，轉為把 AI 當作查詢與引導的工具；有同學讓 AI 一步步引導分析錯誤訊息，也有同學先自行測試 Irish-Name-Repo 2 的過濾規則，再與 AI 討論歸納出結論，另有同學延伸整理其他 CTF 題目的解題筆記。\n3. 困難與問題：平台偶有送出後無回應的狀況，學生透過 AI 理解講義中的替代寫法後解決；另有同學直接從搜尋引擎的 AI 摘要取得解法，略過自行推理的過程，需提醒以 AI 引導思考而非直接取答案。\n4. 效益與特色：AI 使用聲明讓學生反思自己如何使用 AI，也讓 TA 掌握學生實際的使用方式，作為後續引導的依據。"
+
+  11:
+    date: "2026-11-20"
+    is_holiday: true
+    holiday_reason: "助教請病假"
+    ta_absent: true   # 課程照常進行但助教未到：課中/課後填「未知」
+    unknown_text: "未知（助教請病假未到課，課堂實行情形待後續了解）"
+    reflection: "1. 已知部分：本週課程照常進行，老師於 eeclass 公告 MITRE ATT&CK（更新）、駭客思維—以水軍為例之反思、Lesson 4 Information Security Services 三份教材。\n2. 未知部分：助教請病假未到課，課堂實際進行方式、學生 AI 使用情形與反應均未能觀察。\n3. 後續處理：待下次上課向老師或同學了解本週實行情形後補充。"
+    objective: "認識 MITRE ATT&CK 更新內容、從水軍案例反思駭客思維，並理解資訊安全服務（Lesson 4）的核心機制"
+    platform: "未觀察（助教請病假）"
+    pre_class:
+      name: "eeclass 公告教材研讀"
+      content: "老師於 eeclass 公告本週教材：Hacker Techniques 補充之四 MITRE ATT&CK（更新）、補充之七 駭客思維—以水軍為例之反思、Lesson 4 Information Security Services，供學生課前閱讀。學生是否運用 AI 研讀未能得知。"
+      eval: "eeclass 教材閱讀紀錄"
