@@ -199,6 +199,10 @@ class TACourseRecorder:
         else:
             week_duration = self.duration_minutes
 
+        # 停課週（沒有上課）：時間與長度留空
+        if record.get("is_holiday", False):
+            week_start = week_end = week_duration = None
+
         ws[m["start_time"]] = week_start
         ws[m["start_time"]].font = FONT_REGULAR_14
         ws[m["start_time"]].alignment = ALIGN_CENTER_CENTER
