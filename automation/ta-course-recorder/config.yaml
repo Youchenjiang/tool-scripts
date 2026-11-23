@@ -109,3 +109,38 @@ weeks:
       eval: "實作復現程度與報告主題可行性"
     reflection: "1. 使用方式與過程：學生以 Claude 理解 Nmap 掃描結果、服務版本與漏洞資訊，並查詢取得 Shell 所需指令的用法，再自行操作驗證。\n2. 學生反應與狀況：同學對實際取得 Shell 的攻防實作興趣高，願意自行嘗試不同參數組合。\n3. 困難與問題：AI 給出的指令未必符合實驗環境，需要學生自己對照實際輸出判斷，TA 現場協助除錯。\n4. 效益與特色：AI 降低查閱指令與漏洞資料的門檻，讓課堂時間能集中在 Recon 到 Shell 的完整流程。"
 
+  9:
+    date: "2026-11-06"
+    objective: "認識 Rootkits、作業系統安全與 MITRE ATT&CK 框架，並掌握檔案鑑識基本流程（辨識、看明文、拆解隱藏內容）"
+    platform: "Claude"
+    pre_class:
+      name: "Hacker Techniques 補充教材研讀"
+      content: "研讀補充之二 Root Kits、補充之三 OS Security、補充之四 MITRE ATT&CK，利用 AI 整理 Rootkit 類型與隱匿手法，並對照 ATT&CK 戰術矩陣。"
+      eval: "Rootkit 與 ATT&CK 戰術概念問答"
+    in_class:
+      name: "A4 - Cylab Files 檔案鑑識實作"
+      content: "以 Matryoshka doll 示範用 file 辨識真實格式、strings 看明文、binwalk 找出隱藏檔並逐層拆解；學生接著實作 Secret of the Polyglot，以 Claude 協助理解檔頭 magic bytes 與工具輸出。"
+      eval: "TA 巡視能否說明每層檔案的辨識依據，並完成平台 Submit"
+    post_class:
+      name: "A4 作業填答"
+      content: "於 eeclass 填答 A4：Matryoshka doll 的四層結構與拆解方式、file 與 binwalk 如何判斷 jpg 中藏有資料；Polyglot 兩半 flag 來源與 PNG、PDF 在檔案中的位置。"
+      eval: "答案正確性與檔案格式原理說明"
+    reflection: "1. 使用方式與過程：學生將 file、binwalk 等工具輸出交給 Claude 解讀，理解檔頭與檔尾標記代表的意義，再自行逐層拆解。\n2. 學生反應與狀況：發現一張看似正常的 jpg 裡藏有多層檔案時反應熱烈，對「副檔名不代表真實格式」印象深刻。\n3. 困難與問題：部分同學不熟 terminal 操作，且拆出的檔案需再從頭檢查，容易遺漏；AI 的解讀仍需以工具結果核對。\n4. 效益與特色：AI 協助快速理解各種檔案格式結構，配合 Rootkit、OS Security 教材，讓學生理解攻擊者隱藏資料的手法與鑑識觀念。"
+
+  10:
+    date: "2026-11-13"
+    objective: "認識 Open DNS Resolver 放大攻擊與 Athens Affair 案例，並理解 SQL 注入成因，掌握探針、閉合、繞過登入到 UNION 取資料的流程與防禦"
+    platform: "Claude\nChatGPT"
+    pre_class:
+      name: "補充教材研讀與 SQL 基礎預習"
+      content: "研讀 Hacker Techniques 補充之五（Open-dns-resolver Attack）與補充之六（The Athens Affair），利用 AI 整理 DNS 放大攻擊原理與案例時間軸；並以 AI 複習 SELECT / WHERE / UNION 語法與登入驗證查詢的組成。"
+      eval: "DNS 放大攻擊與 SQL 語法概念問答"
+    in_class:
+      name: "A5 - Cylab SQLi 實作"
+      content: "以 SQL Direct 熟悉資料庫結構，示範單引號探針、閉合與註解截斷、恆真條件繞過登入、UNION 取別張資料表（More SQLi），再由學生實作 Irish-Name-Repo 1/2；學生以 Claude 或 ChatGPT 查詢 psql 指令與 SQL 語法、理解注入原理。"
+      eval: "TA 巡視能否說明 payload 如何改變原查詢，並完成平台 Submit"
+    post_class:
+      name: "A5 作業與防禦反思"
+      content: "於 eeclass 填答 A5：flag 所在資料表與指令、兩題 Irish-Name-Repo 的帳密與差異，並附 AI 使用聲明；選作另找一題 SQLi 說明原理。整理參數化查詢等防禦方式。"
+      eval: "答案正確性與原理說明、AI 使用聲明完整性"
+    reflection: "1. 使用方式與過程：本週作業首次要求附 AI 使用聲明。依學生聲明，多數以 Claude 為主（少數使用 ChatGPT），用於查詢 psql 指令與 SQL 語法、理解單引號、OR 條件與註解符號的作用，也有人用來解讀選作題的位移提示、協助潤飾答案文字。\n2. 學生反應與狀況：多數聲明強調實際操作與關鍵判斷由自己完成、AI 只協助理解，顯示學生已從直接向 AI 要答案，轉為把 AI 當作查詢與引導的工具；有同學讓 AI 一步步引導分析錯誤訊息，也有同學先自行測試 Irish-Name-Repo 2 的過濾規則，再與 AI 討論歸納出結論，另有同學延伸整理其他 CTF 題目的解題筆記。\n3. 困難與問題：平台偶有送出後無回應的狀況，學生透過 AI 理解講義中的替代寫法後解決；另有同學直接從搜尋引擎的 AI 摘要取得解法，略過自行推理的過程，需提醒以 AI 引導思考而非直接取答案。\n4. 效益與特色：AI 使用聲明讓學生反思自己如何使用 AI，也讓 TA 掌握學生實際的使用方式，作為後續引導的依據。"
