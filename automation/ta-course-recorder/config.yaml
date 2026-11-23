@@ -93,18 +93,19 @@ weeks:
 
   8:
     date: "2026-10-30"
-    objective: "深入理解進階駭客技術 (APT、Rootkits、MITRE ATT&CK) 並掌握主機滲透實作 (Recon to Shell)"
-    platform: "Antigravity (Gemini 3.8 Flash)\nClaude Code"
+    objective: "理解駭客技術與 APT 攻擊生命週期，並掌握主機滲透實作流程 (Recon to Shell)"
+    platform: "Claude"
     pre_class:
-      name: "教材研讀與先備框架認識"
-      content: "課前研讀 eeclass 補充講義，利用 AI 整理 MITRE ATT&CK 戰術矩陣架構。"
+      name: "Lesson 3 與 APT 補充教材研讀"
+      content: "課前研讀 Lesson 3 Hacker Techniques 與補充之一 APT 介紹，利用 AI 整理 APT 攻擊階段與代表性案例。"
       eval: "APT 生命週期理解問答"
     in_class:
       name: "A3 - Recon to Shell 滲透實作"
-      content: "講解資訊蒐集 (Recon) 至取得權限 (Shell) 全流程，引導使用 AI 解讀 Nmap 報表並查詢已知 CVE 漏洞細節。"
-      eval: "能否正確辨識攻擊面並建立 Reverse Shell"
+      content: "講解資訊蒐集 (Recon) 至取得權限 (Shell) 全流程，學生以 Claude 理解 Nmap 掃描結果、服務版本與對應漏洞的意義，再自行操作驗證；另說明個人報告規劃方式。"
+      eval: "能否正確辨識攻擊面並取得 Shell"
     post_class:
-      name: "A3 實驗報告與個人專題規劃"
-      content: "繳交 A3 - Recon to Shell 實作紀錄，並擬定個人報告主題架構與安全防禦建議。"
-      eval: "實作復現程度與安全防禦建議評量"
-    reflection: "1. 使用方式與過程：引導學生使用 AI 對 MITRE ATT&CK 戰術標籤進行對照，並請 AI 說明逆向取得 Shell 時常見的指令語法差異。\n2. 學生反應與狀況：同學對實際取得 Shell 的攻防實作展現高度興趣，主動嘗試不同 Recon 參數組合，課堂討論氛圍熱烈。\n3. 困難與問題：在網路穿透與監聽端口設置時部分同學遇到防火牆阻擋，AI 給出的建議偶爾過於泛用。TA 現場協助針對實驗室網段設定進行除錯指導。\n4. 效益與特色：AI 快速摘要了大量 APT 攻擊手法與案例，大幅提升高階資安知識的吸收效率，讓有限的課堂時間能專注在核心實戰演練。"
+      name: "A3 實驗報告與個人報告規劃"
+      content: "繳交 A3 - Recon to Shell 實作紀錄，並依個人報告說明開始擬定報告主題。"
+      eval: "實作復現程度與報告主題可行性"
+    reflection: "1. 使用方式與過程：學生以 Claude 理解 Nmap 掃描結果、服務版本與漏洞資訊，並查詢取得 Shell 所需指令的用法，再自行操作驗證。\n2. 學生反應與狀況：同學對實際取得 Shell 的攻防實作興趣高，願意自行嘗試不同參數組合。\n3. 困難與問題：AI 給出的指令未必符合實驗環境，需要學生自己對照實際輸出判斷，TA 現場協助除錯。\n4. 效益與特色：AI 降低查閱指令與漏洞資料的門檻，讓課堂時間能集中在 Recon 到 Shell 的完整流程。"
+
