@@ -45,7 +45,7 @@ cell_mapping:
 
 # 預設通用內容
 default_record:
-  platform: "Antigravity (Gemini 3.8 Flash)\nClaude Code"
+  platform: "ChatGPT"
   objective: "網路安全實務探討與 AI 協同攻防演練"
   pre_class:
     name: "先備知識預習"
@@ -71,20 +71,20 @@ weeks:
   6:
     date: "2026-10-16"
     objective: "熟悉資安 CTF 平台 (Cylab) 操作，掌握各類網路攻擊型態與駭客技術基礎"
-    platform: "Antigravity (Gemini 3.8 Flash)\nClaude Code"
+    platform: "Claude"
     pre_class:
       name: "平台註冊與基礎預習"
       content: "指引學生以邀請碼加入 Cylab 平台；透過 AI 預習常見 Web / Network 攻擊分類（DoS、Injection、Phishing 等）。"
       eval: "平台前測概念題"
     in_class:
       name: "A2 - Cylab Basic 實務解題"
-      content: "帶領同學練習 Web/Reverse 題目，引導使用精準 Prompt 讓 AI 分析模糊流量與除錯，尋找解題突破口。"
+      content: "帶領同學練習 Cylab Basic 題目，引導學生以 Claude 理解題目涉及的協定與攻擊概念、解讀錯誤訊息，作為解題的輔助而非直接索取答案。"
       eval: "TA 巡視解題進度與後台 Submit 狀況"
     post_class:
       name: "A2 作業與 Writeup 總結"
       content: "要求學生於 eeclass 繳交 A2 Cylab Basic 解題 Writeup，說明解題思路、邏輯與 AI 協同過程。"
       eval: "Writeup 完整性與原理理解評分"
-    reflection: "1. 使用方式與過程：課堂引導學生運用 Gemini/Claude 分析 Cylab Basic 挑戰題，著重在解讀攻擊封包與邏輯除錯。\n2. 學生反應與狀況：多數同學初次接觸 CTF 平台感到新鮮，在 AI 指引下解出第一題的成就感明顯提升，課堂提問從「答案是什麼」轉變為「攻擊原理為何」。\n3. 困難與問題：部分同學初期過度依賴 AI 直接給 Flag，但 AI 往往因缺乏上下文而出現幻覺。TA 介入引導同學調整提問策略，僅讓 AI 扮演語法與協定說明的輔助角色。\n4. 效益與特色：透過人機協同，學生排除環境報錯的時間縮短 60% 以上，TA 能更聚焦在深入講解駭客技術（Hacker Techniques）的核心防禦觀念。"
+    reflection: "1. 使用方式與過程：實戰作業中學生多以 Claude 理解題目背後的知識並協助解題，例如解釋協定、攻擊類型與錯誤訊息。\n2. 學生反應與狀況：多數同學初次接觸 CTF 平台，透過 AI 補足先備知識後較能自行動手嘗試，課堂參與度提高。\n3. 困難與問題：初期部分同學習慣直接向 AI 要答案，TA 引導改為請 AI 解釋原理、自己完成操作與判斷。\n4. 效益與特色：AI 補足背景知識的落差，讓不同程度的同學都能跟上實作，TA 可把時間花在觀念講解。"
 
   7:
     date: "2026-10-23"
