@@ -378,8 +378,22 @@ function Set-StartupState {
                 $reg.Close()
                 Write-Host "[+] 成功更新啟動項目 '$TargetName' 狀態為 [$actionName]！" -ForegroundColor Green
             } catch {
-                $hint = if ($hive -eq 'LocalMachine' -and -not $IsAdmin) { " (此項目位於本機登錄檔 HKLM，需以系統管理員身分執行以取得寫入權限)" } else { "" }
-                Write-Host "[-] 修改啟動項目失敗: $($_.Exception.Message)$hint" -ForegroundColor Red
+                if ($hive -eq 'LocalMachine' -and -not $IsAdmin -and ($_.Exception.Message -match 'Requested registry access is not allowed|Access is denied|權限不足|拒絕存取')) {
+                    Write-Host "[!] 修改 HKLM 登錄檔需要管理員權限，正在呼叫 UAC 提權執行..." -ForegroundColor Yellow
+                    $actionArg = if ($Enable) { "-EnableName" } else { "-DisableName" }
+                    try {
+                        $p = Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoProfile -File `"$PSCommandPath`" -TargetCategory 'Startup' $actionArg `"$TargetName`"" -PassThru -Wait
+                        if ($p.ExitCode -eq 0) {
+                            Write-Host "[+] 已透過 UAC 管理員權限成功更新啟動項目 '$TargetName' 狀態為 [$actionName]！" -ForegroundColor Green
+                            return
+                        }
+                    } catch {
+                        Write-Host "[-] UAC 提權失敗或使用者取消: $($_.Exception.Message)" -ForegroundColor Red
+                    }
+                } else {
+                    $hint = if ($hive -eq 'LocalMachine' -and -not $IsAdmin) { " (此項目位於本機登錄檔 HKLM，需以系統管理員身分執行以取得寫入權限)" } else { "" }
+                    Write-Host "[-] 修改啟動項目失敗: $($_.Exception.Message)$hint" -ForegroundColor Red
+                }
             }
         }
 
@@ -392,7 +406,21 @@ function Set-StartupState {
                 }
                 Write-Host "[+] 成功更新系統服務 '$TargetName' 啟動類型為 [$startType]！" -ForegroundColor Green
             } catch {
-                Write-Host "[-] 修改系統服務失敗: $($_.Exception.Message) (請確認是否具備系統管理員權限)" -ForegroundColor Red
+                if (-not $IsAdmin -and ($_.Exception.Message -match 'Access is denied|權限不足|拒絕存取|Cannot open Service Control Manager')) {
+                    Write-Host "[!] 修改系統服務需要管理員權限，正在呼叫 UAC 提權執行..." -ForegroundColor Yellow
+                    $actionArg = if ($Enable) { "-EnableName" } else { "-DisableName" }
+                    try {
+                        $p = Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoProfile -File `"$PSCommandPath`" -TargetCategory 'Service' $actionArg `"$TargetName`"" -PassThru -Wait
+                        if ($p.ExitCode -eq 0) {
+                            Write-Host "[+] 已透過 UAC 管理員權限成功更新系統服務 '$TargetName' 啟動類型為 [$startType]！" -ForegroundColor Green
+                            return
+                        }
+                    } catch {
+                        Write-Host "[-] UAC 提權失敗或使用者取消: $($_.Exception.Message)" -ForegroundColor Red
+                    }
+                } else {
+                    Write-Host "[-] 修改系統服務失敗: $($_.Exception.Message) (請確認是否具備系統管理員權限)" -ForegroundColor Red
+                }
             }
         }
 
@@ -405,7 +433,21 @@ function Set-StartupState {
                 }
                 Write-Host "[+] 成功更新計劃任務 '$TargetName' 狀態為 [$actionName]！" -ForegroundColor Green
             } catch {
-                Write-Host "[-] 修改計劃任務失敗: $($_.Exception.Message)" -ForegroundColor Red
+                if (-not $IsAdmin -and ($_.Exception.Message -match 'Access is denied|權限不足|拒絕存取')) {
+                    Write-Host "[!] 修改系統級排程需要管理員權限，正在呼叫 UAC 提權執行..." -ForegroundColor Yellow
+                    $actionArg = if ($Enable) { "-EnableName" } else { "-DisableName" }
+                    try {
+                        $p = Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoProfile -File `"$PSCommandPath`" -TargetCategory 'Task' $actionArg `"$TargetName`"" -PassThru -Wait
+                        if ($p.ExitCode -eq 0) {
+                            Write-Host "[+] 已透過 UAC 管理員權限成功更新計劃任務 '$TargetName' 狀態為 [$actionName]！" -ForegroundColor Green
+                            return
+                        }
+                    } catch {
+                        Write-Host "[-] UAC 提權失敗或使用者取消: $($_.Exception.Message)" -ForegroundColor Red
+                    }
+                } else {
+                    Write-Host "[-] 修改計劃任務失敗: $($_.Exception.Message)" -ForegroundColor Red
+                }
             }
         }
     }
