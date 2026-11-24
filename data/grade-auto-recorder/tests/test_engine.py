@@ -77,6 +77,45 @@ class TestGradeEngine(unittest.TestCase):
         # 驗證 pending_conflicts 不含 02
         self.assertEqual(len(audit["pending_conflicts"]), 0)
 
+    def test_surname_unique_match(self):
+        """測試全班唯一姓氏單字簡稱直接精確匹配"""
+        # 在範例名冊中，姓「林」者僅有 115423004 林志強
+        matches, mtype = GradeEngine.match_token("林", self.roster)
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].sid, "115423004")
+        self.assertEqual(mtype, "surname")
+
+    def test_surname_deductive_resolution(self):
+        """測試同姓氏多候選人時，當其中一位學號已出現，單字姓氏自動關聯至未出現之同學"""
+        import tempfile
+        # 建立含兩位同姓「朱」同學的測試名冊
+        with tempfile.NamedTemporaryFile("w+", encoding="utf-8-sig", delete=False, suffix=".csv") as tf:
+            tf.write("帳號,姓名\n")
+            tf.write("115423058,朱大智\n")
+            tf.write("115423082,朱小勇\n")
+            tf_path = Path(tf.name)
+
+        try:
+            chu_roster = Roster(tf_path)
+            # 58 號以學號後綴提交 A+，另一項以姓氏簡稱「朱」提交 A
+            submissions = [("58", "A+"), ("朱", "A")]
+            audit = GradeEngine.audit_submissions(submissions, chu_roster)
+
+            # 驗證 58 號朱大智直接配對 A+
+            self.assertEqual(audit["auto_assigned"].get("115423058"), "A+")
+            # 驗證「朱」透過排除法自動關聯給未出現的朱小勇 (115423082)，獲得 A
+            deductive = audit["auto_assigned_deductive"]
+            self.assertIn("115423082", deductive)
+            grade, cand, reason = deductive["115423082"]
+            self.assertEqual(grade, "A")
+            self.assertEqual(cand.name, "朱小勇")
+            self.assertIn("同姓同學", reason)
+            # 驗證無衝突殘留
+            self.assertEqual(len(audit["pending_conflicts"]), 0)
+        finally:
+            if tf_path.exists():
+                tf_path.unlink()
+
 
 if __name__ == "__main__":
     unittest.main()
