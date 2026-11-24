@@ -59,5 +59,24 @@ class TestGradeEngine(unittest.TestCase):
         self.assertEqual(same_grade["115483002"][0], "A")
 
 
+    def test_deductive_auto_resolution(self):
+        """測試具名定錨後，同組純數字自動排除法配對給剩餘候選人"""
+        # 02 候選人為 115423002 陳大華 (碩) 與 115483002 李雅婷 (博)
+        # 陳大華以姓名具名提交獲得 A，純數字 02 獲得 A+
+        submissions = [("陳大華", "A"), ("02", "A+")]
+        audit = GradeEngine.audit_submissions(submissions, self.roster)
+
+        # 驗證陳大華直接進入 auto_assigned
+        self.assertEqual(audit["auto_assigned"].get("115423002"), "A")
+        # 驗證李雅婷透過排除法進入 auto_assigned_deductive 獲得 A+
+        deductive = audit["auto_assigned_deductive"]
+        self.assertIn("115483002", deductive)
+        grade, cand, reason = deductive["115483002"]
+        self.assertEqual(grade, "A+")
+        self.assertEqual(cand.name, "李雅婷")
+        # 驗證 pending_conflicts 不含 02
+        self.assertEqual(len(audit["pending_conflicts"]), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
