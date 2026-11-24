@@ -14,23 +14,42 @@ class GradeParser:
     """成績輸入解析器"""
 
     @staticmethod
-    def parse_multi_column_table(text: str) -> Optional[Dict[str, List[str]]]:
+    def parse_multi_column_table(
+        text: str,
+        custom_headers: Optional[List[str]] = None
+    ) -> Optional[Dict[str, List[str]]]:
         """
         解析 Excel 複製的多欄貼上格式，例如：
         A+      A       A-
         32      52      24
         60      65
+
+        若提供 custom_headers (例如 ['A', 'A+', 'A++'])，
+        則第一行視為資料列，自動對齊至指定表頭。
         """
         lines = [line.rstrip("\r\n") for line in text.strip().splitlines() if line.strip()]
         if not lines:
             return None
+
+        col_data = defaultdict(list)
+
+        if custom_headers:
+            headers = [h.strip() for h in custom_headers if h.strip()]
+            if not headers:
+                return None
+            for line in lines:
+                cells = line.split("\t")
+                for idx, cell in enumerate(cells):
+                    cell_val = cell.strip()
+                    if idx < len(headers) and cell_val:
+                        col_data[headers[idx]].append(cell_val)
+            return dict(col_data)
 
         headers = [h.strip() for h in re.split(r"\t+", lines[0]) if h.strip()]
         is_header = len(headers) > 1 and not all(h.isdigit() for h in headers)
         if not is_header:
             return None
 
-        col_data = defaultdict(list)
         for line in lines[1:]:
             cells = line.split("\t")
             for idx, cell in enumerate(cells):
@@ -58,17 +77,23 @@ class GradeParser:
         return items
 
     @classmethod
-    def extract_submissions(cls, raw_text: str) -> Tuple[List[Tuple[str, str]], str]:
+    def extract_submissions(
+        cls,
+        raw_text: str,
+        custom_headers: Optional[List[str]] = None
+    ) -> Tuple[List[Tuple[str, str]], str]:
         """
         統一解析輸入文字為 [(token, grade_label)] 清單，並回傳格式類型
+        若指定 custom_headers，則以無表頭多欄表格模式優先解析。
         """
-        table_result = cls.parse_multi_column_table(raw_text)
+        table_result = cls.parse_multi_column_table(raw_text, custom_headers=custom_headers)
         if table_result is not None:
             entries = []
             for grade_label, tokens in table_result.items():
                 for token in tokens:
                     entries.append((token, grade_label))
-            return entries, "multi_column"
+            fmt = "multi_column_custom_headers" if custom_headers else "multi_column"
+            return entries, fmt
 
         kv_result = cls.parse_key_value_lines(raw_text)
         if kv_result:

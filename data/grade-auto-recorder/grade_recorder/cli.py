@@ -329,6 +329,7 @@ def main():
     parser.add_argument("-c", "--column", default="成績", help="指定成績欄位名稱（預設：成績）")
     parser.add_argument("--audit", action="store_true", help="審計模式：僅執行分析並輸出報告，不寫入檔案")
     parser.add_argument("--resolve", default=None, help="消解衝突與補登字串（例如 '50=A+, 01碩=A, 01博=A+, 賴彥宏=A'）")
+    parser.add_argument("--headers", default=None, help="指定無表頭多欄表格各欄等第（以逗號或空格分隔，例如 'A,A+,A++'）")
     parser.add_argument("-y", "--yes", "--non-interactive", dest="non_interactive", action="store_true", help="非互動批次模式：跳過所有終端確認，直接產出檔案")
     parser.add_argument("--json", action="store_true", help="以 JSON 格式輸出審計或執行結果（適合程式與代理人串接）")
 
@@ -420,7 +421,11 @@ def main():
         sys.exit(1)
 
     # 2. 解析資料
-    submissions, fmt_type = GradeParser.extract_submissions(raw_text)
+    custom_headers = None
+    if args.headers:
+        custom_headers = [h.strip() for h in re.split(r"[,;\t\s]+", args.headers.strip()) if h.strip()]
+
+    submissions, fmt_type = GradeParser.extract_submissions(raw_text, custom_headers=custom_headers)
     if not submissions:
         print("[ERROR] 無法解析任何成績提交項目，請檢查格式。")
         sys.exit(1)
