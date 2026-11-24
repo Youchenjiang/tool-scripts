@@ -56,6 +56,12 @@ class GradeEngine:
         if exact_names:
             return exact_names, "exact_name"
 
+        # 4.5 單字姓氏比對 (優先比對以該字為姓氏的同學，避免匹配到名中含該字者)
+        if len(token) == 1 and '\u4e00' <= token <= '\u9fff':
+            surname_matches = [s for s in roster.students if s.name.startswith(token)]
+            if surname_matches:
+                return surname_matches, "surname"
+
         # 5. 姓名包含/模糊比對
         partial = [s for s in roster.students if token in s.name]
         if partial:
@@ -122,56 +128,79 @@ class GradeEngine:
         auto_assigned_deductive = {}
         pending_conflicts = []
 
-        for suffix, entries in suffix_map.items():
-            candidates = entries[0][2]
-            grades = [e[0] for e in entries]
-
-            # 檢查候選人中是否已有被單一精確匹配鎖定者 (anchored)
-            anchored_cands = [c for c in candidates if c.sid in auto_assigned]
-            remaining_cands = [c for c in candidates if c.sid not in auto_assigned]
-
-            # 排除法條件：若有候選人已被定錨，且剩餘未定錨候選人數等於未定錨提交數
-            if anchored_cands and len(remaining_cands) == len(grades):
-                if len(remaining_cands) == 1:
-                    target = remaining_cands[0]
-                    anchored_names = "、".join(c.name for c in anchored_cands)
-                    auto_assigned_deductive[target.sid] = (
-                        grades[0],
-                        target,
-                        f"同組 {anchored_names} 已由精確標記鎖定"
-                    )
-                    continue
-                elif len(set(grades)) == 1:
-                    anchored_names = "、".join(c.name for c in anchored_cands)
-                    for target in remaining_cands:
-                        auto_assigned_deductive[target.sid] = (
-                            grades[0],
-                            target,
-                            f"同組 {anchored_names} 已由精確標記鎖定且等第相同"
-                        )
-                    continue
-
-            # 情況 A：同等級且次數吻合候選人數 -> 自動安全配對
-            if len(grades) == len(candidates) and len(set(grades)) == 1:
-                target_grade = grades[0]
-                for cand in candidates:
-                    auto_assigned_same_grade[cand.sid] = (target_grade, cand)
-            else:
-                # 情況 B：若有部分已被定錨，將候選人精簡為剩餘候選人
-                effective_cands = remaining_cands if anchored_cands else candidates
-                pending_conflicts.append({
-                    "suffix": suffix,
-                    "grades": grades,
-                    "candidates": effective_cands,
-                    "is_over_quota": len(grades) > len(effective_cands)
-                })
-
-        # 合併確定名單以計算缺繳
         all_resolved_sids = (
             set(auto_assigned.keys())
             | set(auto_assigned_same_grade.keys())
             | set(auto_assigned_deductive.keys())
         )
+
+        unresolved_suffixes = dict(suffix_map)
+        changed = True
+
+        while changed:
+            changed = False
+            for suffix in list(unresolved_suffixes.keys()):
+                entries = unresolved_suffixes[suffix]
+                candidates = entries[0][2]
+                grades = [e[0] for e in entries]
+
+                # 檢查候選人中是否已有被鎖定者 (anchored)
+                anchored_cands = [c for c in candidates if c.sid in all_resolved_sids]
+                remaining_cands = [c for c in candidates if c.sid not in all_resolved_sids]
+
+                # 排除法條件：若有候選人已被定錨，且剩餘未定錨候選人數等於未定錨提交數
+                if anchored_cands and len(remaining_cands) == len(grades):
+                    anchored_names = "、".join(c.name for c in anchored_cands)
+                    is_surname_group = not suffix.isdigit()
+                    peer_desc = f"同姓同學 {anchored_names} 已由學號/代碼鎖定" if is_surname_group else f"同組 {anchored_names} 已由精確標記鎖定"
+
+                    if len(remaining_cands) == 1:
+                        target = remaining_cands[0]
+                        auto_assigned_deductive[target.sid] = (
+                            grades[0],
+                            target,
+                            peer_desc
+                        )
+                        all_resolved_sids.add(target.sid)
+                        del unresolved_suffixes[suffix]
+                        changed = True
+                        continue
+                    elif len(set(grades)) == 1:
+                        for target in remaining_cands:
+                            auto_assigned_deductive[target.sid] = (
+                                grades[0],
+                                target,
+                                peer_desc + "且等第相同"
+                            )
+                            all_resolved_sids.add(target.sid)
+                        del unresolved_suffixes[suffix]
+                        changed = True
+                        continue
+
+                # 情況 A：同等級且次數吻合候選人數 -> 自動安全配對
+                if len(grades) == len(candidates) and len(set(grades)) == 1:
+                    target_grade = grades[0]
+                    for cand in candidates:
+                        auto_assigned_same_grade[cand.sid] = (target_grade, cand)
+                        all_resolved_sids.add(cand.sid)
+                    del unresolved_suffixes[suffix]
+                    changed = True
+                    continue
+
+        # 迴圈收斂後，仍無法自動消解的組別放入 pending_conflicts
+        for suffix, entries in unresolved_suffixes.items():
+            candidates = entries[0][2]
+            grades = [e[0] for e in entries]
+            anchored_cands = [c for c in candidates if c.sid in all_resolved_sids]
+            remaining_cands = [c for c in candidates if c.sid not in all_resolved_sids]
+            effective_cands = remaining_cands if anchored_cands else candidates
+            pending_conflicts.append({
+                "suffix": suffix,
+                "grades": grades,
+                "candidates": effective_cands,
+                "is_over_quota": len(grades) > len(effective_cands)
+            })
+
         unrecorded = [s for s in roster.students if s.sid not in all_resolved_sids]
 
         return {
