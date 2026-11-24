@@ -117,13 +117,39 @@ class GradeEngine:
                     "count": len(grades)
                 })
 
-        # 2. 審查多候選人組別
+        # 2. 審查多候選人組別（含同等級配對與排除法自動定錨）
         auto_assigned_same_grade = {}
+        auto_assigned_deductive = {}
         pending_conflicts = []
 
         for suffix, entries in suffix_map.items():
             candidates = entries[0][2]
             grades = [e[0] for e in entries]
+
+            # 檢查候選人中是否已有被單一精確匹配鎖定者 (anchored)
+            anchored_cands = [c for c in candidates if c.sid in auto_assigned]
+            remaining_cands = [c for c in candidates if c.sid not in auto_assigned]
+
+            # 排除法條件：若有候選人已被定錨，且剩餘未定錨候選人數等於未定錨提交數
+            if anchored_cands and len(remaining_cands) == len(grades):
+                if len(remaining_cands) == 1:
+                    target = remaining_cands[0]
+                    anchored_names = "、".join(c.name for c in anchored_cands)
+                    auto_assigned_deductive[target.sid] = (
+                        grades[0],
+                        target,
+                        f"同組 {anchored_names} 已由精確標記鎖定"
+                    )
+                    continue
+                elif len(set(grades)) == 1:
+                    anchored_names = "、".join(c.name for c in anchored_cands)
+                    for target in remaining_cands:
+                        auto_assigned_deductive[target.sid] = (
+                            grades[0],
+                            target,
+                            f"同組 {anchored_names} 已由精確標記鎖定且等第相同"
+                        )
+                    continue
 
             # 情況 A：同等級且次數吻合候選人數 -> 自動安全配對
             if len(grades) == len(candidates) and len(set(grades)) == 1:
@@ -131,21 +157,27 @@ class GradeEngine:
                 for cand in candidates:
                     auto_assigned_same_grade[cand.sid] = (target_grade, cand)
             else:
-                # 情況 B：次數超額或跨等級 -> 需確認
+                # 情況 B：若有部分已被定錨，將候選人精簡為剩餘候選人
+                effective_cands = remaining_cands if anchored_cands else candidates
                 pending_conflicts.append({
                     "suffix": suffix,
                     "grades": grades,
-                    "candidates": candidates,
-                    "is_over_quota": len(grades) > len(candidates)
+                    "candidates": effective_cands,
+                    "is_over_quota": len(grades) > len(effective_cands)
                 })
 
         # 合併確定名單以計算缺繳
-        all_resolved_sids = set(auto_assigned.keys()) | set(auto_assigned_same_grade.keys())
+        all_resolved_sids = (
+            set(auto_assigned.keys())
+            | set(auto_assigned_same_grade.keys())
+            | set(auto_assigned_deductive.keys())
+        )
         unrecorded = [s for s in roster.students if s.sid not in all_resolved_sids]
 
         return {
             "auto_assigned": auto_assigned,
             "auto_assigned_same_grade": auto_assigned_same_grade,
+            "auto_assigned_deductive": auto_assigned_deductive,
             "duplicate_single_alerts": duplicate_single_alerts,
             "pending_conflicts": pending_conflicts,
             "not_found": not_found,

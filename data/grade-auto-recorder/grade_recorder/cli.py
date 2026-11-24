@@ -98,6 +98,11 @@ def build_audit_report_data(
         for sid, (grade, cand) in audit_data.get("auto_assigned_same_grade", {}).items()
     ]
 
+    auto_deductive = [
+        {"sid": cand.sid, "name": cand.name, "program": cand.program, "grade": grade, "reason": reason}
+        for sid, (grade, cand, reason) in audit_data.get("auto_assigned_deductive", {}).items()
+    ]
+
     single_alerts = [
         {
             "sid": alert["student"].sid,
@@ -134,6 +139,7 @@ def build_audit_report_data(
         "grade_counts": grade_counts,
         "auto_assigned_count": len(audit_data.get("auto_assigned", {})),
         "auto_assigned_same_grade": auto_same,
+        "auto_assigned_deductive": auto_deductive,
         "duplicate_single_alerts": single_alerts,
         "pending_conflicts": conflicts,
         "missing_students": missing,
@@ -154,6 +160,14 @@ def print_audit_report_text(report: Dict[str, Any]):
     if auto_same:
         for item in auto_same:
             print(f"  -> [自動配對] {item['sid']} {item['name']} ({item['program']}) -> {item['grade']}")
+    else:
+        print("  (無)")
+
+    auto_deductive = report.get("auto_assigned_deductive", [])
+    print(f"\n【排除法自動配對 (具名定錨後剩餘候選人)】(共 {len(auto_deductive)} 人):")
+    if auto_deductive:
+        for item in auto_deductive:
+            print(f"  -> [排除法定錨] {item['sid']} {item['name']} ({item['program']}) -> {item['grade']} ({item['reason']})")
     else:
         print("  (無)")
 
@@ -198,6 +212,11 @@ def run_interactive_audit(audit_data: Dict, roster: Roster) -> Dict[str, str]:
     for sid, (grade, student) in audit_data["auto_assigned_same_grade"].items():
         final_assigned[sid] = grade
         print(f"  -> [自動配對] {sid} {student.name} ({student.program}) 登記為: {grade}")
+
+    # 加上排除法自動定錨
+    for sid, (grade, student, reason) in audit_data.get("auto_assigned_deductive", {}).items():
+        final_assigned[sid] = grade
+        print(f"  -> [排除法定錨] {sid} {student.name} ({student.program}) 登記為: {grade} ({reason})")
 
     # 1. 處理單一學生超額警報
     alerts = audit_data["duplicate_single_alerts"]
@@ -421,6 +440,8 @@ def main():
     # 5. 彙整最終登記名單
     final_assigned = dict(audit["auto_assigned"])
     for sid, (grade, cand) in audit.get("auto_assigned_same_grade", {}).items():
+        final_assigned[sid] = grade
+    for sid, (grade, cand, reason) in audit.get("auto_assigned_deductive", {}).items():
         final_assigned[sid] = grade
 
     # 套用 --resolve 參數
