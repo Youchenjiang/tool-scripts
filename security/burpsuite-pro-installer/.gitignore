@@ -1,0 +1,12 @@
+# BurpSuite Binaries & Runtime
+*.jar
+!loader.jar.example
+*.exe
+*.zip
+jdk-21/
+
+# Runtime & Temp
+*.aria2
+*.tmp
+*.log
+.config.ini

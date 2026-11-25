@@ -1,0 +1,21 @@
+# BurpSuite 授權腳本 ~g1014308
+## 步驟
+1. 開啟 PowerShell 進入所在目錄
+2. 執行 powershell -ExecutionPolicy Bypass -File .\install.ps1
+3. 等待安裝完成 JDK 及 BurpSuite
+4. 將 Loader 提供的 License 貼上至 BurpSuite 視窗，並將 Request 貼回 Loader，再將 Loader 的 Response 貼回 BurpSuite
+5. 完成 BurpSuite 授權
+
+## 檔案用途
+- install-1.ps1 -> 自動化安裝(完成可刪)
+- aria2c.exe -> 多線程下載相關檔案(完成可刪)
+- loader.jar -> BurpSuite 授權檔(啟動須執行)
+
+## 後續產生檔案用途(完成可刪)
+- jdk-21.exe -> JDK 安裝檔
+
+## 後續產生檔案用途(啟動須執行)
+- burpsuite_pro_v2025.jar -> BurpSuite 主程式
+- Burp.bat -> JDK 路徑與啟動參數
+- Burp-Suite-Pro.vbs -> 隱藏bat終端視窗
+- .config.ini -> 配置設定檔
