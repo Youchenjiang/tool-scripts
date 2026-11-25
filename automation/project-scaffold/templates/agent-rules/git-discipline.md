@@ -25,6 +25,7 @@ or
 
 ### 3. Safety Rules
 - **NEVER** run `git push` or `git push --force` automatically. Only commit locally unless explicit push authorization is granted.
+- **Bootstrap push**: the pre-push hook allows a direct push to `main` only while the remote has no branches at all (the first push of a new repository); commit lint and tests still run. Never use `--no-verify` for it.
 
 ### 4. Separation of Concerns & Anti-Free-Riding Rule
 - **Orthogonal Categorization, NOT Fixed Quotas**: Commits must be separated by their technical nature, but PRs are never forced into a fixed number of commits (small PRs can have 1-2 commits, larger PRs can have multiple atomic commits).

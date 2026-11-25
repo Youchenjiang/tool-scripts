@@ -42,6 +42,16 @@
 
 ## 🔖 詳細變更日誌 (Detailed Version Changelog)
 
+### [v6.1.0] - 2026-11-25：第一次推送 (Bootstrap) 與 `--publish`
+> **核心痛點**：`pr` 流程的 `pre-push` 一律攔截直推 `main`，但新 repo 的遠端是空的、沒有 PR 可開，第一次推送只能用 `--no-verify` 整個略過 hook，連 commit lint 與測試都一併跳過。
+
+* **`pre-push` 放行 Bootstrap 推送** (`templates/git/hooks/pre-push`)：
+  1. 只在推送目標為 `main`/`master`、遠端該分支不存在，且 `git ls-remote --heads` 顯示遠端**完全沒有分支**時放行；查詢失敗一律視為非空並攔截。
+  2. 略過 PR 說明檢查（尚無 PR），但 `lint_commits.py --range <pushed oid>` 檢查所有 commit，專案測試照跑。
+* **`scaffold_engine.py --publish private|public`**（`init-project.ps1 -Publish`）：以固定訊息 `chore(setup): scaffold project from the <archetype> template` 建立第一個 commit、以 `gh repo create` 建立 repo（`origin` 已存在則略過），再以 `refs/heads/main:refs/heads/main` 推送。
+* **腳手架結束印出下一步**：手動 commit／建 repo／第一次推送的指令，`pr` 流程另建議開啟 GitHub Ruleset 保護 `main`。
+* **測試**：`tests/test_pre_push_hook.py`（空遠端放行、壞 commit 仍被 lint 攔下、遠端已有其他分支或已有 `main` 時攔截）與 `tests/test_publish.py`（所有 archetype 的訊息合規、端到端 publish 推到本機 bare repo）。
+
 ### [v6.0.0] - 2026-11-14：寬進嚴出思考協議 (Deliberation Gate) 與 ADR 決策框架
 > **核心痛點**：AI 容易陷入「微管理陷阱」，使用者過早指定「怎麼做（How）」而扼殺架構空間；AI 預設過度順從，不敢反駁過度設計或陷入 XY Problem；此外，重大架構選型缺乏持久化的決策記錄，方案優缺點容易隨工作階段遺失。
 

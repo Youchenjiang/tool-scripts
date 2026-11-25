@@ -61,6 +61,18 @@ python scaffold_engine.py --archetype backend-python --project-name "MyApi" --ta
 
 Agent 會自動讀取配置並就地生成完整的規範體系與客製化 Scopes。
 
+### 4. 第一次 Commit 與推送 (Bootstrap)
+新 repo 的遠端還沒有 `main`，沒有 PR 可以開，因此 `pre-push` 會放行**遠端完全沒有任何分支**時的第一次 `main` 推送：Commit lint 會檢查所有 commit、專案測試照跑，只略過 PR 說明檢查。遠端已有任何分支後，直推 `main` 一律攔截。
+
+```powershell
+# 一次完成：建立第一個 commit、用 gh 建立 GitHub repo、推送第一個 main
+.\init-project.ps1 -Archetype minimal -ProjectName "Tool" -TargetDir "C:\path\to\Tool" -Publish private
+```
+
+- 第一個 commit 訊息固定為 `chore(setup): scaffold project from the <archetype> template`（`setup` 是所有 archetype 的預設 scope），並經 `commit-msg` hook 驗證。
+- 不加 `-Publish` 時，腳手架結束會印出手動執行的下一步。
+- `pr` 流程請到 GitHub 開啟 Ruleset 保護 `main`（要求 PR 與狀態檢查）；本機 hook 可被略過，Ruleset 才是真正的防線。
+
 ---
 
 ## 🏗️ 雙層架構設計 (Archetypes & Features)
