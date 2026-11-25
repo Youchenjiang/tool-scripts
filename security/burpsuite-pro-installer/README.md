@@ -7,7 +7,7 @@ A PowerShell-based portable installer, environment automator, and lifecycle main
 - **Custom Installation Target Directory**: Supports `-InstallPath` CLI parameter or interactive directory prompt/switching; deploy to any drive/folder from the script repo.
 - **Custom Loader URL Download**: Supports `-LoaderUrl` parameter or interactive prompt to paste a custom download link for `loader.jar`.
 - **Portable OpenJDK 21 Option**: 100% portable setup without requiring Windows Administrator rights.
-- **Resilient Multi-Threaded Downloads**: Uses `aria2c` (16 connections with breakpoint resume) or `curl` with minimum file size validation.
+- **Resilient Multi-Threaded Downloads**: Uses `aria2c` (16 connections with breakpoint resume) or `curl` with minimum file size validation. Includes one-click automatic installation of `aria2c.exe`.
 - **Fully Portable Launchers**: `Burp.bat` and `Burp-Suite-Pro.vbs` use dynamic `%~dp0` relative paths.
 - **JVM Performance Tuning**: Default `-Xms1024m -Xmx4096m -XX:+UseG1GC` configuration with customizable memory limits.
 - **Desktop Shortcut Automation**: Automatically creates a silent background launch shortcut with custom icon binding.

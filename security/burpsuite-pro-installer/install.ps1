@@ -66,6 +66,50 @@ function Test-IsAdmin {
 }
 
 # ----------------------------------------------------
+# 搜尋與下載 aria2c 極速下載器
+# ----------------------------------------------------
+function Find-Aria2Path {
+    $targetAria2 = Join-Path $global:InstallDir "aria2c.exe"
+    if (Test-Path $targetAria2) { return $targetAria2 }
+
+    $srcAria2 = Join-Path $ScriptSourceDir "aria2c.exe"
+    if (Test-Path $srcAria2) { return $srcAria2 }
+
+    return $null
+}
+
+function Download-Aria2c {
+    Write-Host "`n  -> 正在從 GitHub 官方下載 aria2c (約 2.4MB)..." -ForegroundColor Cyan
+    $zipUrl = "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
+    $zipFile = Join-Path $global:InstallDir "aria2-temp.zip"
+    $tempDir = Join-Path $global:InstallDir "aria2-temp-extract"
+
+    try {
+        if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) {
+            & curl.exe -# -L -o $zipFile $zipUrl
+        } else {
+            Invoke-WebRequest -Uri $zipUrl -OutFile $zipFile
+        }
+
+        if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
+        Expand-Archive -Path $zipFile -DestinationPath $tempDir -Force
+
+        $foundExe = Get-ChildItem -Path $tempDir -Filter "aria2c.exe" -Recurse | Select-Object -First 1
+        if ($foundExe) {
+            Move-Item -Path $foundExe.FullName -Destination (Join-Path $global:InstallDir "aria2c.exe") -Force
+            Write-Host "  [+] aria2c.exe 下載並配置完成 (已啟用 16 連線極速模式)！" -ForegroundColor Green
+        } else {
+            Write-Host "  [!] 解壓縮未找到 aria2c.exe。" -ForegroundColor Red
+        }
+    } catch {
+        Write-Host "  [!] 下載 aria2c 發生錯誤：$_" -ForegroundColor Red
+    } finally {
+        if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue }
+        if (Test-Path $zipFile) { Remove-Item $zipFile -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+# ----------------------------------------------------
 # 輔助函式：檔案下載 (支援 aria2c 斷點續傳 / curl / PowerShell)
 # ----------------------------------------------------
 function Download-File {
@@ -504,11 +548,17 @@ function Show-Menu {
     $jdkStatus = Find-JDK21Path
     $burpStatus = Get-BurpJarFile
     $loaderStatus = Test-Path (Join-Path $global:InstallDir "loader.jar")
+    $aria2Status = Find-Aria2Path
     $shortcutPath = Join-Path ([Environment]::GetFolderPath('Desktop')) "Burp Suite Pro.lnk"
     $shortcutStatus = Test-Path $shortcutPath
 
     Write-Host "【當前設定與環境狀態】" -ForegroundColor White
     Write-Host "  - 目標目錄 : $global:InstallDir" -ForegroundColor Cyan
+    if ($aria2Status) {
+        Write-Host "  - 下載核心 : [極速模式] aria2c.exe (16 連線多線程續傳)" -ForegroundColor Green
+    } else {
+        Write-Host "  - 下載核心 : [標準模式] 系統內建 curl.exe (可選 [9] 下載 aria2c 加速)" -ForegroundColor DarkYellow
+    }
     if ($jdkStatus) {
         Write-Host "  - JDK 21   : [已就緒] $jdkStatus" -ForegroundColor Green
     } else {
@@ -543,10 +593,11 @@ function Show-Menu {
     Write-Host "  [6] 直接啟動 Burp Suite Pro (免黑框)" -ForegroundColor Green
     Write-Host "  [7] 變更目標安裝目錄 (目前: $global:InstallDir)" -ForegroundColor DarkCyan
     Write-Host "  [8] 下載 / 更新 loader.jar (輸入自訂載點)" -ForegroundColor Yellow
+    Write-Host "  [9] 下載 / 啟用 aria2c.exe (16 連線極速加速器)" -ForegroundColor Cyan
     Write-Host "  [0] 離開" -ForegroundColor Gray
     Write-Host "========================================================" -ForegroundColor Cyan
 
-    $opt = Read-Host "請輸入選項號碼 [1-8, 0]"
+    $opt = Read-Host "請輸入選項號碼 [1-9, 0]"
     $opt = if ($opt) { $opt.Trim() } else { "" }
     switch ($opt) {
         "1" { Run-FullSetup }
@@ -599,6 +650,9 @@ function Show-Menu {
                     Write-Host "  [!] 下載失敗，請檢查網址有效性。" -ForegroundColor Red
                 }
             }
+        }
+        "9" {
+            Download-Aria2c
         }
         "0" { return }
         default {
