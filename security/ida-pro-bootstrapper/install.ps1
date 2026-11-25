@@ -1,5 +1,5 @@
 ﻿# ==============================================================================
-# IDA Professional 9.1 - 自動化安裝、環境配置與維護精靈
+# IDA Professional 9.1 - 一鍵自動化安裝、環境配置與維護工具箱
 # ==============================================================================
 [CmdletBinding()]
 param (
@@ -13,7 +13,22 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $ScriptDir = $PSScriptRoot
 if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
 
-$global:IdaInstallDir = if ($IdaPath) { $IdaPath.Trim('"') } else { $ScriptDir }
+# 自動判斷 IDA 安裝目錄
+function Resolve-IdaDir {
+    if ($IdaPath) { return (Resolve-Path $IdaPath.Trim('"')).Path }
+    if (Test-Path (Join-Path $ScriptDir "ida.exe")) { return $ScriptDir }
+    $candidates = @(
+        "C:\MyAPP\Sec\IDA Professional 9.1",
+        "C:\Program Files\IDA Professional 9.1",
+        "C:\Program Files\IDA Pro 9.1"
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path (Join-Path $c "ida.exe")) { return $c }
+    }
+    return $ScriptDir
+}
+
+$global:IdaInstallDir = Resolve-IdaDir
 
 # ----------------------------------------------------
 # 尋找系統 Conda / Mamba 執行路徑
@@ -205,8 +220,154 @@ function Apply-KeygenAndPatch {
     return $true
 }
 
-Write-Host "========================================================" -ForegroundColor Cyan
-Write-Host "      IDA Pro 9.1 一鍵自動化配置與維護工具箱" -ForegroundColor Cyan
-Write-Host "========================================================" -ForegroundColor Cyan
-Write-Host "  - 目標目錄 : $global:IdaInstallDir" -ForegroundColor White
-Write-Host "========================================================" -ForegroundColor Cyan
+# ----------------------------------------------------
+# 建立桌面與開始功能表捷徑 (綁定 ida.ico)
+# ----------------------------------------------------
+function Create-Shortcuts {
+    $idaExe = Join-Path $global:IdaInstallDir "ida.exe"
+    $icoPath = Join-Path $global:IdaInstallDir "ida.ico"
+
+    if (-not (Test-Path $idaExe)) {
+        Write-Host "  [!] 錯誤：未在目錄找到 ida.exe！" -ForegroundColor Red
+        return $false
+    }
+
+    $targetShortcuts = @(
+        @{ Name = "桌面"; Path = Join-Path ([Environment]::GetFolderPath('Desktop')) "IDA Professional 9.1.lnk" },
+        @{ Name = "開始功能表"; Path = Join-Path ([Environment]::GetFolderPath('Programs')) "IDA Professional 9.1.lnk" }
+    )
+
+    try {
+        $wsh = New-Object -ComObject WScript.Shell
+        foreach ($item in $targetShortcuts) {
+            $shortcut = $wsh.CreateShortcut($item.Path)
+            $shortcut.TargetPath = $idaExe
+            $shortcut.WorkingDirectory = $global:IdaInstallDir
+            $shortcut.Description = "IDA Professional 9.1 (Disassembler & Decompiler)"
+
+            if (Test-Path $icoPath) {
+                $shortcut.IconLocation = $icoPath
+            }
+            $shortcut.Save()
+            [System.Runtime.InteropServices.Marshal]::ReleaseComObject($shortcut) | Out-Null
+            Write-Host "  [+] 已在$($item.Name)建立捷徑：$($item.Path)" -ForegroundColor Green
+        }
+        [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wsh) | Out-Null
+        Write-Host "  [+] 支援按鍵盤 Win 鍵直接搜尋 'ida' 秒開！" -ForegroundColor Cyan
+    } catch {
+        Write-Host "  [!] 建立捷徑時發生錯誤：$_" -ForegroundColor Red
+    }
+}
+
+# ----------------------------------------------------
+# 一鍵全自動完整配置流程
+# ----------------------------------------------------
+function Run-FullSetup {
+    Write-Host "`n[1/6] 建立專屬 .conda (Python 3.11) 環境..." -ForegroundColor Yellow
+    $ok = Setup-CondaEnv
+    if (-not $ok) { return }
+
+    Write-Host "`n[2/6] 綁定 IDAPython 至 .conda..." -ForegroundColor Yellow
+    Setup-IdaPySwitch
+
+    Write-Host "`n[3/6] 安裝與啟用 idalib (Headless Python API)..." -ForegroundColor Yellow
+    Setup-IdaLib
+
+    Write-Host "`n[4/6] 配置 ida_feeds 外掛與 flair 路徑..." -ForegroundColor Yellow
+    Setup-IdaFeeds
+
+    Write-Host "`n[5/6] 產生授權憑證與 DLL 模組補丁..." -ForegroundColor Yellow
+    Apply-KeygenAndPatch
+
+    Write-Host "`n[6/6] 建立桌面與開始功能表雙捷徑..." -ForegroundColor Yellow
+    Create-Shortcuts
+
+    Write-Host "`n========================================================" -ForegroundColor Green
+    Write-Host "   IDA Pro 9.1 一鍵自動化配置全數完成！" -ForegroundColor Green
+    Write-Host "========================================================" -ForegroundColor Green
+}
+
+# ----------------------------------------------------
+# 狀態看板與主選單
+# ----------------------------------------------------
+function Show-Menu {
+    Clear-Host
+    Write-Host "========================================================" -ForegroundColor Cyan
+    Write-Host "      IDA Professional 9.1 一鍵自動化維護工具箱" -ForegroundColor Cyan
+    Write-Host "========================================================" -ForegroundColor Cyan
+
+    $condaReady = Test-Path (Join-Path $global:IdaInstallDir ".conda\python.exe")
+    $idapyTarget = (Get-ItemProperty "HKCU:\Software\Hex-Rays\IDA" -ErrorAction SilentlyContinue).Python3TargetDLL
+    $idalibReady = Test-Path (Join-Path $global:IdaInstallDir ".conda\Lib\site-packages\idapro")
+    $licReady = Test-Path (Join-Path $global:IdaInstallDir "idapro.hexlic")
+    $desktopLnk = Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) "IDA Professional 9.1.lnk")
+    $startLnk = Test-Path (Join-Path ([Environment]::GetFolderPath('Programs')) "IDA Professional 9.1.lnk")
+
+    Write-Host "【當前設定與環境狀態】" -ForegroundColor White
+    Write-Host "  - IDA 目錄  : $global:IdaInstallDir" -ForegroundColor Cyan
+    if ($condaReady) {
+        Write-Host "  - .conda    : [已就緒] 本地 Python 3.11 環境" -ForegroundColor Green
+    } else {
+        Write-Host "  - .conda    : [未建立] 尚未建立本地 .conda 環境" -ForegroundColor Red
+    }
+
+    if ($idapyTarget) {
+        Write-Host "  - IDAPython : [已綁定] $idapyTarget" -ForegroundColor Green
+    } else {
+        Write-Host "  - IDAPython : [未配置] 需要執行 idapyswitch" -ForegroundColor Red
+    }
+
+    if ($idalibReady) {
+        Write-Host "  - idalib    : [已啟用] idapro Python 套件就緒" -ForegroundColor Green
+    } else {
+        Write-Host "  - idalib    : [未安裝] 尚未啟用 idalib" -ForegroundColor Yellow
+    }
+
+    if ($licReady) {
+        Write-Host "  - 授權狀態  : [已激活] idapro.hexlic (全架構反編譯器解鎖)" -ForegroundColor Green
+    } else {
+        Write-Host "  - 授權狀態  : [未激活] 需要執行 keygen3.py 補丁" -ForegroundColor Red
+    }
+
+    if ($desktopLnk -or $startLnk) {
+        $locs = @()
+        if ($startLnk) { $locs += "開始功能表 (按 Win 搜 ida 可開)" }
+        if ($desktopLnk) { $locs += "桌面" }
+        Write-Host "  - 系統捷徑  : [已就緒] $($locs -join ' / ')" -ForegroundColor Green
+    } else {
+        Write-Host "  - 系統捷徑  : [未建立]" -ForegroundColor Yellow
+    }
+
+    Write-Host "--------------------------------------------------------" -ForegroundColor DarkGray
+    Write-Host "  [1] 一鍵全自動完整配置 (推薦全新環境或修復)" -ForegroundColor Cyan
+    Write-Host "  [2] 重新啟用授權與 DLL 補丁 (重跑 keygen3.py 與 patch)" -ForegroundColor Yellow
+    Write-Host "  [3] 修復 / 重新綁定 IDAPython (idapyswitch)" -ForegroundColor White
+    Write-Host "  [4] 重新建立捷徑 (桌面與開始功能表)" -ForegroundColor White
+    Write-Host "  [5] 直接啟動 IDA Pro 9.1 (ida.exe)" -ForegroundColor Green
+    Write-Host "  [0] 離開" -ForegroundColor Gray
+    Write-Host "========================================================" -ForegroundColor Cyan
+
+    $opt = Read-Host "請輸入選項號碼 [1-5, 0]"
+    $opt = if ($opt) { $opt.Trim() } else { "" }
+    switch ($opt) {
+        "1" { Run-FullSetup }
+        "2" { Apply-KeygenAndPatch }
+        "3" { Setup-IdaPySwitch }
+        "4" { Create-Shortcuts }
+        "5" {
+            $idaExe = Join-Path $global:IdaInstallDir "ida.exe"
+            if (Test-Path $idaExe) {
+                Start-Process $idaExe -WorkingDirectory $global:IdaInstallDir
+                Write-Host "  [+] 已啟動 IDA Pro 9.1！" -ForegroundColor Green
+            } else {
+                Write-Host "  [!] 未找到 ida.exe！" -ForegroundColor Red
+            }
+        }
+        "0" { return }
+        default {
+            Write-Host "無效選項，請重新輸入。" -ForegroundColor Red
+        }
+    }
+}
+
+Show-Menu
