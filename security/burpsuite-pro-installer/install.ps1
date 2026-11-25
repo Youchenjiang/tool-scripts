@@ -319,22 +319,25 @@ function Create-StartupScripts {
         [string]$maxMem = "4096m"
     )
 
-    Write-Host "`n  -> 正在生成可攜式啟動腳本..." -ForegroundColor Cyan
+    Write-Host "`n  -> 正在生成可攜式啟動腳本 (純 GUI 無黑框模式)..." -ForegroundColor Cyan
 
     $vmOptions = "--enable-native-access=ALL-UNNAMED --add-opens=java.desktop/javax.swing=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-opens=java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-opens=java.base/jdk.internal.org.objectweb.asm.Opcodes=ALL-UNNAMED"
 
-    # 1. 生成 Burp.bat（使用 %~dp0 相對路徑，完全便攜）
+    # 使用 javaw.exe 替換 java.exe，確保 Windows 不分配任何終端機黑框
+    $javawExePath = $javaExePath -replace "(?i)java\.exe$", "javaw.exe"
+
+    # 1. 生成 Burp.bat（使用 %~dp0 相對路徑，完全便攜，純 GUI 啟動）
     $batPath = Join-Path $global:InstallDir "Burp.bat"
     $batContent = @"
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-:: Check local portable JDK first, fallback to system JDK 21
-if exist "%~dp0jdk-21\bin\java.exe" (
-    set "JAVA_EXE=%~dp0jdk-21\bin\java.exe"
+:: Check local portable JDK first, fallback to system JDK 21 (use javaw.exe for pure GUI without console)
+if exist "%~dp0jdk-21\bin\javaw.exe" (
+    set "JAVA_EXE=%~dp0jdk-21\bin\javaw.exe"
 ) else (
-    set "JAVA_EXE=$javaExePath"
+    set "JAVA_EXE=$javawExePath"
 )
 
 :: Dynamically search for burpsuite_pro*.jar
@@ -348,7 +351,7 @@ if not defined BURP_JAR set "BURP_JAR=%~dp0$burpJarName"
 set "JAVA_MEM=-Xms1024m -Xmx$maxMem -XX:+UseG1GC"
 set "VM_OPTIONS=$vmOptions"
 
-:: Launch Burp Suite Pro
+:: Launch Burp Suite Pro silently with javaw
 start "" "!JAVA_EXE!" !JAVA_MEM! !VM_OPTIONS! -javaagent:"%~dp0loader.jar" -noverify -jar "!BURP_JAR!"
 "@
     [System.IO.File]::WriteAllText($batPath, $batContent, [System.Text.Encoding]::UTF8)
