@@ -283,25 +283,25 @@ function Create-StartupScripts {
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-:: 優先檢測本地綠色版 JDK，否則使用系統安裝的 JDK 21
+:: Check local portable JDK first, fallback to system JDK 21
 if exist "%~dp0jdk-21\bin\java.exe" (
     set "JAVA_EXE=%~dp0jdk-21\bin\java.exe"
 ) else (
     set "JAVA_EXE=$javaExePath"
 )
 
-:: 動態搜尋目錄下的 Burp 主程式 JAR
+:: Dynamically search for burpsuite_pro*.jar
 set "BURP_JAR="
 for %%f in ("%~dp0burpsuite_pro*.jar") do (
     set "BURP_JAR=%%f"
 )
 if not defined BURP_JAR set "BURP_JAR=%~dp0$burpJarName"
 
-:: JVM 記憶體與模組參數
+:: JVM memory and module options
 set "JAVA_MEM=-Xms1024m -Xmx$maxMem -XX:+UseG1GC"
 set "VM_OPTIONS=$vmOptions"
 
-:: 啟動 Burp Suite Pro
+:: Launch Burp Suite Pro
 start "" "!JAVA_EXE!" !JAVA_MEM! !VM_OPTIONS! -javaagent:"%~dp0loader.jar" -noverify -jar "!BURP_JAR!"
 "@
     [System.IO.File]::WriteAllText($batPath, $batContent, [System.Text.Encoding]::UTF8)
@@ -503,6 +503,7 @@ function Show-Menu {
     Write-Host "========================================================" -ForegroundColor Cyan
 
     $opt = Read-Host "請輸入選項號碼 [1-7, 0]"
+    $opt = if ($opt) { $opt.Trim() } else { "" }
     switch ($opt) {
         "1" { Run-FullSetup }
         "2" {
