@@ -1,0 +1,19 @@
+# IDA Binaries & Runtime
+*.dll
+*.exe
+*.bin
+*.dat
+*.chm
+*.hlp
+*.cf
+*.int
+
+# License & Patches
+*.hexlic
+*.patched
+*.bak
+
+# Local Environment
+.conda/
+*.tmp
+*.log
