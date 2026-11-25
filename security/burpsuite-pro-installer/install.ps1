@@ -4,7 +4,10 @@
 [CmdletBinding()]
 param (
     [Parameter(Position = 0)]
-    [string]$InstallPath
+    [string]$InstallPath,
+
+    [Parameter(Position = 1)]
+    [string]$LoaderUrl
 )
 
 $OutputEncoding = [System.Text.Encoding]::UTF8
@@ -378,6 +381,54 @@ function Clean-TempFiles {
 }
 
 # ----------------------------------------------------
+# 檢查與獲取 loader.jar (支援自訂 URL 自動下載)
+# ----------------------------------------------------
+function Ensure-LoaderJar {
+    param ([string]$customUrl)
+    $loaderPath = Join-Path $global:InstallDir "loader.jar"
+    if (Test-Path $loaderPath) { return $true }
+
+    # 嘗試從來源腳本目錄同步
+    $srcLoader = Join-Path $ScriptSourceDir "loader.jar"
+    if (Test-Path $srcLoader) {
+        Copy-Item $srcLoader $loaderPath -Force
+        Write-Host "  [+] 已自來源目錄同步 loader.jar 至目標目錄。" -ForegroundColor Green
+        return $true
+    }
+
+    # 若帶有自訂 URL 參數
+    if (-not [string]::IsNullOrWhiteSpace($customUrl)) {
+        Write-Host "  -> 正在從自訂網址下載 loader.jar..." -ForegroundColor Cyan
+        $ok = Download-File $customUrl "loader.jar" (10 * 1024)
+        if ($ok -and (Test-Path $loaderPath)) { return $true }
+    }
+
+    # 互動式提示
+    Write-Host "`n  [!] 目標目錄未找到 loader.jar，請選擇處理方式：" -ForegroundColor Yellow
+    Write-Host "      [1] 輸入自訂下載連結 (貼上 URL，由腳本自動下載)" -ForegroundColor Cyan
+    Write-Host "      [2] 手動放置至目標目錄 ($global:InstallDir)" -ForegroundColor DarkYellow
+    Write-Host "      [0] 略過此步驟" -ForegroundColor Gray
+    $c = Read-Host "請輸入選項 (預設 1)"
+    if ([string]::IsNullOrWhiteSpace($c)) { $c = "1" }
+
+    if ($c -eq "1") {
+        $url = Read-Host "請貼上下載網址 (URL)"
+        if (-not [string]::IsNullOrWhiteSpace($url)) {
+            $url = $url.Trim('"', "'", " ")
+            Write-Host "  -> 正在下載 loader.jar..." -ForegroundColor Cyan
+            $ok = Download-File $url "loader.jar" (10 * 1024)
+            if ($ok -and (Test-Path $loaderPath)) {
+                Write-Host "  [+] loader.jar 下載成功！" -ForegroundColor Green
+                return $true
+            } else {
+                Write-Host "  [!] 下載失敗，請檢查網址有效性。" -ForegroundColor Red
+            }
+        }
+    }
+    return (Test-Path $loaderPath)
+}
+
+# ----------------------------------------------------
 # 一鍵完整安裝 / 環境修復主流程
 # ----------------------------------------------------
 function Run-FullSetup {
@@ -411,20 +462,12 @@ function Run-FullSetup {
     }
 
     Write-Host "`n[3/5] 檢查 loader.jar 授權載入器..." -ForegroundColor Yellow
-    $loaderPath = Join-Path $global:InstallDir "loader.jar"
-    if (-not (Test-Path $loaderPath)) {
-        # 嘗試從來源腳本目錄複製
-        $srcLoader = Join-Path $ScriptSourceDir "loader.jar"
-        if (Test-Path $srcLoader) {
-            Copy-Item $srcLoader $loaderPath -Force
-            Write-Host "  [+] 已自來源目錄同步 loader.jar 至目標目錄。" -ForegroundColor Green
-        } else {
-            Write-Host "  [!] 錯誤：未在目標目錄中找到 loader.jar！" -ForegroundColor Red
-            Write-Host "      請將 loader.jar 放置於: $global:InstallDir" -ForegroundColor Red
-            return
-        }
+    $hasLoader = Ensure-LoaderJar -customUrl $LoaderUrl
+    if (-not $hasLoader) {
+        Write-Host "  [!] 未就緒 loader.jar，請放置後再次執行。" -ForegroundColor Yellow
+        return
     } else {
-        Write-Host "  [+] 找到 loader.jar。" -ForegroundColor Green
+        Write-Host "  [+] loader.jar 已就緒。" -ForegroundColor Green
     }
 
     Write-Host "`n[4/5] 產生啟動腳本與桌面捷徑..." -ForegroundColor Yellow
@@ -499,10 +542,11 @@ function Show-Menu {
     Write-Host "  [5] 清理下載暫存檔 (.aria2 / 安裝包)" -ForegroundColor White
     Write-Host "  [6] 直接啟動 Burp Suite Pro (免黑框)" -ForegroundColor Green
     Write-Host "  [7] 變更目標安裝目錄 (目前: $global:InstallDir)" -ForegroundColor DarkCyan
+    Write-Host "  [8] 下載 / 更新 loader.jar (輸入自訂載點)" -ForegroundColor Yellow
     Write-Host "  [0] 離開" -ForegroundColor Gray
     Write-Host "========================================================" -ForegroundColor Cyan
 
-    $opt = Read-Host "請輸入選項號碼 [1-7, 0]"
+    $opt = Read-Host "請輸入選項號碼 [1-8, 0]"
     $opt = if ($opt) { $opt.Trim() } else { "" }
     switch ($opt) {
         "1" { Run-FullSetup }
@@ -542,6 +586,19 @@ function Show-Menu {
         "7" {
             Set-TargetDirectory
             Show-Menu
+        }
+        "8" {
+            $url = Read-Host "請輸入 loader.jar 的下載網址 (URL)"
+            if (-not [string]::IsNullOrWhiteSpace($url)) {
+                $url = $url.Trim('"', "'", " ")
+                Write-Host "  -> 正在下載 loader.jar..." -ForegroundColor Cyan
+                $ok = Download-File $url "loader.jar" (10 * 1024)
+                if ($ok) {
+                    Write-Host "  [+] loader.jar 下載完成！" -ForegroundColor Green
+                } else {
+                    Write-Host "  [!] 下載失敗，請檢查網址有效性。" -ForegroundColor Red
+                }
+            }
         }
         "0" { return }
         default {
