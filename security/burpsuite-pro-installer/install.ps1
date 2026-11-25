@@ -1,18 +1,28 @@
 ﻿# 設置輸出編碼
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
-# 1. 下載函式：優先使用本地打包的 aria2c，無則調用內建 curl
-function Download-File ($url, $output) {
+# 1. 下載函式：支援 aria2c 斷點續傳 / curl 續傳與檔案大小驗證
+function Download-File ($url, $output, [long]$minBytes = 0) {
     if (Test-Path ".\aria2c.exe") {
-        Write-Host "  [Speed] Use local aria2c (16 threads)..." -ForegroundColor DarkCyan
-        .\aria2c.exe -x 16 -s 16 -k 1M -o $output $url
+        Write-Host "  [Speed] Use local aria2c (16 threads with resume)..." -ForegroundColor DarkCyan
+        .\aria2c.exe -c -x 16 -s 16 -k 1M --allow-overwrite=true -o $output $url
     } elseif (Get-Command "curl.exe" -ErrorAction SilentlyContinue) {
-        Write-Host "  [Standard] Use Windows curl.exe..." -ForegroundColor DarkYellow
-        curl.exe -# -L -A "Mozilla/5.0" -o $output $url
+        Write-Host "  [Standard] Use Windows curl.exe (with resume)..." -ForegroundColor DarkYellow
+        curl.exe -# -L -C - -A "Mozilla/5.0" -o $output $url
     } else {
         $ProgressPreference = 'Continue'
         Invoke-WebRequest -Uri $url -OutFile $output
     }
+
+    if (Test-Path $output) {
+        $fileSize = (Get-Item $output).Length
+        if ($minBytes -gt 0 -and $fileSize -lt $minBytes) {
+            Write-Host "  [!] Error: Downloaded file size abnormally small ($([math]::Round($fileSize/1MB, 2)) MB < $([math]::Round($minBytes/1MB, 2)) MB)!" -ForegroundColor Red
+            return $false
+        }
+        return $true
+    }
+    return $false
 }
 
 # 2. 動態搜尋系統中 JDK 21 執行檔路徑
@@ -99,9 +109,14 @@ Write-Host ""
 Write-Host "[2/5] Checking Burp Suite Jar..." -ForegroundColor Yellow
 if (!(Test-Path $burpJar)) {
     Write-Host "  -> Downloading Burp Suite Pro from PortSwigger..." -ForegroundColor Yellow
-    Download-File "https://portswigger.net/burp/releases/download?product=pro&type=Jar" $burpJar
-    Write-Host ""
-    Write-Host "  [+] Burp Suite Pro downloaded!" -ForegroundColor Green
+    $ok = Download-File "https://portswigger.net/burp/releases/download?product=pro&type=Jar" $burpJar (300 * 1024 * 1024)
+    if ($ok) {
+        Write-Host ""
+        Write-Host "  [+] Burp Suite Pro downloaded!" -ForegroundColor Green
+    } else {
+        Write-Host "  [!] Download failed or invalid file size." -ForegroundColor Red
+        exit 1
+    }
 } else {
     Write-Host "  [+] Burp Suite Pro already exists." -ForegroundColor Green
 }
