@@ -2,8 +2,12 @@
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-:: 檢測系統安裝的 JDK 21
-set "JAVA_EXE=C:\Program Files\Java\jdk-21\bin\java.exe"
+:: 優先檢測本地綠色版 JDK，否則使用系統安裝的 JDK 21
+if exist "%~dp0jdk-21\bin\java.exe" (
+    set "JAVA_EXE=%~dp0jdk-21\bin\java.exe"
+) else (
+    set "JAVA_EXE=C:\Program Files\Java\jdk-21\bin\java.exe"
+)
 
 :: 動態搜尋目錄下的 Burp 主程式 JAR
 set "BURP_JAR="
