@@ -1,21 +1,28 @@
-# BurpSuite 授權腳本 ~g1014308
-## 步驟
-1. 開啟 PowerShell 進入所在目錄
-2. 執行 powershell -ExecutionPolicy Bypass -File .\install.ps1
-3. 等待安裝完成 JDK 及 BurpSuite
-4. 將 Loader 提供的 License 貼上至 BurpSuite 視窗，並將 Request 貼回 Loader，再將 Loader 的 Response 貼回 BurpSuite
-5. 完成 BurpSuite 授權
+# BurpSuite 自動化配置與啟動工具箱
+=====================================================
 
-## 檔案用途
-- install-1.ps1 -> 自動化安裝(完成可刪)
-- aria2c.exe -> 多線程下載相關檔案(完成可刪)
-- loader.jar -> BurpSuite 授權檔(啟動須執行)
+## 快速使用步驟
+1. 直接雙擊執行 `install.bat`（或在終端機執行 `powershell -ExecutionPolicy Bypass -File .\install.ps1`）。
+2. 在選單中選擇 `[1] 一鍵完整安裝 / 環境修復`：
+   - 若本機未安裝 JDK 21，可選擇「[1] 綠色免安裝版 OpenJDK 21」（免系統管理員權限，推薦）。
+   - 自動下載最新 Burp Suite Pro 主程式（若目錄已有則自動辨識跳過）。
+   - 自動產生便攜相對路徑的啟動腳本，並在桌面建立專屬圖示捷徑。
+3. 程式會自動開啟 Loader 註冊機與 BurpSuite 視窗：
+   - 複製 Loader 視窗中的「License」貼上至 BurpSuite
+   - 點選 Next 選擇「Manual activation」
+   - 複製 BurpSuite 的「Activation Request」貼回 Loader
+   - 將 Loader 產生的「Activation Response」貼回 BurpSuite 完成啟用。
+4. 日後啟動方式：
+   - 直接雙擊桌面的「Burp Suite Pro」捷徑（無黑框在背景啟動），或雙擊 `Burp-Suite-Pro.vbs`。
 
-## 後續產生檔案用途(完成可刪)
-- jdk-21.exe -> JDK 安裝檔
+---
 
-## 後續產生檔案用途(啟動須執行)
-- burpsuite_pro_v2025.jar -> BurpSuite 主程式
-- Burp.bat -> JDK 路徑與啟動參數
-- Burp-Suite-Pro.vbs -> 隱藏bat終端視窗
-- .config.ini -> 配置設定檔
+## 核心檔案用途說明
+- **install.bat**：一鍵啟動安裝維護精靈（自動處理 PowerShell ExecutionPolicy 繞過限制）。
+- **install.ps1**：核心配置腳本（支援 JDK 偵測/下載、版本更新、記憶體調節、桌面捷徑）。
+- **aria2c.exe**：多線程斷點續傳下載器（支援 16 連線高速下載）。
+- **installer.ico**：桌面捷徑專用圖示。
+- **loader.jar**：BurpSuite 授權載入器（啟動必備）。
+- **Burp.bat**：Java 啟動命令列腳本（支援便攜相對路徑 `%~dp0` 與 G1GC 記憶體調優）。
+- **Burp-Suite-Pro.vbs**：無黑框背景靜默啟動腳本。
+- **.gitignore**：若放入 Git 專案時排除大型 JAR 與二進位檔案。
