@@ -370,35 +370,40 @@ Set fso = Nothing
 }
 
 # ----------------------------------------------------
-# 建立桌面捷徑 (綁定 installer.ico)
+# 建立桌面與開始功能表捷徑 (綁定 installer.ico)
 # ----------------------------------------------------
-function Create-DesktopShortcut {
-    $desktopPath = [Environment]::GetFolderPath('Desktop')
-    $shortcutPath = Join-Path $desktopPath "Burp Suite Pro.lnk"
+function Create-Shortcuts {
     $vbsPath = Join-Path $global:InstallDir "Burp-Suite-Pro.vbs"
     $icoPath = Join-Path $global:InstallDir "installer.ico"
     if (-not (Test-Path $icoPath)) {
         $icoPath = Join-Path $ScriptSourceDir "installer.ico"
     }
 
+    $targetShortcuts = @(
+        @{ Name = "桌面"; Path = Join-Path ([Environment]::GetFolderPath('Desktop')) "Burp Suite Pro.lnk" },
+        @{ Name = "開始功能表"; Path = Join-Path ([Environment]::GetFolderPath('Programs')) "Burp Suite Pro.lnk" }
+    )
+
     try {
         $wsh = New-Object -ComObject WScript.Shell
-        $shortcut = $wsh.CreateShortcut($shortcutPath)
-        $shortcut.TargetPath = "wscript.exe"
-        $shortcut.Arguments = "`"$vbsPath`""
-        $shortcut.WorkingDirectory = $global:InstallDir
-        $shortcut.Description = "Burp Suite Professional (Portable Launcher)"
+        foreach ($item in $targetShortcuts) {
+            $shortcut = $wsh.CreateShortcut($item.Path)
+            $shortcut.TargetPath = "wscript.exe"
+            $shortcut.Arguments = "`"$vbsPath`""
+            $shortcut.WorkingDirectory = $global:InstallDir
+            $shortcut.Description = "Burp Suite Professional (Portable Launcher)"
 
-        if (Test-Path $icoPath) {
-            $shortcut.IconLocation = $icoPath
+            if (Test-Path $icoPath) {
+                $shortcut.IconLocation = $icoPath
+            }
+            $shortcut.Save()
+            [System.Runtime.InteropServices.Marshal]::ReleaseComObject($shortcut) | Out-Null
+            Write-Host "  [+] 已在$($item.Name)建立捷徑：$($item.Path)" -ForegroundColor Green
         }
-        $shortcut.Save()
-        [System.Runtime.InteropServices.Marshal]::ReleaseComObject($shortcut) | Out-Null
         [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wsh) | Out-Null
-
-        Write-Host "  [+] 已在桌面建立捷徑：$shortcutPath" -ForegroundColor Green
+        Write-Host "  [+] 支援按鍵盤 Win 鍵直接搜尋 'burp' 啟動！" -ForegroundColor Cyan
     } catch {
-        Write-Host "  [!] 建立桌面捷徑時發生錯誤：$_" -ForegroundColor Red
+        Write-Host "  [!] 建立捷徑時發生錯誤：$_" -ForegroundColor Red
     }
 }
 
@@ -514,9 +519,9 @@ function Run-FullSetup {
         Write-Host "  [+] loader.jar 已就緒。" -ForegroundColor Green
     }
 
-    Write-Host "`n[4/5] 產生啟動腳本與桌面捷徑..." -ForegroundColor Yellow
+    Write-Host "`n[4/5] 產生啟動腳本與捷徑..." -ForegroundColor Yellow
     Create-StartupScripts -javaExePath $jdkExe -burpJarName $burpJar -maxMem "4096m"
-    Create-DesktopShortcut
+    Create-Shortcuts
 
     Write-Host "`n[5/5] 啟動程序..." -ForegroundColor Yellow
     Write-Host "  -> 啟動 Keygenerator (註冊機)..." -ForegroundColor Cyan
@@ -549,11 +554,21 @@ function Show-Menu {
     $burpStatus = Get-BurpJarFile
     $loaderStatus = Test-Path (Join-Path $global:InstallDir "loader.jar")
     $aria2Status = Find-Aria2Path
-    $shortcutPath = Join-Path ([Environment]::GetFolderPath('Desktop')) "Burp Suite Pro.lnk"
-    $shortcutStatus = Test-Path $shortcutPath
+    $desktopShortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) "Burp Suite Pro.lnk"
+    $startMenuShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) "Burp Suite Pro.lnk"
+    $hasDesktop = Test-Path $desktopShortcut
+    $hasStartMenu = Test-Path $startMenuShortcut
 
     Write-Host "【當前設定與環境狀態】" -ForegroundColor White
     Write-Host "  - 目標目錄 : $global:InstallDir" -ForegroundColor Cyan
+    if ($hasDesktop -or $hasStartMenu) {
+        $locs = @()
+        if ($hasStartMenu) { $locs += "開始功能表 (按 Win 搜 burp 可開)" }
+        if ($hasDesktop) { $locs += "桌面" }
+        Write-Host "  - 捷徑狀態 : [已就緒] $($locs -join ' / ')" -ForegroundColor Green
+    } else {
+        Write-Host "  - 捷徑狀態 : [未建立] 尚未在桌面或開始功能表建立捷徑" -ForegroundColor Yellow
+    }
     if ($aria2Status) {
         Write-Host "  - 下載核心 : [極速模式] aria2c.exe (16 連線多線程續傳)" -ForegroundColor Green
     } else {
@@ -575,20 +590,14 @@ function Show-Menu {
     if ($loaderStatus) {
         Write-Host "  - Loader   : [已就緒] loader.jar" -ForegroundColor Green
     } else {
-        Write-Host "  - Loader   : [缺失] loader.jar (需手動放置)" -ForegroundColor Red
-    }
-
-    if ($shortcutStatus) {
-        Write-Host "  - 桌面捷徑 : [已建立] 桌面已有捷徑" -ForegroundColor Green
-    } else {
-        Write-Host "  - 桌面捷徑 : [未建立]" -ForegroundColor Yellow
+        Write-Host "  - Loader   : [缺失] loader.jar (需手動放置或選 [8] 下載)" -ForegroundColor Red
     }
 
     Write-Host "--------------------------------------------------------" -ForegroundColor DarkGray
     Write-Host "  [1] 一鍵完整安裝 / 環境修復 (推薦初次使用)" -ForegroundColor Cyan
     Write-Host "  [2] 僅更新 Burp Suite 主程式 (下載最新 PortSwigger JAR)" -ForegroundColor Yellow
     Write-Host "  [3] 自訂記憶體上限配置 (當前預設: 4GB)" -ForegroundColor White
-    Write-Host "  [4] 重新建立桌面捷徑 (綁定圖示)" -ForegroundColor White
+    Write-Host "  [4] 重新建立捷徑 (桌面與開始功能表)" -ForegroundColor White
     Write-Host "  [5] 清理下載暫存檔 (.aria2 / 安裝包)" -ForegroundColor White
     Write-Host "  [6] 直接啟動 Burp Suite Pro (免黑框)" -ForegroundColor Green
     Write-Host "  [7] 變更目標安裝目錄 (目前: $global:InstallDir)" -ForegroundColor DarkCyan
@@ -623,7 +632,7 @@ function Show-Menu {
                 Write-Host "  [+] 記憶體上限已更新為 $mem！" -ForegroundColor Green
             }
         }
-        "4" { Create-DesktopShortcut }
+        "4" { Create-Shortcuts }
         "5" { Clean-TempFiles }
         "6" {
             $vbs = Join-Path $global:InstallDir "Burp-Suite-Pro.vbs"

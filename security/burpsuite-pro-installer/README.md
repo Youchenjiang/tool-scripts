@@ -10,7 +10,7 @@ A PowerShell-based portable installer, environment automator, and lifecycle main
 - **Resilient Multi-Threaded Downloads**: Uses `aria2c` (16 connections with breakpoint resume) or `curl` with minimum file size validation. Includes one-click automatic installation of `aria2c.exe`.
 - **Fully Portable Launchers**: `Burp.bat` and `Burp-Suite-Pro.vbs` use dynamic `%~dp0` relative paths.
 - **JVM Performance Tuning**: Default `-Xms1024m -Xmx4096m -XX:+UseG1GC` configuration with customizable memory limits.
-- **Desktop Shortcut Automation**: Automatically creates a silent background launch shortcut with custom icon binding.
+- **Desktop & Start Menu Shortcuts**: Automatically registers silent background launch shortcuts on Desktop and Windows Start Menu (enabling instant Windows Search for `burp`), without polluting system environment variables.
 - **Interactive Maintenance TUI**:
   - Live status dashboard (JDK, Burp JAR, Loader, Shortcut).
   - One-click setup & repair.
