@@ -197,9 +197,32 @@ $batContent = "@echo off`r`n`"$jdk21Exe`" $vmOptions -javaagent:`"$pwd\loader.ja
 Set-Content -Path "Burp.bat" -Value $batContent -Encoding UTF8
 
 if (Test-Path "Burp-Suite-Pro.vbs") { Remove-Item "Burp-Suite-Pro.vbs" -Force }
-$vbsContent = "Set WshShell = CreateObject(`"WScript.Shell`")`r`nWshShell.Run chr(34) & `"$pwd\Burp.bat`" & Chr(34), 0`r`nSet WshShell = Nothing"
+$vbsContent = "Set fso = CreateObject(`"Scripting.FileSystemObject`")`r`ncurrentDir = fso.GetParentFolderName(WScript.ScriptFullName)`r`nSet WshShell = CreateObject(`"WScript.Shell`")`r`nWshShell.CurrentDirectory = currentDir`r`nWshShell.Run Chr(34) & currentDir & `"\Burp.bat`" & Chr(34), 0, False`r`nSet WshShell = Nothing`r`nSet fso = Nothing"
 Set-Content -Path "Burp-Suite-Pro.vbs" -Value $vbsContent -Encoding UTF8
 Write-Host "  [+] Created Burp.bat and Burp-Suite-Pro.vbs." -ForegroundColor Green
+
+# 建立桌面捷徑
+$desktopPath = [Environment]::GetFolderPath('Desktop')
+$shortcutPath = Join-Path $desktopPath "Burp Suite Pro.lnk"
+$icoPath = Join-Path (Get-Location) "installer.ico"
+$vbsPath = Join-Path (Get-Location) "Burp-Suite-Pro.vbs"
+try {
+    $wsh = New-Object -ComObject WScript.Shell
+    $shortcut = $wsh.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = "wscript.exe"
+    $shortcut.Arguments = "`"$vbsPath`""
+    $shortcut.WorkingDirectory = (Get-Location).Path
+    $shortcut.Description = "Burp Suite Professional (Portable Launcher)"
+    if (Test-Path $icoPath) {
+        $shortcut.IconLocation = $icoPath
+    }
+    $shortcut.Save()
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($shortcut) | Out-Null
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wsh) | Out-Null
+    Write-Host "  [+] Created Desktop Shortcut: $shortcutPath" -ForegroundColor Green
+} catch {
+    Write-Host "  [!] Error creating shortcut: $_" -ForegroundColor Red
+}
 
 # ----------------------------------------------------
 # 5. 啟動程序
