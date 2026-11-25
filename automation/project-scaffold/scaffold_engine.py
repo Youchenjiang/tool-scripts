@@ -17,7 +17,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 @dataclass
@@ -415,6 +415,55 @@ def scaffold(
     return ctx
 
 
+REPO_NAME_REGEX = re.compile(r"^[A-Za-z0-9._-]+$")
+Runner = Callable[..., "subprocess.CompletedProcess[str]"]
+
+
+def initial_commit_message(ctx: ScaffoldContext) -> str:
+    """Conventional Commits message for the scaffold commit; `setup` is a default scope of every archetype."""
+    features = ", ".join(ctx.features) if ctx.features else "no optional"
+    return (
+        f"chore(setup): scaffold project from the {ctx.archetype_key} template\n\n"
+        "1. Generate agent rules, git hooks, CI workflows and governance tools.\n"
+        f"2. Apply the {ctx.flow} flow, the {ctx.release_strategy} release and {features} features.\n"
+    )
+
+
+def next_steps(ctx: ScaffoldContext, published: bool = False) -> List[str]:
+    steps: List[str] = []
+    if not published:
+        steps += [
+            "git add -A && git commit   # use: " + initial_commit_message(ctx).splitlines()[0],
+            f"gh repo create {ctx.project_name} --private --source . --remote origin",
+            "git push -u origin main:main   # first push to an empty remote is allowed by the pre-push hook",
+        ]
+    if ctx.flow == "pr":
+        steps.append("Protect main on GitHub (Settings > Rules > Rulesets): require a pull request and status checks; "
+                     "the local hook alone can be bypassed.")
+    return steps
+
+
+def publish(ctx: ScaffoldContext, visibility: str, run: Runner = subprocess.run) -> None:
+    """Make the scaffold commit, create the GitHub repository and do the bootstrap push."""
+    if visibility not in ("private", "public"):
+        raise ValueError(f"visibility must be private or public, not {visibility!r}")
+    if not REPO_NAME_REGEX.fullmatch(ctx.project_name) or ctx.project_name.startswith("-"):
+        raise ValueError(f"project name {ctx.project_name!r} is not a valid GitHub repository name")
+    cwd = ctx.target_dir
+
+    def call(args: List[str], check: bool = True, **kwargs: Any) -> "subprocess.CompletedProcess[str]":
+        return run(args, cwd=cwd, check=check, capture_output=True, text=True, encoding="utf-8", **kwargs)
+
+    if call(["git", "rev-parse", "--verify", "--quiet", "HEAD"], check=False).returncode == 0:
+        raise RuntimeError("--publish needs a repository without commits; commit and push it yourself instead")
+    call(["git", "symbolic-ref", "HEAD", "refs/heads/main"])
+    call(["git", "add", "-A"])
+    call(["git", "commit", "-F", "-"], input=initial_commit_message(ctx))
+    if call(["git", "remote", "get-url", "origin"], check=False).returncode != 0:
+        call(["gh", "repo", "create", ctx.project_name, f"--{visibility}", "--source", ".", "--remote", "origin"])
+    call(["git", "push", "-u", "origin", "refs/heads/main:refs/heads/main"])
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Youchen Project Scaffolding Engine (Pure Python)")
     parser.add_argument("--archetype", "-a", help="Project archetype (or alias)")
@@ -427,9 +476,14 @@ def main() -> int:
     parser.add_argument("--target-dir", "-t", default=".", help="Target project directory")
     parser.add_argument("--project-name", "-p", help="Project name (defaults to target directory name)")
     parser.add_argument("--force", action="store_true", help="Overwrite existing configuration files")
+    parser.add_argument("--publish", choices=["private", "public"],
+                        help="After scaffolding: commit, create the GitHub repository with gh and push the first main")
 
     args = parser.parse_args()
     feat_list = [f.strip() for f in args.features.split(",") if f.strip()] if args.features else None
+    if args.publish and not (Path(args.target_dir) / ".git").exists():
+        Path(args.target_dir).mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init", "-b", "main"], cwd=args.target_dir, check=True)
 
     ctx = scaffold(
         target_dir=Path(args.target_dir),
@@ -447,6 +501,17 @@ def main() -> int:
     print(f"✨ Successfully scaffolded project '{ctx.project_name}' ({ctx.archetype_key}) at {ctx.target_dir}")
     print(f"   Ecosystem: {ctx.ecosystem}, Flow: {ctx.flow}, Release: {ctx.release_strategy}")
     print(f"   Active Features: {', '.join(ctx.features) if ctx.features else 'None'}")
+    if args.publish:
+        try:
+            publish(ctx, args.publish)
+        except (subprocess.CalledProcessError, RuntimeError, ValueError) as err:
+            detail = getattr(err, "stderr", "") or ""
+            print(f"❌ Publish failed: {err}\n{detail}", file=sys.stderr)
+            return 1
+        print(f"🚀 Published '{ctx.project_name}' and pushed the initial main")
+    print("Next steps:")
+    for step in next_steps(ctx, published=bool(args.publish)):
+        print(f"   - {step}")
     return 0
 
 

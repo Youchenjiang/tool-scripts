@@ -30,7 +30,10 @@ param(
 
   [switch]$NoFeatures,
 
-  [switch]$Force
+  [switch]$Force,
+
+  [ValidateSet('private', 'public')]
+  [string]$Publish
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -87,6 +90,7 @@ if ($ProjectName) { $pyArgs += @("--project-name", $ProjectName) }
 if ($Force) { $pyArgs += "--force" }
 if ($AllFeatures) { $pyArgs += "--all-features" }
 if ($NoFeatures) { $pyArgs += "--no-features" }
+if ($Publish) { $pyArgs += @("--publish", $Publish) }
 
 if ($Features -and $Features.Count -gt 0) {
   $featJoined = ($Features -join ',')
