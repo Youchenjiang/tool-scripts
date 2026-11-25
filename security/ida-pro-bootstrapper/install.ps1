@@ -144,6 +144,67 @@ function Setup-IdaFeeds {
     return $true
 }
 
+# ----------------------------------------------------
+# 執行 Keygen 授權產生與 DLL 二進位補丁替換
+# ----------------------------------------------------
+function Apply-KeygenAndPatch {
+    $pythonExe = Join-Path $global:IdaInstallDir ".conda\python.exe"
+    $keygenScript = Join-Path $global:IdaInstallDir "keygen3.py"
+
+    if (-not (Test-Path $keygenScript)) {
+        Write-Host "  [!] 提示：目錄未找到 keygen3.py，略過授權補丁步驟。" -ForegroundColor DarkGray
+        return $true
+    }
+
+    Write-Host "  -> 正在執行 keygen3.py 產生授權憑證與 DLL 模組補丁..." -ForegroundColor Cyan
+    Push-Location $global:IdaInstallDir
+    try {
+        & $pythonExe "keygen3.py"
+    } finally {
+        Pop-Location
+    }
+
+    # 備份與替換 ida.dll
+    $idaDll = Join-Path $global:IdaInstallDir "ida.dll"
+    $idaDllPatched = Join-Path $global:IdaInstallDir "ida.dll.patched"
+    if (Test-Path $idaDllPatched) {
+        $bak = Join-Path $global:IdaInstallDir "ida.dll.bak"
+        if (-not (Test-Path $bak)) {
+            Copy-Item $idaDll $bak -Force
+            Write-Host "  [+] 已備份原版 ida.dll -> ida.dll.bak" -ForegroundColor DarkGray
+        }
+        Move-Item $idaDllPatched $idaDll -Force
+        Write-Host "  [+] 成功套用 ida.dll 補丁！" -ForegroundColor Green
+    }
+
+    # 備份與替換 ida32.dll
+    $ida32Dll = Join-Path $global:IdaInstallDir "ida32.dll"
+    $ida32DllPatched = Join-Path $global:IdaInstallDir "ida32.dll.patched"
+    if (Test-Path $ida32DllPatched) {
+        $bak32 = Join-Path $global:IdaInstallDir "ida32.dll.bak"
+        if (-not (Test-Path $bak32)) {
+            Copy-Item $ida32Dll $bak32 -Force
+            Write-Host "  [+] 已備份原版 ida32.dll -> ida32.dll.bak" -ForegroundColor DarkGray
+        }
+        Move-Item $ida32DllPatched $ida32Dll -Force
+        Write-Host "  [+] 成功套用 ida32.dll 補丁！" -ForegroundColor Green
+    }
+
+    # 同步授權檔案至 APPDATA
+    $hexlic = Join-Path $global:IdaInstallDir "idapro.hexlic"
+    if (Test-Path $hexlic) {
+        $appdataHexRays = Join-Path $env:APPDATA "Hex-Rays\IDA Pro"
+        if (-not (Test-Path $appdataHexRays)) {
+            New-Item -ItemType Directory -Path $appdataHexRays -Force | Out-Null
+        }
+        Copy-Item $hexlic (Join-Path $appdataHexRays "idapro.hexlic") -Force
+        Copy-Item $hexlic (Join-Path $env:APPDATA "Hex-Rays\idapro.hexlic") -Force
+        Write-Host "  [+] idapro.hexlic 授權檔已部署至目錄與 %APPDATA%！" -ForegroundColor Green
+    }
+
+    return $true
+}
+
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "      IDA Pro 9.1 一鍵自動化配置與維護工具箱" -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
