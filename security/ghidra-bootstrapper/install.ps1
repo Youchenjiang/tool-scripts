@@ -3,7 +3,7 @@
     Ghidra Automation & Shortcut Bootstrapper
 .DESCRIPTION
     Automates the installation, configuration, silent zero-console launcher generation,
-    and dual shortcut registration (Desktop + Start Menu) for NSA Ghidra SRE framework.
+    and dual shortcut registration (Desktop + Start Menu) for NSA Ghidra SRE framework (12.2+).
 .PARAMETER InstallPath
     Target installation path for Ghidra (Default: C:\MyAPP\Sec\Ghidra)
 .PARAMETER SkipDownload
@@ -37,16 +37,26 @@ function Write-Warn {
     Write-Host "    $Message" -ForegroundColor Yellow
 }
 
+function Get-DownloadEngine {
+    $aria2c = Get-Command aria2c -ErrorAction SilentlyContinue
+    if (-not $aria2c -and (Test-Path "C:\MyAPP\Sec\BurpSuitePro\aria2c.exe")) {
+        $aria2c = "C:\MyAPP\Sec\BurpSuitePro\aria2c.exe"
+    }
+    if ($aria2c) {
+        return @{ Type = "aria2c"; Path = if ($aria2c -is [string]) { $aria2c } else { $aria2c.Source } }
+    }
+    return @{ Type = "curl"; Path = "curl.exe" }
+}
+
 function Find-JavaJdk {
-    Write-Step "Checking for compatible 64-bit JDK (21+ recommended)..."
+    Write-Step "Checking for compatible 64-bit JDK (25+ recommended for Ghidra 12.2)..."
     
     $candidates = @(
         $env:JAVA_HOME,
-        "C:\Program Files\Java\jdk-21",
-        "C:\Program Files\Java\jdk-17",
+        "C:\MyAPP\Dev\Env\jdk-25",
+        "C:\Program Files\Java\jdk-25",
         "C:\MyAPP\Dev\Env\jdk-21",
-        "C:\Program Files\Eclipse Adoptium\jdk-21*",
-        "C:\Program Files\Microsoft\jdk-21*"
+        "C:\Program Files\Java\jdk-21"
     )
 
     foreach ($cand in $candidates) {
@@ -68,19 +78,37 @@ function Find-JavaJdk {
         }
     }
 
-    Write-Warn "No pre-installed JDK 21 found in standard locations."
-    return $null
-}
+    Write-Warn "No compatible JDK 25+ found. Downloading portable Adoptium OpenJDK 25 LTS..."
+    $devEnv = "C:\MyAPP\Dev\Env"
+    if (-not (Test-Path $devEnv)) {
+        New-Item -ItemType Directory -Path $devEnv -Force | Out-Null
+    }
 
-function Get-DownloadEngine {
-    $aria2c = Get-Command aria2c -ErrorAction SilentlyContinue
-    if (-not $aria2c -and (Test-Path "C:\MyAPP\Sec\BurpSuitePro\aria2c.exe")) {
-        $aria2c = "C:\MyAPP\Sec\BurpSuitePro\aria2c.exe"
+    $jdkZip = Join-Path $devEnv "openjdk25.zip"
+    $jdkUrl = "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.5.1%2B2/OpenJDK25U-jdk_x64_windows_hotspot_25.0.5.1_2.zip"
+    $engine = Get-DownloadEngine
+
+    if ($engine.Type -eq "aria2c") {
+        & $engine.Path -x 16 -s 16 -k 1M -c -d $devEnv -o "openjdk25.zip" $jdkUrl
+    } else {
+        & curl.exe -L -o $jdkZip $jdkUrl
     }
-    if ($aria2c) {
-        return @{ Type = "aria2c"; Path = if ($aria2c -is [string]) { $aria2c } else { $aria2c.Source } }
+
+    tar.exe -xf $jdkZip -C $devEnv
+    Remove-Item $jdkZip -Force -ErrorAction SilentlyContinue
+    $extractedJdk = Join-Path $devEnv "jdk-25.0.5.1+2"
+    $targetJdk = Join-Path $devEnv "jdk-25"
+    if (Test-Path $targetJdk) { Remove-Item $targetJdk -Recurse -Force }
+    Rename-Item $extractedJdk "jdk-25"
+
+    [Environment]::SetEnvironmentVariable('JAVA_HOME', $targetJdk, 'User')
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ($userPath -notlike "*$targetJdk\bin*") {
+        [Environment]::SetEnvironmentVariable('Path', "$targetJdk\bin;$userPath", 'User')
     }
-    return @{ Type = "curl"; Path = "curl.exe" }
+
+    Write-Info "Configured portable OpenJDK 25 LTS at: $targetJdk"
+    return $targetJdk
 }
 
 function Install-GhidraDistribution {
@@ -91,13 +119,13 @@ function Install-GhidraDistribution {
         return
     }
 
-    Write-Step "Downloading Ghidra 12.1.4 (Official Release for JDK 21)..."
+    Write-Step "Downloading Ghidra 12.2 (Official Release for JDK 25)..."
     $parentDir = Split-Path $TargetDir
     if (-not (Test-Path $parentDir)) {
         New-Item -ItemType Directory -Path $parentDir -Force | Out-Null
     }
 
-    $url = "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip"
+    $url = "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.2_build/ghidra_12.2_PUBLIC_20261016.zip"
     $zipPath = Join-Path $parentDir "ghidra_download.zip"
 
     $engine = Get-DownloadEngine
@@ -113,7 +141,7 @@ function Install-GhidraDistribution {
     tar.exe -xf $zipPath -C $parentDir
     Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
 
-    $extractedFolder = Join-Path $parentDir "ghidra_12.1.4_PUBLIC"
+    $extractedFolder = Join-Path $parentDir "ghidra_12.2_PUBLIC"
     if (Test-Path $extractedFolder -and $extractedFolder -ne $TargetDir) {
         if (Test-Path $TargetDir) {
             Remove-Item $TargetDir -Recurse -Force
@@ -132,18 +160,19 @@ function Configure-Launchers {
 
     Write-Step "Configuring silent launcher & launch properties..."
 
-    # 1. Update support\launch.properties
+    # 1. Update support\launch.properties without UTF-8 BOM
     $launchProps = Join-Path $TargetDir "support\launch.properties"
     if ((Test-Path $launchProps) -and $JdkPath) {
         $content = Get-Content $launchProps -Raw
         if ($content -match "JAVA_HOME_OVERRIDE=") {
             $content = $content -replace "JAVA_HOME_OVERRIDE=.*", "JAVA_HOME_OVERRIDE=$JdkPath"
-            Set-Content -Path $launchProps -Value $content -Encoding UTF8
-            Write-Info "Set JAVA_HOME_OVERRIDE in launch.properties -> $JdkPath"
+            $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+            [System.IO.File]::WriteAllText($launchProps, $content, $utf8NoBom)
+            Write-Info "Set JAVA_HOME_OVERRIDE in launch.properties -> $JdkPath (UTF-8 No BOM)"
         }
     }
 
-    # 2. Patch support\launch.bat (replace timeout with ping to avoid non-interactive input redirection error)
+    # 2. Patch support\launch.bat
     $launchBat = Join-Path $TargetDir "support\launch.bat"
     if (Test-Path $launchBat) {
         $content = Get-Content $launchBat -Raw
@@ -165,8 +194,10 @@ cd /d "%~dp0"
 if not defined JAVA_HOME (
     if exist "$JdkPath" (
         set "JAVA_HOME=$JdkPath"
-    ) else if exist "C:\Program Files\Java\jdk-21" (
-        set "JAVA_HOME=C:\Program Files\Java\jdk-21"
+    ) else if exist "C:\MyAPP\Dev\Env\jdk-25" (
+        set "JAVA_HOME=C:\MyAPP\Dev\Env\jdk-25"
+    ) else if exist "C:\Program Files\Java\jdk-25" (
+        set "JAVA_HOME=C:\Program Files\Java\jdk-25"
     )
 )
 
@@ -222,7 +253,7 @@ function Register-DualShortcuts {
 
 # Main Execution Flow
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "           Ghidra SRE Automation Bootstrapper             " -ForegroundColor Cyan
+Write-Host "       Ghidra SRE 12.2 + JDK 25 Bootstrapper              " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 $jdk = Find-JavaJdk
@@ -234,8 +265,8 @@ if (-not $SkipDownload) {
 Configure-Launchers -TargetDir $InstallPath -JdkPath $jdk
 Register-DualShortcuts -TargetDir $InstallPath
 
-Write-Host "`n[V] Ghidra Bootstrapping & Shortcut Registration Completed Successfully!" -ForegroundColor Green
+Write-Host "`n[V] Ghidra 12.2 Bootstrapping & Shortcut Registration Completed Successfully!" -ForegroundColor Green
 Write-Host "    - Install Directory : $InstallPath" -ForegroundColor Gray
-Write-Host "    - JDK Location      : $jdk" -ForegroundColor Gray
+Write-Host "    - JDK Location      : $jdk (JDK 25 LTS)" -ForegroundColor Gray
 Write-Host "    - Desktop Shortcut  : Yes (Zero Terminal Popup)" -ForegroundColor Gray
 Write-Host "    - Start Menu Search : Yes (Press Win, type 'ghidra')" -ForegroundColor Gray

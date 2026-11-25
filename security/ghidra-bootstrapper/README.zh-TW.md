@@ -1,10 +1,10 @@
 # Ghidra 逆向工程框架自動化安裝與雙捷徑註冊工具
 
-專為 **NSA Ghidra 軟體逆向工程框架** 設計的一鍵自動化發行版安裝、環境綁定、無黑窗靜音啟動器生成與雙捷徑（桌面 + 開始功能表）註冊工具庫。
+專為 **NSA Ghidra 軟體逆向工程框架 (Ghidra 12.2 + JDK 25 LTS)** 設計的一鍵自動化發行版安裝、環境綁定、無黑窗靜音啟動器生成與雙捷徑（桌面 + 開始功能表）註冊工具庫。
 
 ---
 
-## 1. 架構設計
+## 1. 架構設計與雙 JDK 安全隔離
 
 ```mermaid
 graph TD
@@ -12,8 +12,12 @@ graph TD
     VBS --> BAT["Ghidra.bat (獨立 JDK 路徑綁定)"]
     BAT --> RUN["ghidraRun.bat (原生啟動核心)"]
     RUN --> Launch["support/launch.bat (JVM 調度引擎)"]
-    Launch --> JVM["javaw.exe (JDK 21 執行期)"]
-    JVM --> GUI["Ghidra SRE 圖形操作介面"]
+    Launch --> JVM25["javaw.exe (JDK 25 LTS at C:/MyAPP/Dev/Env/jdk-25)"]
+    JVM25 --> GUI["Ghidra SRE 12.2 圖形操作介面"]
+
+    BurpUser["Burp 觸發 (桌面 / Win 搜尋)"] --> BurpBAT["Burp.bat"]
+    BurpBAT --> JVM21["javaw.exe (JDK 21 LTS at C:/Program Files/Java/jdk-21)"]
+    JVM21 --> BurpGUI["Burp Suite Pro 圖形介面"]
 ```
 
 ---
@@ -22,11 +26,11 @@ graph TD
 
 ```mermaid
 flowchart TD
-    Start(["啟動 install.bat"]) --> CheckJDK["1. 自動偵測相容 JDK (支援 JDK 21)"]
+    Start(["啟動 install.bat"]) --> CheckJDK["1. 自動偵測相容 JDK (優先尋找 JDK 25 / 自動下載綠色 OpenJDK 25)"]
     CheckJDK --> Engine["2. 偵測高速下載引擎 (aria2c / curl)"]
-    Engine --> Download["3. 下載官方發行版 (ghidra_12.1.4_PUBLIC)"]
+    Engine --> Download["3. 下載最新 Ghidra 12.2 官方發行版"]
     Download --> Extract["4. 透過 tar.exe 高速解壓縮並更名為首字大寫 'Ghidra'"]
-    Extract --> Config["5. 配置 launch.properties 之 JAVA_HOME_OVERRIDE"]
+    Extract --> Config["5. 配置 launch.properties 之 JAVA_HOME_OVERRIDE (UTF-8 無 BOM)"]
     Config --> Patch["6. 優化 launch.bat 背景獨立調度參數"]
     Patch --> GenLaunchers["7. 產生 Ghidra.bat 與 Ghidra.vbs (徹底告別黑終端視窗)"]
     GenLaunchers --> Shortcuts["8. 建立雙捷徑 (桌面 + 開始功能表 Programs)"]
@@ -37,12 +41,13 @@ flowchart TD
 
 ## 3. 核心亮點
 
+- **最新 Ghidra 12.2 + JDK 25 LTS 完美支援**：直接採用官方最新專為 Java 25 編譯之穩定版本，享有最新反編譯器最佳化與垃圾回收效能。
+- **雙 JDK 安全共存不踩踏**：Burp Suite Pro 嚴格鎖定於穩定的 JDK 21，Ghidra 獨立使用 JDK 25，兩者互不干擾、相安無事。
 - **目錄規範符合標準**：依循使用者規範，根目錄自動採用首字大寫 (`C:\MyAPP\Sec\Ghidra`)。
 - **徹底消除命令提示字元黑窗**：透過 `Ghidra.vbs` 與 `javaw.exe` 背景調度，啟動時完全不會彈出或殘留黑色 cmd 命令視窗。
 - **雙捷徑無縫整合 Windows 搜尋**：
   - **桌面捷徑**：掛載官方高解析度 `ghidra.ico` 圖示。
   - **開始功能表 (`Programs`) 捷徑**：立即被 Windows Search 索引。日常只需按下鍵盤 `Win` 鍵，輸入 `ghidra` 並按下 `Enter` 即可秒開。
-- **JDK 智慧偵測與環境隔離**：自動掃描並優先綁定現有的 JDK 21，無需也不會污染 Windows 全域 `PATH` 與 `JAVA_HOME`。
 - **純 ASCII 批次檔保護**：所有 `.bat` 腳本均採用純 ASCII 英文註解，杜絕 Windows CP950/CP437 繁中多位元組編碼造成的批次檔斷行解析崩潰問題。
 
 ---
