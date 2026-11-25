@@ -511,7 +511,7 @@ def run_setup(
         return 1
 
     tool_name = "mamba" if "mamba" in installer.lower() else "conda"
-    cmd = [installer, "env", "create", "-f", str(env_file)]
+    cmd = [installer, "env", "create", "-y", "-f", str(env_file)]
 
     if use_prefix:
         cmd.extend(["-p", "./.conda"])
