@@ -2,8 +2,8 @@
 title Burp Suite Pro Installer
 cd /d "%~dp0"
 
-:: 透過 Bypass 策略呼叫 PowerShell 腳本，避免因 ExecutionPolicy 被阻止
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1"
+:: 透過 Bypass 策略呼叫 PowerShell 腳本，支援自訂目標路徑參數 %*
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1" %*
 
 if %ERRORLEVEL% neq 0 (
     echo.

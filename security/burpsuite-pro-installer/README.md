@@ -4,6 +4,7 @@ A PowerShell-based portable installer, environment automator, and lifecycle main
 
 ## Features
 
+- **Custom Installation Target Directory**: Supports `-InstallPath` CLI parameter or interactive directory prompt/switching; deploy to any drive/folder from the script repo.
 - **Portable OpenJDK 21 Option**: 100% portable setup without requiring Windows Administrator rights.
 - **Resilient Multi-Threaded Downloads**: Uses `aria2c` (16 connections with breakpoint resume) or `curl` with minimum file size validation.
 - **Fully Portable Launchers**: `Burp.bat` and `Burp-Suite-Pro.vbs` use dynamic `%~dp0` relative paths.
@@ -14,9 +15,15 @@ A PowerShell-based portable installer, environment automator, and lifecycle main
   - One-click setup & repair.
   - One-click PortSwigger JAR update.
   - Memory tuning and temp file cleaning.
+  - Target directory switching.
 
 ## Quick Start
 
-1. Place your `loader.jar` and `aria2c.exe` in the root folder.
-2. Double-click `install.bat` (automatically bypasses Windows ExecutionPolicy).
+1. Place your `loader.jar` and `aria2c.exe` in the script folder or target folder.
+2. Run installation:
+   - **Double-click**: Run `install.bat` and follow the interactive menu.
+   - **Command Line with Target Path**:
+     ```powershell
+     .\install.ps1 -InstallPath "C:\MyAPP\Sec\BurpSuitePro"
+     ```
 3. Follow the menu prompt `[1]` to initialize the environment and launch the software.
