@@ -41,6 +41,27 @@ class TestGradeParser(unittest.TestCase):
         self.assertEqual(fmt, "key_value")
         self.assertEqual(len(items), 2)
 
+    def test_headerless_multi_column_parsing(self):
+        """測試無表頭（首行為純數字）多欄表格透過 custom_headers 成功解析"""
+        text = "24\t28\t35\n59\t33\t14\n"
+        # 未指定 custom_headers 時應為 None（不誤判為表頭）
+        self.assertIsNone(GradeParser.parse_multi_column_table(text))
+
+        # 指定 custom_headers 後首行視為資料並正確對齊各欄
+        data = GradeParser.parse_multi_column_table(text, custom_headers=["A", "A+", "A++"])
+        self.assertIsNotNone(data)
+        self.assertEqual(data["A"], ["24", "59"])
+        self.assertEqual(data["A+"], ["28", "33"])
+        self.assertEqual(data["A++"], ["35", "14"])
+
+        # 透過 extract_submissions 統一介面測試
+        items, fmt = GradeParser.extract_submissions(text, custom_headers=["A", "A+", "A++"])
+        self.assertEqual(fmt, "multi_column_custom_headers")
+        self.assertEqual(len(items), 6)
+        self.assertIn(("24", "A"), items)
+        self.assertIn(("28", "A+"), items)
+        self.assertIn(("35", "A++"), items)
+
 
 if __name__ == "__main__":
     unittest.main()
