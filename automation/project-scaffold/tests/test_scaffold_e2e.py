@@ -57,6 +57,7 @@ class TestScaffoldEngineE2E(unittest.TestCase):
         self.assertIn("Setup Python", ci_content)
         self.assertIn("ruff check", ci_content)
         self.assertNotIn("setup-node", ci_content)
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", ci_content)
 
         # project.json inspection
         pj_data = json.loads((self.target_path / "tools" / "project.json").read_text(encoding="utf-8"))

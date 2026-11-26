@@ -13,6 +13,12 @@ on:
   pull_request:
     branches: [main, master]
 
+# A new push to the same pull request supersedes the run still in progress.
+# Pushes to main are never cancelled, so every merged commit keeps a full result.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
