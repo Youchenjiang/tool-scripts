@@ -177,6 +177,23 @@ class PrToolTests(unittest.TestCase):
         self.assertIn("https://github.com/review/1", output.getvalue())
         self.assertNotIn("@reviewer", output.getvalue())
 
+    def test_review_query_braces_balance(self):
+        # every other test fakes GitHub, so a malformed document only failed against the real API
+        queries = []
+
+        def fake(argv):
+            queries.extend(arg[len("query="):] for arg in argv if arg.startswith("query="))
+            return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}}}}}})
+
+        pr_tool.review_threads("Youchenjiang/Clickra", 2, fake)
+        self.assertEqual(1, len(queries))
+        depth = 0
+        for char in queries[0]:
+            depth += (char == "{") - (char == "}")
+            self.assertGreaterEqual(depth, 0, "a closing brace has no opening brace")
+        self.assertEqual(0, depth)
+
     def test_review_rejects_stuck_pagination(self):
         def fake(_argv):
             return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {

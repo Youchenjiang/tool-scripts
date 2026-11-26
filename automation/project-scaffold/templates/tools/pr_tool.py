@@ -105,7 +105,7 @@ def review_threads(repo, number, run=command):
     query = ("query($owner:String!,$name:String!,$number:Int!,$after:String){"
              "repository(owner:$owner,name:$name){pullRequest(number:$number){"
              "reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}"
-             "nodes{id isResolved isOutdated path line comments(first:1){nodes{body url author{login}}}}}}}}}")
+             "nodes{id isResolved isOutdated path line comments(first:1){nodes{body url author{login}}}}}}}}")
     after = None
     seen = set()
     threads = []
