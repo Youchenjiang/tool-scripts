@@ -89,6 +89,11 @@ class HygieneRootItemsTests(unittest.TestCase):
         self.assertEqual(1, len(violations))
         self.assertIn("random_scratch.txt", violations[0])
 
+    def test_linked_worktree_git_file_is_allowed(self):
+        # a linked worktree has a ".git" FILE that points at the main repository
+        (self.root / ".git").write_text("gitdir: /elsewhere/.git/worktrees/wt\n", encoding="utf-8")
+        self.assertEqual([], check_root_files(self.root, {"allowedRootFiles": {"README.md"}}, tracked_files=None))
+
 
 class HygieneTrackedFilesTests(unittest.TestCase):
     def test_detects_banned_tracked_files(self):

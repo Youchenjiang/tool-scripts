@@ -279,6 +279,9 @@ def check_root_files(
     # 2. Check physical filesystem root files
     if repo_root.is_dir():
         for item in repo_root.iterdir():
+            # In a linked worktree ".git" is a file pointing at the main repository.
+            if item.name == ".git":
+                continue
             if item.is_file():
                 if not matches_any_pattern(item.name, allowed):
                     msg = f"Unexpected root file on disk: '{item.name}'"
