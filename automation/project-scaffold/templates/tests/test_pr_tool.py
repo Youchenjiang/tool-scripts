@@ -130,6 +130,19 @@ class PrToolTests(unittest.TestCase):
             return "feature/pr-governance-preflight\n" if "branch" in argv else "git@github.com:Youchenjiang/Clickra.git\n"
         self.assertEqual(("Youchenjiang/Clickra", "feature/pr-governance-preflight"), pr_tool.context(fake))
 
+    def test_inspect_reads_the_body_verify_needs(self):
+        # verify marks a top-level finding addressed only from the PR body
+        calls = []
+
+        def fake(argv):
+            calls.append(argv)
+            return json.dumps({"number": 8, "body": "Addressed every finding of `@llamapreview[bot]`."})
+
+        data = pr_tool.inspect("Youchenjiang/Clickra", 8, fake)
+        fields = calls[0][calls[0].index("--json") + 1].split(",")
+        self.assertIn("body", fields)
+        self.assertIn("@llamapreview", data["body"])
+
     def test_review_paginates_and_does_not_write(self):
         calls = []
         def fake(argv):

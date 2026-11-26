@@ -76,9 +76,13 @@ def pr_number(value, repo, branch, run=command):
     return data
 
 
+PR_FIELDS = ("number,title,author,body,state,isDraft,baseRefName,headRefName,headRefOid,"
+             "mergeable,reviewDecision,statusCheckRollup,files,url")
+
+
 def inspect(repo, number, run=command):
-    raw = run(["gh", "pr", "view", str(number), "--repo", repo,
-               "--json", "number,title,author,state,isDraft,baseRefName,headRefName,headRefOid,mergeable,reviewDecision,statusCheckRollup,files,url"])
+    # body: verify reads it to tell which top-level review findings the PR says it addressed
+    raw = run(["gh", "pr", "view", str(number), "--repo", repo, "--json", PR_FIELDS])
     data = json.loads(raw)
     if not isinstance(data, dict) or data.get("number") != number:
         raise ValueError("GitHub returned an unexpected PR")
