@@ -59,7 +59,8 @@ SUBJECT_REGEX = re.compile(
 )
 VAGUE_REGEX = re.compile(r"^(update|misc|stuff|changes|fix bug|bug fix)$", re.IGNORECASE)
 
-GOVERNANCE_PATTERNS = ["docs/handover.md", "memory.md", ".agent/"]
+GOVERNANCE_FILES = ("docs/handover.md", "memory.md")
+GOVERNANCE_DIRS = (".agent",)
 CODE_PATTERNS = [".py", ".js", ".ts", ".cs", ".sh", ".ps1", ".json", ".yml", ".yaml"]
 
 ALLOWED_GIT_FLAGS = frozenset(
@@ -158,6 +159,18 @@ def get_changed_files(sha):
     return [line.strip().replace("\\", "/").lower() for line in raw.splitlines() if line.strip()]
 
 
+def is_governance_path(path):
+    """True for the governance files themselves, matched by whole path segments.
+
+    A substring match also caught ordinary docs such as ``disk-and-memory.md``.
+    ``path`` is the lower-cased, slash-separated form ``get_changed_files`` returns.
+    """
+    parts = path.split("/")
+    if any(part in GOVERNANCE_DIRS for part in parts[:-1]):
+        return True
+    return any(parts[-len(g.split("/")):] == g.split("/") for g in GOVERNANCE_FILES)
+
+
 def validate_commit(_sha, subject, changed_files, strict=False):
     errors = []
     warnings = []
@@ -180,7 +193,7 @@ def validate_commit(_sha, subject, changed_files, strict=False):
         errors.append(f"描述過於空泛：'{desc_match}' 不符合專案描述具體性要求")
 
     # 5. 防搭便車職責分離偵測 (Anti-Free-Riding Check)
-    has_gov = any(any(gp in f for gp in GOVERNANCE_PATTERNS) for f in changed_files)
+    has_gov = any(is_governance_path(f) for f in changed_files)
     has_code = any(any(f.endswith(cp) for cp in CODE_PATTERNS) for f in changed_files)
 
     if has_gov and has_code:

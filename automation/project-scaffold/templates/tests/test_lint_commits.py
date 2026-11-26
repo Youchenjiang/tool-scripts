@@ -71,6 +71,18 @@ class TestValidateCommit(unittest.TestCase):
         errors, warnings = lint_commits.validate_commit("sha1", subj, files, strict=True)
         self.assertEqual(errors, [])
 
+    def test_governance_paths_match_whole_segments(self):
+        for path in ["memory.md", "docs/handover.md", ".agent/rules.md", "sub/.agent/x.json"]:
+            self.assertTrue(lint_commits.is_governance_path(path), path)
+        for path in ["docs/disk-and-memory.md", "notes/memory.md.bak", "my.agent/x.md", "handover.md"]:
+            self.assertFalse(lint_commits.is_governance_path(path), path)
+
+    def test_doc_named_like_memory_may_ship_with_code(self):
+        files = ["docs/disk-and-memory.md", "src/core/app.py"]
+        subj = "feat(core): add the memory probe and its notes"
+        errors, _ = lint_commits.validate_commit("sha1", subj, files, strict=True)
+        self.assertEqual(errors, [])
+
 
 if __name__ == '__main__':
     unittest.main()
