@@ -122,7 +122,26 @@ python run.py -i raw_grades.txt --resolve "50=A+, 01碩=A, 01博=A+, 04博=A, 04
 python run.py -i raw_grades.txt --headers "A,A+,A++" -o grade_20261124 -y
 ```
 
-### 5. 執行單元自動化測試
+### 5. 全學期歷次成績一鍵彙整總表 (`--consolidate`)
+一鍵自動掃描並彙整 `data/` 下所有歷次作業登記紀錄（`grade_YYYYMMDD.csv`），產出全學期總表：
+```powershell
+# 自動產出 semester_grades_summary.csv 與 semester_grades_summary.xlsx
+python run.py --consolidate
+
+# 自訂檔名與 JSON 報告輸出
+python run.py --consolidate -o term_final_summary --json
+```
+- **產出內容**：
+  - 歷次作業成績欄位（依登記日期時間序列自動遞增排序）。
+  - 全班統計指標：應繳次數、實繳次數、缺繳次數、繳交率（%）。
+  - 等第次數分布：`A++`、`A+`、`A`、`A-` 次數。
+  - 平均等第積分（GPA 4.3 制）。
+- **專業 Excel 樣式**：
+  - 凍結窗格（水平滾動時固定學號、姓名、學制）。
+  - 缺繳標籤醒目標紅底色（`FCE4D6`）。
+  - 深藍表頭與斑馬紋交替底色。
+
+### 6. 執行單元自動化測試
 可在本目錄直接執行單元測試套件：
 ```powershell
 python -m unittest discover -s tests
