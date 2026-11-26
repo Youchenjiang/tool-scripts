@@ -48,6 +48,8 @@
 * **GraphQL 查詢** (`templates/tools/pr_tool.py`)：刪掉 review-thread 查詢多出的 `}`；測試攔下實際送出的查詢並檢查括號配對（原有測試全用假回應，所以一直沒抓到）。
 * **讀取 PR 說明**：`inspect` 補上 `body` 欄位，`verify` 才能依說明判斷 top-level review finding 是否已處理。
 * **必要檢查** (`templates/tools/pr_verification.py`)：預設改為模板 workflow 實際回報的 `PR and Commit Policy Validation` 與 `Continuous Integration`（加上外部分析器），移除 Clickra 專屬的 `PR and commit policy`、`PR governance script tests`；專案可在 `tools/project.json` 的 `required_checks` 列出自己的檢查，`PR_REQUIRED_CHECKS` 仍可覆寫。
+* **worktree 推送** (`templates/git/hooks/pre-push`)：從 linked worktree 推送時 git 會以絕對路徑匯出 `GIT_DIR`，測試在暫存 repo 裡的 `git init`／`config`／`add` 因此改寫了真正 repo 的設定（`core.bare=true`、測試用身分）。hook 一開始就清掉 `GIT_DIR` 等位置變數。
+* **repo hygiene** (`templates/tools/repo_hygiene.py`)：linked worktree 的 `.git` 是檔案，不再被當成多餘的根目錄檔案。
 
 ### [v6.1.1] - 2026-11-26：修正規範誤判與 CI 排隊
 > **核心痛點**：用模板建立的 sec-range-kit 在遷移時連續踩到模板本身的問題：PR 說明中正確寫在反引號裡的 Windows 路徑被當成格式錯誤擋下、名稱含 `memory` 的一般文件被當成治理文件、hook 測試在 Linux 上形同沒測，以及同一個 PR 連推時舊的 CI 仍跑完。
