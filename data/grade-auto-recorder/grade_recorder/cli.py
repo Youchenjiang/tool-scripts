@@ -18,6 +18,7 @@ from .models import Roster, Student
 from .parser import GradeParser
 from .engine import GradeEngine
 from .exporter import GradeExporter
+from .consolidator import SemesterConsolidator
 
 
 def parse_resolve_arg(
@@ -432,6 +433,7 @@ def main():
     parser.add_argument("--audit", action="store_true", help="審計模式：僅執行分析並輸出報告，不寫入檔案")
     parser.add_argument("--resolve", default=None, help="消解衝突與補登字串（例如 '50=A+, 01碩=A, 01博=A+, 賴彥宏=A'）")
     parser.add_argument("--headers", default=None, help="指定無表頭多欄表格各欄等第（以逗號或空格分隔，例如 'A,A+,A++'）")
+    parser.add_argument("--consolidate", action="store_true", help="彙整 data/ 目錄下所有歷次 grade_*.csv 成績，產出全學期總表 Excel 與 CSV")
     parser.add_argument("-y", "--yes", "--non-interactive", dest="non_interactive", action="store_true", help="非互動批次模式：跳過所有終端確認，直接產出檔案")
     parser.add_argument("--json", action="store_true", help="以 JSON 格式輸出審計或執行結果（適合程式與代理人串接）")
 
@@ -456,6 +458,38 @@ def main():
         sys.exit(1)
 
     roster = Roster(roster_path)
+
+    # 0. 若指定 --consolidate，執行全學期成績彙整並退出
+    if args.consolidate:
+        data_dir_to_scan = data_dir if data_dir.exists() else base_dir
+        out_dir = data_dir_to_scan
+        csv_p, xlsx_p, summary = SemesterConsolidator.consolidate(
+            data_dir=data_dir_to_scan,
+            roster=roster,
+            output_dir=out_dir,
+            custom_prefix=args.name or "semester_grades_summary"
+        )
+        if args.json:
+            print(json.dumps({
+                "status": "success",
+                "csv_path": str(csv_p),
+                "xlsx_path": str(xlsx_p),
+                "summary": summary
+            }, ensure_ascii=False, indent=2))
+        else:
+            print("\n" + "=" * 60)
+            print("  全學期歷次成績彙整總表 (Semester Grades Summary)")
+            print("=" * 60)
+            print(f"掃描目錄: {data_dir_to_scan}")
+            print(f"彙整堂數: {summary['total_sessions']} 次 ({', '.join(summary['sessions'])})")
+            print(f"全班人數: {summary['total_students']} 人")
+            print(f"全勤繳交: {summary['perfect_submission_count']} 人")
+            print(f"全班平均繳交率: {summary['average_submission_rate']:.1f}%")
+            print(f"全班平均等第積分: {summary['average_gpa']:.2f}")
+            print(f"[OK] 彙整 CSV 產出成功: {csv_p.name}")
+            print(f"[OK] 彙整 Excel 總表產出成功: {xlsx_p.name} (含雙向凍結窗格與斑馬紋)")
+            print("=" * 60 + "\n")
+        sys.exit(0)
 
     # 1. 取得 raw_text 輸入內容
     raw_text = ""

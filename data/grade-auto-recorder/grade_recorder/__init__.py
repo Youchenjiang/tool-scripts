@@ -8,7 +8,8 @@ from .models import Student, Roster
 from .parser import GradeParser
 from .engine import GradeEngine
 from .exporter import GradeExporter
+from .consolidator import SemesterConsolidator
 from .cli import main
 
-__version__ = "2.0.0"
-__all__ = ["Student", "Roster", "GradeParser", "GradeEngine", "GradeExporter", "main"]
+__version__ = "2.1.0"
+__all__ = ["Student", "Roster", "GradeParser", "GradeEngine", "GradeExporter", "SemesterConsolidator", "main"]
