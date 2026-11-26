@@ -114,7 +114,14 @@ python run.py -i raw_grades.txt --resolve "50=A+, 01碩=A, 01博=A+, 04博=A, 04
 ```
 > 註：`--resolve` 支援學號（`115423001`）、學制後綴（`1碩`、`1博`）、末碼（`50`）以及姓名模糊容錯（容許 1 字錯別字，如 `陳祈睿` 自動匹配 `陳祈叡`）。
 
-### 2. 執行單元自動化測試
+### 4. 無表頭剪貼簿多欄對齊 (`--headers`)
+若複製試卷時未選取首行表頭（首行即為數字學號），可透過 `--headers` 注入指定各欄等第：
+```powershell
+# 複製內容為純數字多欄表格時，自動將第 1, 2, 3 欄對齊 A, A+, A++
+python run.py -i raw_grades.txt --headers "A,A+,A++" -o grade_20261124 -y
+```
+
+### 5. 執行單元自動化測試
 可在本目錄直接執行單元測試套件：
 ```powershell
 python -m unittest discover -s tests
