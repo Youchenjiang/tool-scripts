@@ -20,12 +20,17 @@ from .engine import GradeEngine
 from .exporter import GradeExporter
 
 
-def parse_resolve_arg(resolve_str: str, roster: Roster) -> Tuple[Dict[str, str], List[str]]:
+def parse_resolve_arg(
+    resolve_str: str,
+    roster: Roster,
+    audit_data: Optional[Dict[str, Any]] = None
+) -> Tuple[Dict[str, str], List[str]]:
     """
     解析 --resolve 參數字串，支援：
-    1. 鍵值對格式：'50=A+, 01碩=A, 01博=A+, 04博=A, 04碩=A+, 07碩=A, 07博=A+, 賴彥宏=A, 陳祈睿=A'
+    1. 鍵值對格式：'50=A+, 01碩=A, 01博=A+, 賴彥宏=A'
     2. 冒號或空白分隔：'50: A+; 115423001: A'
-    3. JSON 字串：'{"115423050": "A+", "115423001": "A"}'
+    3. 重指派替換語法：'14->72'、'14->72=A+'、'14:72'
+    4. JSON 字串：'{"115423050": "A+", "115423001": "A"}'
     """
     resolved = {}
     warnings = []
@@ -52,6 +57,92 @@ def parse_resolve_arg(resolve_str: str, roster: Roster) -> Tuple[Dict[str, str],
     # 分割各項鍵值對 (支援逗號、分號、換行)
     items = [item.strip() for item in resolve_str.replace(";", ",").replace("\n", ",").split(",") if item.strip()]
     for item in items:
+        # 1. 檢查重指派箭頭語法 (-> 或 =>)
+        if "->" in item or "=>" in item:
+            sep = "->" if "->" in item else "=>"
+            src_part, tgt_part = item.split(sep, 1)
+            src_token = src_part.strip()
+            rest = tgt_part.strip()
+            tgt_token = rest
+            explicit_grade = None
+            if "=" in rest:
+                tgt_token, explicit_grade = rest.split("=", 1)
+            elif ":" in rest:
+                tgt_token, explicit_grade = rest.split(":", 1)
+            tgt_token = tgt_token.strip()
+            if explicit_grade is not None:
+                explicit_grade = explicit_grade.strip()
+
+            src_matches, _ = GradeEngine.match_token(src_token, roster)
+            tgt_matches, _ = GradeEngine.match_token(tgt_token, roster)
+            if not src_matches:
+                warnings.append(f"找不到重指派來源標記 '{src_token}' 對應的學生")
+                continue
+            if not tgt_matches:
+                warnings.append(f"找不到重指派目標標記 '{tgt_token}' 對應的學生")
+                continue
+            if len(src_matches) > 1:
+                warnings.append(f"重指派來源標記 '{src_token}' 匹配多位同學，請加註學制或使用學號")
+                continue
+            if len(tgt_matches) > 1:
+                warnings.append(f"重指派目標標記 '{tgt_token}' 匹配多位同學，請加註學制或使用學號")
+                continue
+
+            src_s, tgt_s = src_matches[0], tgt_matches[0]
+            if explicit_grade:
+                resolved[tgt_s.sid] = explicit_grade
+                if audit_data:
+                    for alert in audit_data.get("duplicate_single_alerts", []):
+                        if alert["student"].sid == src_s.sid:
+                            rem = list(alert["grades"])
+                            if explicit_grade in rem:
+                                rem.remove(explicit_grade)
+                            if rem:
+                                resolved[src_s.sid] = rem[0]
+            else:
+                found_alert = False
+                if audit_data:
+                    for alert in audit_data.get("duplicate_single_alerts", []):
+                        if alert["student"].sid == src_s.sid:
+                            found_alert = True
+                            grades = alert["grades"]
+                            if len(grades) >= 2:
+                                resolved[src_s.sid] = grades[0]
+                                resolved[tgt_s.sid] = grades[1]
+                            elif len(grades) == 1:
+                                resolved[tgt_s.sid] = grades[0]
+                if not found_alert:
+                    warnings.append(f"重指派 '{src_token}->{tgt_token}' 未指定成績且來源無超額提交記錄 (請使用 {src_token}->{tgt_token}=等第)")
+            continue
+
+        # 2. 檢查冒號或等號
+        is_reassign_colon = False
+        if ":" in item and "=" not in item:
+            c_parts = item.split(":", 1)
+            p0, p1 = c_parts[0].strip(), c_parts[1].strip()
+            # 若右側為數字且非標準等第，嘗試作為 14:72 重指派處理
+            if p1.isdigit() and len(p1) <= 9:
+                tgt_m, _ = GradeEngine.match_token(p1, roster)
+                if tgt_m:
+                    is_reassign_colon = True
+                    src_matches, _ = GradeEngine.match_token(p0, roster)
+                    if src_matches and len(src_matches) == 1 and len(tgt_m) == 1:
+                        src_s, tgt_s = src_matches[0], tgt_m[0]
+                        found_alert = False
+                        if audit_data:
+                            for alert in audit_data.get("duplicate_single_alerts", []):
+                                if alert["student"].sid == src_s.sid:
+                                    found_alert = True
+                                    grades = alert["grades"]
+                                    if len(grades) >= 2:
+                                        resolved[src_s.sid] = grades[0]
+                                        resolved[tgt_s.sid] = grades[1]
+                                    elif len(grades) == 1:
+                                        resolved[tgt_s.sid] = grades[0]
+                        if not found_alert:
+                            warnings.append(f"重指派 '{p0}:{p1}' 來源無超額提交記錄 (請使用 {p0}->{p1}=等第)")
+                        continue
+
         if "=" in item:
             parts = item.split("=", 1)
         elif ":" in item:
@@ -110,7 +201,11 @@ def build_audit_report_data(
             "program": alert["student"].program,
             "count": alert["count"],
             "grades": alert["grades"],
-            "tokens": alert["tokens"]
+            "tokens": alert["tokens"],
+            "typo_guesses": [
+                {"sid": s.sid, "name": s.name, "program": s.program, "suffix": s.suffix}
+                for s in alert.get("typo_guesses", [])
+            ]
         }
         for alert in audit_data.get("duplicate_single_alerts", [])
     ]
@@ -178,6 +273,13 @@ def print_audit_report_text(report: Dict[str, Any]):
         for idx, alert in enumerate(single_alerts, 1):
             print(f"  ({idx}) {alert['sid']} {alert['name']} ({alert['program']})")
             print(f"      名冊中僅此 1 位同學，但出現了 {alert['count']} 次！標記: {alert['tokens']} | 成績: {alert['grades']}")
+            if alert.get("typo_guesses"):
+                guesses_str = "、".join(f"{g['sid']} {g['name']} (末碼 {g['suffix']})" for g in alert["typo_guesses"])
+                first_guess = alert["typo_guesses"][0]
+                first_tok = alert["tokens"][0] if alert["tokens"] else alert["sid"]
+                print(f"      💡 [智慧筆誤猜測] 缺繳人數極少 (共 {len(alert['typo_guesses'])} 人)，疑似誤填以下同學學號：")
+                print(f"         -> 候選同學: {guesses_str}")
+                print(f"         (提示：可使用 --resolve \"{first_tok}->{first_guess['suffix']}\" 一鍵修正重指派)")
 
     conflicts = report["pending_conflicts"]
     if conflicts:
@@ -451,7 +553,7 @@ def main():
 
     # 套用 --resolve 參數
     if args.resolve:
-        resolved_items, warnings = parse_resolve_arg(args.resolve, roster)
+        resolved_items, warnings = parse_resolve_arg(args.resolve, roster, audit_data=audit)
         if not args.json:
             for warn in warnings:
                 print(f"[WARNING] {warn}")
