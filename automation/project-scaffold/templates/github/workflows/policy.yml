@@ -165,10 +165,13 @@ jobs:
               if (!prBody) {
                 bodyIssues.push("PR description body must not be empty.");
               } else {
-                // Check for corrupted escaped inline code artifacts (e.g. \npm test\ instead of `npm test`)
+                // Check for corrupted escaped inline code artifacts (e.g. \npm test\ instead of `npm test`).
+                // Code fences and code spans are removed first: a Windows path such as
+                // `C:\Tools\DFIR` inside backticks is correct Markdown, not an artifact.
+                const proseOnly = prBody.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
                 const escapedArtifactPattern = /\\([a-zA-Z0-9_./#:@<>()'" -]+)\\/;
-                if (escapedArtifactPattern.test(prBody)) {
-                  const matched = prBody.match(escapedArtifactPattern);
+                if (escapedArtifactPattern.test(proseOnly)) {
+                  const matched = proseOnly.match(escapedArtifactPattern);
                   bodyIssues.push(`PR body contains corrupted escaped inline code artifacts ("${matched[0]}" instead of \`${matched[1]}\`). Use backticks for code and paths.`);
                 }
 
