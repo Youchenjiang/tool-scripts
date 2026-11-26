@@ -204,9 +204,9 @@ class GradeEngine:
         unrecorded = [s for s in roster.students if s.sid not in all_resolved_sids]
 
         # 3. 智慧筆誤猜測 (當單一學生超額提交且缺繳人數 <= 2 時)
-        if duplicate_single_alerts and len(unrecorded) <= 2 and len(unrecorded) > 0:
+        if duplicate_single_alerts and len(unrecorded) <= 3 and len(unrecorded) > 0:
             for alert in duplicate_single_alerts:
-                alert["typo_guesses"] = list(unrecorded)
+                alert["typo_guesses"] = [s for s in unrecorded if s.sid != alert["student"].sid]
         else:
             for alert in duplicate_single_alerts:
                 alert["typo_guesses"] = []

@@ -117,5 +117,27 @@ class TestGradeEngine(unittest.TestCase):
                 tf_path.unlink()
 
 
+    def test_smart_typo_guess_alert(self):
+        """測試單人重複提交且缺繳人數 <= 2 時自動生成智慧筆誤猜測"""
+        # 範例名冊有 5 位學生：
+        # 115423001, 115423002, 115423004, 115483001, 115483002
+        # 若 115423004 被重複提交兩次，115423001, 115483001, 115483002 正常提交
+        # 只有 115423002 (陳大華) 缺繳 (缺繳人數為 1 <= 2)
+        submissions = [
+            ("04", "A+"),
+            ("04", "A"),
+            ("1碩", "A"),
+            ("1博", "A+"),
+            ("2博", "A")
+        ]
+        audit = GradeEngine.audit_submissions(submissions, self.roster)
+        alerts = audit["duplicate_single_alerts"]
+        self.assertEqual(len(alerts), 1)
+        # 驗證智慧筆誤猜測清單包含缺繳的 115423002 陳大華
+        guesses = alerts[0]["typo_guesses"]
+        self.assertEqual(len(guesses), 1)
+        self.assertEqual(guesses[0].sid, "115423002")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -97,6 +97,27 @@ class TestGradeCLI(unittest.TestCase):
                     Path(res["csv_path"]).unlink(missing_ok=True)
                     Path(res["xlsx_path"]).unlink(missing_ok=True)
 
+    def test_parse_resolve_reassign_syntax(self):
+        """測試 --resolve 支援 14->72 及 14->72=A 重指派語法"""
+        # 04 在名冊中為 115423004 林志強
+        # 1碩 在名冊中為 115423001 王小明
+        # 模擬 04 號被重複提交兩次（A+ 與 A-）的審計警報數據
+        from grade_recorder.engine import GradeEngine
+        submissions = [("04", "A+"), ("04", "A-")]
+        audit = GradeEngine.audit_submissions(submissions, self.roster)
+
+        # 1. 測試自動拆分重指派：04->1碩
+        resolved, warnings = parse_resolve_arg("04->1碩", self.roster, audit_data=audit)
+        self.assertEqual(len(warnings), 0)
+        self.assertEqual(resolved.get("115423004"), "A+")
+        self.assertEqual(resolved.get("115423001"), "A-")
+
+        # 2. 測試顯式指定等第重指派：04->1碩=A-
+        resolved2, warnings2 = parse_resolve_arg("04->1碩=A-", self.roster, audit_data=audit)
+        self.assertEqual(len(warnings2), 0)
+        self.assertEqual(resolved2.get("115423001"), "A-")
+        self.assertEqual(resolved2.get("115423004"), "A+")
+
 
 if __name__ == "__main__":
     unittest.main()
