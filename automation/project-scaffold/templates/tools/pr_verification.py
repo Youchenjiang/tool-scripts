@@ -36,7 +36,7 @@ def _project_required_checks(project_json=None):
     return {v.strip() for v in value}
 
 
-def resolve_required_checks(repo="", project_json=None):
+def resolve_required_checks(project_json=None):
     """PR_REQUIRED_CHECKS, then tools/project.json required_checks, then REQUIRED."""
     env_req = os.environ.get("PR_REQUIRED_CHECKS")
     if env_req:
@@ -85,7 +85,7 @@ def _pr_problems(pr, remote_sha):
 def _required_checks(files, repo="", author=""):
     if files is not None and not isinstance(files, list):
         raise RuntimeError("invalid changed-file inventory")
-    required = set(resolve_required_checks(repo))
+    required = set(resolve_required_checks())
     if author.lower() in {"dependabot", "dependabot[bot]"}:
         required.discard("PR and Commit Policy Validation")
     if (files and not ("tapstrum" in repo.lower() or "tapster" in repo.lower()) and
