@@ -1,6 +1,8 @@
 """Conservative final PR checks reject missing or unresolved findings."""
+import json
 import os
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 from pathlib import Path
@@ -82,6 +84,30 @@ class VerificationTests(unittest.TestCase):
     def test_custom_required_checks_via_environment(self):
         with patch.dict(os.environ, {"PR_REQUIRED_CHECKS": "CustomCheck1, CustomCheck2"}):
             self.assertEqual({"CustomCheck1", "CustomCheck2"}, pr_verification.resolve_required_checks())
+
+    def test_default_required_checks_match_the_scaffold_workflows(self):
+        # policy.yml and ci.yml name their jobs exactly like this
+        self.assertIn("PR and Commit Policy Validation", pr_verification.REQUIRED)
+        self.assertIn("Continuous Integration", pr_verification.REQUIRED)
+        self.assertNotIn("PR governance script tests", pr_verification.REQUIRED)
+
+    def test_required_checks_from_project_json(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"PR_REQUIRED_CHECKS": ""}):
+            path = Path(tmp) / "project.json"
+            path.write_text(json.dumps({"required_checks": ["CI", " Lint "]}), encoding="utf-8")
+            self.assertEqual({"CI", "Lint"}, pr_verification.resolve_required_checks(project_json=path))
+            path.write_text(json.dumps({"name": "x"}), encoding="utf-8")
+            self.assertEqual(set(pr_verification.REQUIRED),
+                             pr_verification.resolve_required_checks(project_json=path))
+            path.write_text(json.dumps({"required_checks": "CI"}), encoding="utf-8")
+            with self.assertRaises(RuntimeError):
+                pr_verification.resolve_required_checks(project_json=path)
+
+    def test_environment_overrides_project_json(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"PR_REQUIRED_CHECKS": "Env"}):
+            path = Path(tmp) / "project.json"
+            path.write_text(json.dumps({"required_checks": ["CI"]}), encoding="utf-8")
+            self.assertEqual({"Env"}, pr_verification.resolve_required_checks(project_json=path))
 
     def test_missing_required_check_blocks_readiness(self):
         sample = next(iter(pr_verification.REQUIRED))

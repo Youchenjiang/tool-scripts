@@ -1,14 +1,18 @@
 """Conservative read-only final PR gate across GitHub and SonarQube."""
 
+import json
 import os
 import re
+from pathlib import Path
 
 PASS = {"SUCCESS", "PASS", "PASSED"}
 SKIP = {"SKIPPED", "SKIPPING", "NEUTRAL"}
 PENDING = {"PENDING", "QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED", "EXPECTED"}
+# Default gate: the job names the scaffold's own workflows (policy.yml, ci.yml)
+# report, plus the external analyzers. A project lists its real checks in
+# tools/project.json "required_checks" or the PR_REQUIRED_CHECKS variable.
 REQUIRED = {
-    "PR and commit policy",
-    "PR governance script tests",
+    "PR and Commit Policy Validation",
     "Continuous Integration",
     "DeepSource: Python",
     "SonarCloud",
@@ -16,11 +20,29 @@ REQUIRED = {
 }
 
 
-def resolve_required_checks(repo=""):
+def _project_required_checks(project_json=None):
+    """``required_checks`` from tools/project.json, or None when it is not set."""
+    path = Path(project_json) if project_json else Path(__file__).resolve().parent / "project.json"
+    if not path.is_file():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8")).get("required_checks")
+    except (OSError, ValueError) as exc:
+        raise RuntimeError(f"cannot read required_checks from {path}: {exc}") from exc
+    if value is None:
+        return None
+    if not isinstance(value, list) or not value or not all(isinstance(v, str) and v.strip() for v in value):
+        raise RuntimeError(f"{path}: required_checks must be a non-empty list of check names")
+    return {v.strip() for v in value}
+
+
+def resolve_required_checks(repo="", project_json=None):
+    """PR_REQUIRED_CHECKS, then tools/project.json required_checks, then REQUIRED."""
     env_req = os.environ.get("PR_REQUIRED_CHECKS")
     if env_req:
         return {item.strip() for item in env_req.split(",") if item.strip()}
-    return set(REQUIRED)
+    from_project = _project_required_checks(project_json)
+    return from_project if from_project is not None else set(REQUIRED)
 
 
 def _classify_checks(checks, required):
@@ -66,7 +88,6 @@ def _required_checks(files, repo="", author=""):
     required = set(resolve_required_checks(repo))
     if author.lower() in {"dependabot", "dependabot[bot]"}:
         required.discard("PR and Commit Policy Validation")
-        required.discard("PR and commit policy")
     if (files and not ("tapstrum" in repo.lower() or "tapster" in repo.lower()) and
             any(file.get("path", "").startswith("src/") or
                 file.get("path") == ".github/workflows/dependency-security-scan.yml"
