@@ -40,6 +40,8 @@ class TestPrePushBootstrap(unittest.TestCase):
         git(self.work, "init")
         hooks = self.work / ".git" / "hooks"
         shutil.copy2(HOOK, hooks / "pre-push")
+        # git skips a non-executable hook on POSIX, which would make every push pass
+        (hooks / "pre-push").chmod(0o755)
         (self.work / "tools").mkdir()
         shutil.copy2(LINT, self.work / "tools" / "lint_commits.py")
         git(self.work, "remote", "add", "origin", str(self.remote))
