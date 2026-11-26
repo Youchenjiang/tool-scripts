@@ -42,6 +42,14 @@
 
 ## 🔖 詳細變更日誌 (Detailed Version Changelog)
 
+### [v6.1.1] - 2026-11-26：修正規範誤判與 CI 排隊
+> **核心痛點**：用模板建立的 sec-range-kit 在遷移時連續踩到模板本身的問題：PR 說明中正確寫在反引號裡的 Windows 路徑被當成格式錯誤擋下、名稱含 `memory` 的一般文件被當成治理文件、hook 測試在 Linux 上形同沒測，以及同一個 PR 連推時舊的 CI 仍跑完。
+
+* **PR 說明檢查** (`templates/github/workflows/policy.yml`)：比對「跳脫字元殘留」前先移除程式碼區塊與反引號內容，`` `C:\Tools\DFIR` `` 這類路徑不再被誤判；裸露的 `\npm test\` 仍會被擋下。
+* **職責分離檢查** (`templates/tools/lint_commits.py`)：治理文件改以完整路徑段比對（`memory.md`、`docs/handover.md`、`.agent/` 目錄），`docs/disk-and-memory.md` 不再被誤判。
+* **CI 併發** (`templates/github/workflows/ci.yml`)：加入 `concurrency`，同一個 PR 的新推送會取消仍在跑的舊一輪；推送到 `main` 不取消。
+* **測試**：`tests/test_pre_push_hook.py` 複製 hook 後設定 0755（Linux 上的 git 會略過沒有執行權限的 hook）；`templates/tests/test_lint_commits.py` 與 `tests/test_scaffold_e2e.py` 涵蓋上述修正。
+
 ### [v6.1.0] - 2026-11-25：第一次推送 (Bootstrap) 與 `--publish`
 > **核心痛點**：`pr` 流程的 `pre-push` 一律攔截直推 `main`，但新 repo 的遠端是空的、沒有 PR 可開，第一次推送只能用 `--no-verify` 整個略過 hook，連 commit lint 與測試都一併跳過。
 
