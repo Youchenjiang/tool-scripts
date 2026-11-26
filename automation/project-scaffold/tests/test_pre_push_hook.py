@@ -20,7 +20,11 @@ LINT = TEMPLATES / "tools" / "lint_commits.py"
 
 def git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
     env = dict(os.environ)
-    for key in ("ALLOW_DIRECT_PUSH", "PR_BODY_FILE", "CLICKRA_PR_BODY_FILE"):
+    # GIT_DIR and friends: a hook running these tests from a linked worktree exports
+    # them, and the fixtures must build their own repositories, not touch that one
+    for key in ("ALLOW_DIRECT_PUSH", "PR_BODY_FILE", "CLICKRA_PR_BODY_FILE",
+                "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+                "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_COMMON_DIR"):
         env.pop(key, None)
     return subprocess.run(
         ["git", "-c", "user.name=Test", "-c", "user.email=test@example.local",

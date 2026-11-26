@@ -4,6 +4,13 @@
 
 set -e
 
+# A push from a linked worktree runs this hook with GIT_DIR set to an absolute
+# path. Every git command the tests and tools below start (git init, config,
+# add in their own temporary repositories) would then act on THIS repository.
+# Drop the location variables; git finds the repository from the working
+# directory, which is the worktree root.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR
+
 echo "[pre-push] Checking latest remote main, branch ancestry and commit policy..."
 if [ "$#" -ge 2 ]; then
   push_updates=$(cat)
